@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" fill="none">
+  <defs>
+    <linearGradient id="wGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#0066CC;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#0099CC;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#00CC99;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- W Logo -->
+  <path d="M 100 40 L 130 140 L 160 70 L 190 140 L 220 40 C 220 40 230 35 235 40 C 240 45 235 50 235 50 L 195 180 C 195 180 190 190 180 190 C 170 190 165 180 165 180 L 142 120 L 120 180 C 120 180 115 190 105 190 C 95 190 90 180 90 180 L 50 50 C 50 50 45 45 50 40 C 55 35 65 40 65 40 Z" 
+        fill="url(#wGradient)" 
+        stroke="url(#wGradient)" 
+        stroke-width="8" 
+        stroke-linecap="round" 
+        stroke-linejoin="round"/>
+  
+  <!-- Worky Text -->
+  <text x="50" y="260" font-family="Arial, sans-serif" font-size="85" font-weight="bold" fill="#0088CC" letter-spacing="2">
+    Worky
+  </text>
+</svg>

@@ -1,0 +1,314 @@
+
+export enum UserStatus {
+  Lead = 'Lead',
+  Client = 'Cliente Activo',
+  Completed = 'Finalizado',
+  Archived = 'Archivado'
+}
+
+export enum ProjectStage {
+  Inquiry = 'Consulta',
+  Proposal = 'Propuesta',
+  InProgress = 'En Progreso',
+  Invoicing = 'Facturación',
+  Done = 'Completado'
+}
+
+export type ContactRole = 'client' | 'supplier' | 'collaborator';
+
+export interface UserProfileData {
+  businessName: string;
+  ownerName: string;
+  phone: string;
+  businessType: string;
+  businessLogo?: string;
+  profilePhoto?: string;
+  username: string;
+  password: string;
+  email?: string;
+  nit?: string;
+  address?: string;
+  city?: string;
+  country?: string;
+}
+
+export interface PaymentAccount {
+  id: string;
+  bankName: 'Bancolombia' | 'Nequi' | 'Daviplata' | 'Efectivo';
+  accountType: 'Ahorros' | 'Corriente' | 'Celular';
+  accountNumber: string;
+  holderName: string;
+  color: string;
+  iconClass: string;
+}
+
+export interface ThirdPartyAccount {
+  id: string;
+  alias: string;
+  bankName: string;
+  accountNumber: string;
+  accountType: string;
+  holderName: string;
+  documentId?: string;
+}
+
+export interface Product {
+  id: string;
+  name: string;
+  price: number;
+  image: string;
+  images?: string[]; // Multiple images for product
+  description: string;
+  stock?: number;
+  categoryId?: string;
+}
+
+export interface ProductCategory {
+  id: string;
+  name: string;
+  icon: string;
+  color: string;
+  coverImage?: string; // Imagen de portada para la carpeta
+}
+
+export interface Expense {
+  id: string;
+  description: string;
+  amount: number;
+  date: Date;
+  category: 'material' | 'labor' | 'other';
+  projectId?: string; // Link to specific project
+}
+
+export interface InvoiceItem {
+  description: string;
+  quantity: number;
+  price: number;
+}
+
+export interface InvoiceData {
+  id: string;
+  number: string;
+  clientName: string;
+  items: InvoiceItem[];
+  total: number;
+  date: Date;
+  status: 'Pending' | 'Paid';
+}
+
+export interface ReceiptData {
+  id: string;
+  number: string;
+  amount: number;
+  concept: string;
+  date: Date;
+  paymentMethod: string;
+}
+
+export interface QuoteItem {
+  description: string;
+  quantity: number;
+  price: number;
+  image?: string; // Mantener para compatibilidad hacia atrás
+  images?: string[]; // Nuevo: array de imágenes
+}
+
+export interface QuoteData {
+  id: string;
+  number: string;
+  clientName: string;
+  clientAddress?: string;
+  clientPhone?: string;
+  items: QuoteItem[];
+  total: number;
+  subtotal?: number;
+  taxType?: 'none' | 'percentage' | 'aiu';
+  taxPercentage?: number;
+  taxAmount?: number;
+  aiuAdmin?: number;
+  aiuImprevistos?: number;
+  aiuUtilidad?: number;
+  aiuIva?: number;
+  validUntil: Date;
+}
+
+export interface CollectionAccountData {
+  id: string;
+  number: string;
+  amount: number;
+  concept: string;
+  directedTo: string;
+  nit?: string;
+  bankName?: string;
+  accountType?: string;
+  accountNumber?: string;
+  holderName?: string;
+  date: Date;
+}
+
+export interface Message {
+  id: string;
+  text: string;
+  sender: 'me' | 'other';
+  timestamp: Date;
+  type: 'text' | 'image' | 'file' | 'invoice' | 'product' | 'receipt' | 'quote' | 'collection_account' | 'payment_info' | 'expense' | 'expense_receipt';
+  metadata?: any;
+  isPaid?: boolean;
+  paidDate?: Date;
+}
+
+export interface FileMetadata {
+  url: string;
+  fileName: string;
+  fileSize: number;
+  fileType: string;
+  downloadUrl?: string;
+}
+
+export interface Story {
+  id: string;
+  contactId: string; // 'me' or contact ID
+  content: string; // Text, Image URL, or Video URL (base64)
+  type: 'text' | 'image' | 'video';
+  timestamp: Date;
+  expiresAt: Date;
+  color?: string; // Background color for text stories
+  caption?: string;
+}
+
+// Fases del proyecto para el diagrama de Gantt
+export enum ProjectPhaseType {
+  Planning = 'Planificación',
+  Design = 'Diseño',
+  MaterialPurchase = 'Compra de Materiales',
+  Manufacturing = 'Manufactura',
+  QualityControl = 'Control de Calidad',
+  Delivery = 'Entrega',
+  Installation = 'Instalación',
+  FinalReview = 'Revisión Final',
+  Warranty = 'Garantía'
+}
+
+export interface PhaseReminder {
+  id: string;
+  enabled: boolean;
+  type: 'before-end' | 'before-start'; // Antes del fin o antes del inicio de la fase
+  amount: number; // Cantidad de tiempo
+  unit: 'hours' | 'days'; // Unidad de tiempo
+  notified?: boolean; // Si ya se notificó
+  notifiedAt?: Date; // Cuándo se notificó
+}
+
+export interface ProjectPhase {
+  id: string;
+  type: ProjectPhaseType;
+  name: string; // Nombre personalizado opcional
+  startDate: Date;
+  endDate: Date;
+  progress: number; // 0-100
+  status: 'pending' | 'in-progress' | 'completed' | 'delayed';
+  notes?: string;
+  responsible?: string;
+  dependencies?: string[]; // IDs de fases que deben completarse antes
+  color?: string;
+  reminders?: PhaseReminder[]; // Recordatorios configurables
+}
+
+export interface Project {
+  id: string;
+  name: string;
+  value: number;
+  stage: ProjectStage;
+  expenses: Expense[];
+  startDate: Date;
+  endDate?: Date; // Fecha estimada de finalización
+  phases?: ProjectPhase[]; // Fases para el Gantt
+  description?: string;
+  priority?: 'low' | 'medium' | 'high' | 'urgent';
+}
+
+export interface Contact {
+  id: string;
+  clientName: string;
+  avatar: string;
+  phone: string;
+  status: UserStatus;
+  role: ContactRole;
+  projects: Project[]; // Array of projects per client
+  lastMessage: string;
+  lastMessageTime: Date;
+  unreadCount: number;
+  notes?: string;
+}
+
+// Tipos de grupo
+export type GroupType = 'general' | 'project' | 'subgroup';
+
+// Roles dentro de un grupo
+export type GroupMemberRole = 'admin' | 'member' | 'viewer';
+
+// Miembro de un grupo
+export interface GroupMember {
+  id: string;
+  contactId: string;
+  role: GroupMemberRole;
+  joinedAt: Date;
+  addedBy?: string;
+}
+
+// Subgrupo (ej: carpinteros, plomeros, etc.)
+export interface SubGroup {
+  id: string;
+  name: string;
+  description?: string;
+  icon: string;
+  color: string;
+  members: GroupMember[];
+  createdAt: Date;
+  parentGroupId: string; // ID del grupo padre
+}
+
+// Grupo principal
+export interface ChatGroup {
+  id: string;
+  name: string;
+  description?: string;
+  avatar?: string;
+  type: GroupType;
+  projectId?: string; // Si es un grupo de proyecto
+  members: GroupMember[];
+  subGroups?: SubGroup[];
+  createdAt: Date;
+  createdBy: string;
+  lastMessage?: string;
+  lastMessageTime?: Date;
+  unreadCount: number;
+  settings?: {
+    onlyAdminsCanPost?: boolean;
+    onlyAdminsCanAddMembers?: boolean;
+    muteNotifications?: boolean;
+  };
+}
+
+// Mensaje de grupo (extiende Message)
+export interface GroupMessage {
+  id: string;
+  groupId: string;
+  subGroupId?: string; // Si el mensaje es en un subgrupo
+  text: string;
+  senderId: string;
+  senderName: string;
+  senderAvatar: string;
+  timestamp: Date;
+  type: 'text' | 'image' | 'file' | 'system';
+  metadata?: any;
+  readBy?: string[]; // IDs de miembros que lo han leído
+  replyTo?: string; // ID del mensaje al que responde
+}
+
+export enum AppView {
+  Chat = 'Chat',
+  Projects = 'Projects',
+  Invoices = 'Invoices',
+  Settings = 'Settings'
+}

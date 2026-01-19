@@ -1,0 +1,61 @@
+{
+  "rules": {
+    "users": {
+      "$userId": {
+        ".read": "auth != null && auth.uid == $userId",
+        ".write": "auth != null && auth.uid == $userId",
+        "contacts": {
+          ".read": "auth != null && auth.uid == $userId",
+          ".write": "auth != null && auth.uid == $userId",
+          "$contactId": {
+            "projects": {
+              ".read": "auth != null && auth.uid == $userId",
+              ".write": "auth != null && auth.uid == $userId"
+            }
+          }
+        },
+        "products": {
+          ".read": "auth != null && auth.uid == $userId",
+          ".write": "auth != null && auth.uid == $userId"
+        },
+        "categories": {
+          ".read": "auth != null && auth.uid == $userId",
+          ".write": "auth != null && auth.uid == $userId"
+        },
+        "paymentAccounts": {
+          ".read": "auth != null && auth.uid == $userId",
+          ".write": "auth != null && auth.uid == $userId"
+        },
+        "profile": {
+          ".read": "auth != null && auth.uid == $userId",
+          ".write": "auth != null && auth.uid == $userId"
+        }
+      }
+    },
+    "chats": {
+      "$chatId": {
+        ".read": "auth != null && (root.child('chats').child($chatId).child('participants').child(auth.uid).exists())",
+        ".write": "auth != null && (root.child('chats').child($chatId).child('participants').child(auth.uid).exists())",
+        "messages": {
+          ".read": "auth != null && (root.child('chats').child($chatId).child('participants').child(auth.uid).exists())",
+          ".write": "auth != null && (root.child('chats').child($chatId).child('participants').child(auth.uid).exists())"
+        }
+      }
+    },
+    "userChats": {
+      "$userId": {
+        ".read": "auth != null && auth.uid == $userId",
+        ".write": "auth != null && auth.uid == $userId"
+      }
+    }
+  }
+}
+
+
+
+
+
+
+
+
+
