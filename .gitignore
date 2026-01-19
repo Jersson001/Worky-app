@@ -22,3 +22,23 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Environment and secrets
+.env
+.env.*
+*.pem
+*.jks
+*.keystore
+
+# Firebase config (contains API keys)
+android/app/google-services.json
+ios/App/App/GoogleService-Info.plist
+
+# Build outputs
+*.apk
+*.aab
+*.ipa
+android/app/build/
+android/build/
+android/.gradle/
+ios/build/
