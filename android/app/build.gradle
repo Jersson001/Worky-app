@@ -7,25 +7,24 @@ android {
         applicationId "com.worky.app.v2"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 2
-        versionName "1.0"
+        versionCode 3
+        versionName "1.1"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
-             // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
-             // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
-    
+
     signingConfigs {
         release {
-            storeFile file('worky-release.jks')
+            // Usamos project.file para asegurar la ruta de Ferry App SAS
+            storeFile project.file('worky-release.jks')
             storePassword "worky123456"
             keyAlias "worky-key"
             keyPassword "worky123456"
         }
     }
-    
+
     buildTypes {
         debug {
             minifyEnabled false
@@ -41,7 +40,7 @@ android {
             debuggable false
         }
     }
-    
+
     packagingOptions {
         resources {
             excludes += ['META-INF/DEPENDENCIES', 'META-INF/LICENSE', 'META-INF/LICENSE.txt', 'META-INF/license.txt', 'META-INF/NOTICE', 'META-INF/NOTICE.txt', 'META-INF/notice.txt', 'META-INF/ASL2.0']
@@ -65,6 +64,16 @@ dependencies {
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
     implementation project(':capacitor-cordova-android-plugins')
+
+    // BLOQUE PARA SOLUCIONAR DUPLICADOS DE KOTLIN
+    constraints {
+        implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.8.22") {
+            because("kotlin-stdlib now includes these classes")
+        }
+        implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.22") {
+            because("kotlin-stdlib now includes these classes")
+        }
+    }
 }
 
 apply from: 'capacitor.build.gradle'

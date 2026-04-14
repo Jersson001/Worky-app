@@ -1,5 +1,5 @@
 import { database } from './firebaseConfig';
-import { ref, push, set, onValue, off, update, query, orderByChild, limitToLast, remove, get, equalTo } from 'firebase/database';
+import { ref, push, set, onValue, off, update, query, orderByChild, limitToLast, remove, get, equalTo, increment as fbIncrement } from 'firebase/database';
 import { Message, Contact } from '../types';
 import { auth } from './firebaseConfig';
 
@@ -41,8 +41,11 @@ const registerUserInIndex = async (userId: string, phoneOrEmail: string) => {
     // Normalizar teléfono/email (quitar espacios, convertir a minúsculas)
     const normalized = phoneOrEmail.replace(/\s+/g, '').toLowerCase();
     
-    // Guardar en índice: userIndex/phoneOrEmail -> userId
-    const indexRef = ref(database, `userIndex/${normalized}`);
+    // Sanitize: RTDB keys can't contain ".", "#", "$", "[", "]"
+    const safeKey = normalized.replace(/\./g, ',').replace(/[#$\[\]]/g, '_');
+    
+    // Guardar en índice: userIndex/safeKey -> userId
+    const indexRef = ref(database, `userIndex/${safeKey}`);
     await set(indexRef, userId);
     
     // Guardar también en users/{userId}/publicInfo para búsqueda inversa
@@ -86,6 +89,7 @@ export const sendMessage = async (
 ): Promise<string> => {
   try {
     const chatId = getChatId(currentUserId!, contactId);
+    console.log('[Chat] Enviando mensaje → chatId:', chatId, '| myUid:', currentUserId, '| contactId:', contactId);
     const messagesRef = ref(database, `chats/${chatId}/messages`);
     const newMessageRef = push(messagesRef);
     
@@ -109,7 +113,7 @@ export const sendMessage = async (
     await update(contactChatInfoRef, {
       lastMessage: message.text,
       lastMessageTime: Date.now(),
-      unread: increment(1)
+      unread: fbIncrement(1)
     });
 
     return newMessageRef.key!;
@@ -124,6 +128,7 @@ export const listenToMessages = (
   callback: (messages: Message[]) => void
 ): (() => void) => {
   const chatId = getChatId(currentUserId!, contactId);
+  console.log('[Chat] Escuchando en sala:', chatId, '| myUid:', currentUserId, '| contactId:', contactId);
   const messagesRef = ref(database, `chats/${chatId}/messages`);
   const messagesQuery = query(messagesRef, orderByChild('timestamp'), limitToLast(100));
 
@@ -235,15 +240,13 @@ export const deleteContact = async (contactId: string): Promise<void> => {
 
 // ============ UTILIDADES ============
 
-// Genera un ID único para el chat entre dos usuarios
-function getChatId(userId1: string, userId2: string): string {
+// Genera un ID determinista para el chat entre dos usuarios
+// MUST always produce the same result regardless of argument order
+export function getChatId(userId1: string, userId2: string): string {
   return [userId1, userId2].sort().join('_');
 }
 
-// Helper para incrementar valores en Firebase
-function increment(value: number) {
-  return { '.sv': 'increment', value };
-}
+// Helper increment eliminado — ahora se usa fbIncrement importado de firebase/database
 
 // ============ PERFIL DE USUARIO ============
 
@@ -287,7 +290,9 @@ export const searchUserByPhoneOrEmail = async (phoneOrEmail: string): Promise<{
     const normalized = phoneOrEmail.replace(/\s+/g, '').toLowerCase();
     
     // Buscar en el índice
-    const indexRef = ref(database, `userIndex/${normalized}`);
+    // Sanitize key for RTDB
+    const safeKey = normalized.replace(/\./g, ',').replace(/[#$\[\]]/g, '_');
+    const indexRef = ref(database, `userIndex/${safeKey}`);
     const snapshot = await get(indexRef);
     
     if (!snapshot.exists()) {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { ChatList } from './components/ChatList';
 import { ChatWindow } from './components/ChatWindow';
 import { FinancialReport } from './components/FinancialReport';
@@ -18,8 +18,10 @@ import { Contact, Message, UserStatus, ProjectStage, Product, Expense, Story, Pa
 import { LoginScreen } from './components/LoginScreen';
 import { WelcomeOnboarding } from './components/WelcomeOnboarding';
 import { authService } from './services/authService';
-import { sendMessage as sendMessageToFirebase, listenToMessages, listenToContacts, addContact, deleteContact, saveUserProfile, getUserProfile, initializeUserId, setCurrentUserId, searchUserByPhoneOrEmail, addContactFromSearch } from './services/messagingService';
+import { sendMessage as sendMessageToFirebase, listenToMessages, listenToContacts, addContact, deleteContact, saveUserProfile, getUserProfile, initializeUserId, setCurrentUserId, getCurrentUserId, searchUserByPhoneOrEmail, addContactFromSearch } from './services/messagingService';
 import { saveProduct, deleteProduct, listenToProducts, saveCategory, deleteCategory, listenToCategories, saveProject, updateProject, addExpenseToProject, updateContactWithProjects, listenToPaymentAccounts, savePaymentAccount, PaymentAccountData } from './services/dataService';
+import { onAuthStateChanged, signOut as firebaseSignOut, User as FirebaseUser } from 'firebase/auth';
+import { auth } from './services/firebaseConfig';
 
 // Mock Data (usado como fallback o inicial)
 const MOCK_CONTACTS: Contact[] = [
@@ -143,50 +145,44 @@ const App: React.FC = () => {
     }
   }, []);
 
-  // Verificar si el usuario viene de hacer clic en el enlace de email
+  // ── Firebase Auth: onAuthStateChanged ──
+  // This is the single source of truth for authentication state.
+  // Firebase SDK persists the session automatically (IndexedDB).
   useEffect(() => {
-    const checkEmailLink = async () => {
-      const emailFromStorage = localStorage.getItem('emailForSignIn');
-      if (emailFromStorage && window.location.href.includes('apiKey=')) {
-        try {
-          const user = await authService.verifyEmailCode(emailFromStorage);
-          // Inicializar userId con Firebase Auth
-          if (user && user.uid) {
-            await initializeUserId();
-            setCurrentUserId(user.uid, emailFromStorage);
-          }
-          // Verificar si es usuario nuevo
-          const hasProfile = localStorage.getItem('userProfile');
-          if (!hasProfile) {
-            setNeedsOnboarding(true);
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
+      if (firebaseUser) {
+        // User is signed in
+        setCurrentUserId(firebaseUser.uid, firebaseUser.email || '');
+        await initializeUserId();
+
+        // Try to load profile from Firebase RTDB
+        const unsubProfile = getUserProfile((profile) => {
+          if (profile) {
+            setUserProfile(profile);
+            if (profile.businessLogo) {
+              setBusinessLogo(profile.businessLogo);
+            }
+            setNeedsOnboarding(false);
+            setIsAuthenticated(true);
           } else {
-            setUserProfile(JSON.parse(hasProfile));
+            // User exists in Auth but has no profile → needs onboarding
+            setNeedsOnboarding(true);
+            setIsAuthenticated(true);
           }
-          setIsAuthenticated(true);
-          // Limpiar la URL
-          window.history.replaceState({}, document.title, window.location.pathname);
-        } catch (error) {
-          console.error('Error verificando enlace de email:', error);
-          alert('❌ Error al verificar el enlace. Por favor intenta de nuevo.');
-        }
+        });
+
+        // Cleanup profile listener after first read
+        // (the data-loading useEffect below will set up the persistent listener)
+        return () => unsubProfile();
       } else {
-        // Cargar perfil existente si ya está autenticado
-        const savedProfile = localStorage.getItem('userProfile');
-        if (savedProfile) {
-          const profile = JSON.parse(savedProfile);
-          setUserProfile(profile);
-          // Cargar el logo si existe
-          if (profile.businessLogo) {
-            setBusinessLogo(profile.businessLogo);
-          }
-          // Marcar como autenticado si hay perfil guardado
-          setIsAuthenticated(true);
-          // Asegurar que no vaya al onboarding si tiene perfil
-          setNeedsOnboarding(false);
-        }
+        // User is signed out
+        setIsAuthenticated(false);
+        setUserProfile(null);
+        setNeedsOnboarding(false);
       }
-    };
-    checkEmailLink();
+    });
+
+    return () => unsubscribe();
   }, []);
 
   // Estado para cuentas de pago
@@ -335,27 +331,24 @@ const App: React.FC = () => {
     console.log('Estados actualizados: isAuthenticated=true, needsOnboarding=true');
   };
 
-  // Manejar el login
-  const handleLogin = () => {
-    const hasProfile = localStorage.getItem('userProfile');
-    if (!hasProfile) {
-      setNeedsOnboarding(true);
-      setIsAuthenticated(true);
-    } else {
-      const profile = JSON.parse(hasProfile);
-      setUserProfile(profile);
-      // Cargar el logo si existe
-      if (profile.businessLogo) {
-        setBusinessLogo(profile.businessLogo);
-      }
-      // Asegurar que no vaya al onboarding si tiene perfil
-      setNeedsOnboarding(false);
-      setIsAuthenticated(true);
-    }
-  };
+  // Manejar el login — called by LoginScreen after successful signInWithEmailAndPassword
+  // At this point Firebase Auth already has the user. onAuthStateChanged will fire and
+  // handle profile loading + setIsAuthenticated. We just ensure the flag is set.
+  const handleLogin = useCallback(() => {
+    // onAuthStateChanged handles everything, but we set authenticated immediately
+    // for instant UI feedback (the listener may have a brief delay).
+    setIsAuthenticated(true);
+  }, []);
 
-  // Manejar cerrar sesión
-  const handleLogout = () => {
+  // Manejar cerrar sesión — sign out from Firebase Auth
+  const handleLogout = useCallback(async () => {
+    try {
+      await firebaseSignOut(auth);
+    } catch (error) {
+      console.error('Error cerrando sesión:', error);
+    }
+    // onAuthStateChanged will fire and set isAuthenticated=false
+    // Clean up localStorage remnants
     localStorage.removeItem('userProfile');
     localStorage.removeItem('tempCredentials');
     localStorage.removeItem('userRegistrationData');
@@ -363,7 +356,7 @@ const App: React.FC = () => {
     setUserProfile(null);
     setNeedsOnboarding(false);
     setRegistrationData({ email: '', phone: '', fullName: '' });
-  };
+  }, []);
 
   // Manejar guardar perfil editado
   const handleSaveProfile = async (updatedProfile: UserProfileData) => {

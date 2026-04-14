@@ -273,7 +273,11 @@ export const ChatList: React.FC<ChatListProps> = ({ contacts, selectedContactId,
                 <div className="flex justify-between items-baseline mb-0.5">
                   <h3 className={`text-[15px] font-medium truncate ${selectedContactId === contact.id ? 'text-white' : 'text-slate-200'}`}>{contact.clientName}</h3>
                   <span className={`text-[11px] ${contact.unreadCount > 0 ? 'text-blue-400 font-bold' : 'text-slate-500'}`}>
-                    {contact.lastMessageTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                    {contact.lastMessageTime instanceof Date
+                      ? contact.lastMessageTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+                      : typeof contact.lastMessageTime === 'number'
+                        ? new Date(contact.lastMessageTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+                        : ''}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
