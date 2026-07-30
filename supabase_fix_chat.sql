@@ -90,16 +90,50 @@ GRANT EXECUTE ON FUNCTION public.bump_unread(UUID, TEXT) TO authenticated;
 -- ------------------------------------------------------------
 ALTER TABLE public.messages REPLICA IDENTITY FULL;
 
+-- El SQL Editor corre todo en UNA transaccion: si esto falla, revierte
+-- el script entero. Por eso se capturan todas las excepciones.
 DO $$
 BEGIN
-  ALTER PUBLICATION supabase_realtime ADD TABLE public.messages;
+  IF NOT EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime') THEN
+    CREATE PUBLICATION supabase_realtime;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime'
+      AND schemaname = 'public'
+      AND tablename  = 'messages'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.messages;
+  END IF;
 EXCEPTION
-  WHEN duplicate_object THEN NULL; -- ya estaba publicada
+  WHEN OTHERS THEN
+    RAISE NOTICE 'Realtime no configurado automaticamente (%). Actívalo en Database > Replication.', SQLERRM;
 END $$;
 
 -- ------------------------------------------------------------
--- Verificación
+-- 7. Refrescar la caché de esquema de PostgREST
+--    Sin esto la API sigue reportando "column does not exist"
+--    aunque la columna ya exista en Postgres.
 -- ------------------------------------------------------------
-SELECT tablename AS tabla_en_realtime
-FROM pg_publication_tables
-WHERE pubname = 'supabase_realtime' AND tablename = 'messages';
+NOTIFY pgrst, 'reload schema';
+
+-- ------------------------------------------------------------
+-- Verificación: las 3 filas deben decir OK
+-- ------------------------------------------------------------
+SELECT 'messages.recipient_id' AS control,
+       CASE WHEN EXISTS (SELECT 1 FROM information_schema.columns
+                         WHERE table_schema='public' AND table_name='messages'
+                           AND column_name='recipient_id')
+            THEN 'OK' ELSE 'FALTA' END AS estado
+UNION ALL
+SELECT 'public_info.display_name',
+       CASE WHEN EXISTS (SELECT 1 FROM information_schema.columns
+                         WHERE table_schema='public' AND table_name='public_info'
+                           AND column_name='display_name')
+            THEN 'OK' ELSE 'FALTA' END
+UNION ALL
+SELECT 'messages en realtime',
+       CASE WHEN EXISTS (SELECT 1 FROM pg_publication_tables
+                         WHERE pubname='supabase_realtime' AND tablename='messages')
+            THEN 'OK' ELSE 'FALTA' END;
