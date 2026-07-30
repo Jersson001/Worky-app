@@ -20,6 +20,15 @@ export const supabase = createClient(supabaseUrl ?? '', supabaseAnonKey ?? '', {
   },
 });
 
+// Topic único por suscripción. supabase.channel(topic) DEVUELVE la instancia
+// existente si el topic coincide — incluida una ya suscrita o a medio cerrar
+// (removeChannel es asíncrono). Añadirle .on('postgres_changes') a esa
+// instancia lanza "cannot add ... after subscribe()" y tumba la app.
+// Con un sufijo aleatorio cada suscripción estrena canal propio; el filtro
+// de postgres_changes es lo que decide qué eventos llegan, no el topic.
+export const uniqueTopic = (base: string) =>
+  `${base}:${Math.random().toString(36).slice(2, 10)}`;
+
 export const checkSupabaseConnection = (): { connected: boolean; error?: string } => {
   if (!supabaseUrl || !supabaseAnonKey) {
     return { connected: false, error: 'Supabase no configurado (revisa .env.local)' };

@@ -150,10 +150,18 @@ const App: React.FC = () => {
   // Supabase persists the session automatically (localStorage).
   useEffect(() => {
     let unsubProfileRef: (() => void) | null = null;
+    // onAuthStateChange dispara varias veces para la MISMA sesión
+    // (INITIAL_SESSION, SIGNED_IN, TOKEN_REFRESHED, y SIGNED_IN de nuevo al
+    // volver a la pestaña). Re-suscribir el canal realtime en cada disparo
+    // lo pone en carrera consigo mismo. Solo actuar cuando cambia el usuario.
+    let subscribedUserId: string | null = null;
 
     const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
       const user = session?.user;
       if (user) {
+        if (subscribedUserId === user.id) return; // misma sesión, nada que hacer
+        subscribedUserId = user.id;
+
         // User is signed in
         setIsLoadingProfile(true);
         setCurrentUserId(user.id, user.email || user.phone || '');
@@ -178,6 +186,7 @@ const App: React.FC = () => {
         });
       } else {
         // User is signed out
+        subscribedUserId = null;
         unsubProfileRef?.();
         unsubProfileRef = null;
         setIsAuthenticated(false);

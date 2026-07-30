@@ -1,4 +1,4 @@
-import { supabase } from './supabaseConfig';
+import { supabase, uniqueTopic } from './supabaseConfig';
 import { Message, Contact } from '../types';
 
 // ============ IDENTIDAD ============
@@ -154,8 +154,10 @@ export const listenToMessages = (
   };
 
   // API Realtime de supabase-js v2: channel + postgres_changes.
+  // uniqueTopic: reabrir el mismo chat antes de que el canal anterior
+  // termine de cerrarse no debe reutilizar la instancia ya suscrita.
   const channel = supabase
-    .channel(`chat:${chatId}`)
+    .channel(uniqueTopic(`chat:${chatId}`))
     .on(
       'postgres_changes',
       {
@@ -268,7 +270,7 @@ export const listenToContacts = (
   };
 
   const channel = supabase
-    .channel(`contacts:${userId}`)
+    .channel(uniqueTopic(`contacts:${userId}`))
     .on(
       'postgres_changes',
       { event: '*', schema: 'public', table: 'contacts', filter: `user_id=eq.${userId}` },
@@ -394,8 +396,10 @@ export const getUserProfile = (callback: (profile: any) => void): (() => void) =
     });
   };
 
+  // uniqueTopic: onAuthStateChange puede re-suscribir en rápida sucesión;
+  // el canal viejo aún vive cuando nace el nuevo y el topic NO debe chocar.
   const channel = supabase
-    .channel(`profile:${userId}`)
+    .channel(uniqueTopic(`profile:${userId}`))
     .on(
       'postgres_changes',
       { event: '*', schema: 'public', table: 'user_profiles', filter: `id=eq.${userId}` },

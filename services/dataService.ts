@@ -1,4 +1,4 @@
-import { supabase } from './supabaseConfig';
+import { supabase, uniqueTopic } from './supabaseConfig';
 import { Product, ProductCategory, Project, Expense, Contact } from '../types';
 import { getCurrentUserId } from './messagingService';
 
@@ -50,7 +50,7 @@ export const listenToProducts = (
   const userId = getCurrentUserId();
 
   const subscription = supabase
-    .channel(`products:${userId}`)
+    .channel(uniqueTopic(`products:${userId}`))
     .on('postgres_changes', { event: '*', schema: 'public', table: 'products', filter: `user_id=eq.${userId}` }, () => {
       loadProducts(userId, callback);
     })
@@ -138,7 +138,7 @@ export const listenToCategories = (
   const userId = getCurrentUserId();
 
   const subscription = supabase
-    .channel(`categories:${userId}`)
+    .channel(uniqueTopic(`categories:${userId}`))
     .on('postgres_changes', { event: '*', schema: 'public', table: 'categories', filter: `user_id=eq.${userId}` }, () => {
       loadCategories(userId, callback);
     })
@@ -306,7 +306,7 @@ export const listenToPaymentAccounts = (
   const userId = getCurrentUserId();
 
   const subscription = supabase
-    .channel(`payment_accounts:${userId}`)
+    .channel(uniqueTopic(`payment_accounts:${userId}`))
     .on('postgres_changes', { event: '*', schema: 'public', table: 'payment_accounts', filter: `user_id=eq.${userId}` }, () => {
       loadPaymentAccounts(userId, callback);
     })
