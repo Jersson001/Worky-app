@@ -9,26 +9,47 @@ interface LoginScreenProps {
 
 type AuthMode = 'login' | 'register';
 
-// Map Supabase error codes to friendly Spanish messages
-const getAuthErrorMessage = (code: string): string => {
-  switch (code) {
-    case 'user_already_exists':
-      return 'Este correo electrónico ya está registrado. Intenta iniciar sesión.';
-    case 'invalid_email_format':
-      return 'El correo electrónico no es válido.';
-    case 'weak_password':
-      return 'La contraseña debe tener al menos 6 caracteres.';
-    case 'invalid_credentials':
-      return 'Contraseña incorrecta. Inténtalo de nuevo.';
-    case 'user_not_found':
-      return 'No existe una cuenta con este correo. ¿Quieres registrarte?';
-    case 'too_many_requests':
-      return 'Demasiados intentos fallidos. Espera unos minutos e intenta de nuevo.';
-    case 'network_error':
-      return 'Error de conexión. Revisa tu internet e intenta de nuevo.';
-    default:
-      return 'Error de autenticación. Inténtalo de nuevo.';
+// Traduce el error de Supabase a un mensaje accionable.
+//
+// Ojo: recibe el objeto de error completo, no un string. La versión
+// anterior recibía err.message y lo comparaba contra códigos, así que
+// nunca coincidía y TODO caía en el default genérico, ocultando la
+// causa real (proveedor apagado, rate limit, etc.).
+const getAuthErrorMessage = (err: any): string => {
+  const code = String(err?.code ?? err?.error_code ?? '');
+  const msg = String(err?.message ?? '').toLowerCase();
+  const has = (...frases: string[]) => frases.some((f) => msg.includes(f));
+
+  if (code === 'email_provider_disabled' || has('email logins are disabled', 'email signups are disabled')) {
+    return 'El proveedor de Email está desactivado en Supabase. Actívalo en Authentication → Providers → Email.';
   }
+  if (code === 'over_email_send_rate_limit' || has('rate limit')) {
+    return 'Límite de envío de correos alcanzado. Desactiva "Confirm email" en Supabase o espera unos minutos.';
+  }
+  if (code === 'signup_disabled' || has('signups not allowed')) {
+    return 'El registro de nuevos usuarios está desactivado en Supabase.';
+  }
+  if (code === 'user_already_exists' || has('already registered', 'already been registered')) {
+    return 'Este correo electrónico ya está registrado. Intenta iniciar sesión.';
+  }
+  if (code === 'invalid_credentials' || has('invalid login credentials')) {
+    return 'Correo o contraseña incorrectos.';
+  }
+  if (code === 'email_not_confirmed' || has('email not confirmed')) {
+    return 'Debes confirmar tu correo antes de iniciar sesión.';
+  }
+  if (code === 'weak_password' || has('password should be', 'password is too short')) {
+    return 'La contraseña debe tener al menos 6 caracteres.';
+  }
+  if (code === 'email_address_invalid' || has('is invalid', 'unable to validate email')) {
+    return 'El correo electrónico no es válido.';
+  }
+  if (has('failed to fetch', 'networkerror')) {
+    return 'No se pudo conectar con Supabase. Revisa tu conexión y las claves del .env.';
+  }
+
+  // Preferible un mensaje feo y cierto que uno bonito y falso.
+  return err?.message ? `Error de Supabase: ${err.message}` : 'Error de autenticación. Inténtalo de nuevo.';
 };
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister }) => {
@@ -161,9 +182,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister })
         onLogin();
       }
     } catch (err: any) {
-      console.error('Auth error:', err);
-      const errorMessage = err?.message || err?.toString() || 'Error de autenticación';
-      setError(getAuthErrorMessage(errorMessage));
+      // Se registra el objeto completo: code/status son lo que permite
+      // distinguir un proveedor apagado de una contraseña mala.
+      console.error('Auth error:', { code: err?.code, status: err?.status, message: err?.message, err });
+      setError(getAuthErrorMessage(err));
     } finally {
       setLoading(false);
     }
