@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
-import { ref, set } from 'firebase/database';
-import { auth, database } from '../services/firebaseConfig';
+import { supabase } from '../services/supabaseConfig';
 import { setCurrentUserId } from '../services/messagingService';
 
 interface LoginScreenProps {
@@ -11,23 +9,22 @@ interface LoginScreenProps {
 
 type AuthMode = 'login' | 'register';
 
-// Map Firebase error codes to friendly Spanish messages
+// Map Supabase error codes to friendly Spanish messages
 const getAuthErrorMessage = (code: string): string => {
   switch (code) {
-    case 'auth/email-already-in-use':
+    case 'user_already_exists':
       return 'Este correo electrónico ya está registrado. Intenta iniciar sesión.';
-    case 'auth/invalid-email':
+    case 'invalid_email_format':
       return 'El correo electrónico no es válido.';
-    case 'auth/weak-password':
+    case 'weak_password':
       return 'La contraseña debe tener al menos 6 caracteres.';
-    case 'auth/user-not-found':
-      return 'No existe una cuenta con este correo. ¿Quieres registrarte?';
-    case 'auth/wrong-password':
-    case 'auth/invalid-credential':
+    case 'invalid_credentials':
       return 'Contraseña incorrecta. Inténtalo de nuevo.';
-    case 'auth/too-many-requests':
+    case 'user_not_found':
+      return 'No existe una cuenta con este correo. ¿Quieres registrarte?';
+    case 'too_many_requests':
       return 'Demasiados intentos fallidos. Espera unos minutos e intenta de nuevo.';
-    case 'auth/network-request-failed':
+    case 'network_error':
       return 'Error de conexión. Revisa tu internet e intenta de nuevo.';
     default:
       return 'Error de autenticación. Inténtalo de nuevo.';
@@ -59,42 +56,70 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister })
           return;
         }
 
-        // ── Firebase Auth: Create user ──
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        const user = userCredential.user;
+        // ── Supabase Auth: Create user with email/password ──
+        const { data, error: signUpError } = await supabase.auth.signUp({
+          email,
+          password,
+        });
+
+        if (signUpError) throw signUpError;
+        if (!data.user) throw new Error('No user returned from signup');
+
+        const user = data.user;
         const fullName = `${firstName} ${lastName}`;
         const fullPhone = `${countryCode} ${phone}`;
 
-        // ── Create user profile doc in RTDB ──
-        const profileRef = ref(database, `users/${user.uid}/profile`);
-        await set(profileRef, {
-          businessName: fullName,
-          ownerName: fullName,
-          email: email,
-          phone: fullPhone,
-          createdAt: Date.now(),
-        });
+        // ── Create user profile in user_profiles table ──
+        const { error: profileError } = await supabase
+          .from('user_profiles')
+          .insert({
+            id: user.id,
+            business_name: fullName,
+            owner_name: fullName,
+            email: email,
+            phone: fullPhone,
+          });
+
+        if (profileError) throw profileError;
 
         // ── Register in user index for search ──
+        // upsert, no insert: reintentar el registro no debe romper por clave duplicada.
         const normalizedEmail = email.replace(/\s+/g, '').toLowerCase();
-        const safeEmail = normalizedEmail.replace(/\./g, ',').replace(/[#$\[\]]/g, '_');
-        const indexRefEmail = ref(database, `userIndex/${safeEmail}`);
-        await set(indexRefEmail, user.uid);
-
+        const safeEmail = normalizedEmail.replace(/[\.\#\$\[\]]/g, '_');
         const normalizedPhone = fullPhone.replace(/\s+/g, '').toLowerCase();
-        const indexRefPhone = ref(database, `userIndex/${normalizedPhone}`);
-        await set(indexRefPhone, user.uid);
+
+        const { error: indexError } = await supabase
+          .from('user_index')
+          .upsert(
+            [
+              { safe_key: safeEmail, user_id: user.id },
+              // También indexado por teléfono: así te encuentran por cualquiera de los dos.
+              { safe_key: normalizedPhone.replace(/[\.\#\$\[\]]/g, '_'), user_id: user.id },
+            ],
+            { onConflict: 'safe_key' }
+          );
+
+        if (indexError) console.warn('Index error:', indexError);
 
         // ── Register public info ──
-        const publicInfoRef = ref(database, `users/${user.uid}/publicInfo`);
-        await set(publicInfoRef, {
-          phoneOrEmail: normalizedEmail,
-          phone: normalizedPhone,
-          registeredAt: Date.now(),
-        });
+        // display_name y avatar_url son lo que ve quien te busca; sin ellos
+        // el otro usuario aparece como "Usuario" sin foto.
+        const { error: publicInfoError } = await supabase
+          .from('public_info')
+          .upsert(
+            {
+              user_id: user.id,
+              phone_or_email: normalizedEmail,
+              display_name: fullName,
+              avatar_url: `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&background=random`,
+            },
+            { onConflict: 'user_id' }
+          );
+
+        if (publicInfoError) console.warn('Public info error:', publicInfoError);
 
         // ── Set current user ID ──
-        setCurrentUserId(user.uid, email);
+        setCurrentUserId(user.id, email);
 
         // ── Notify App.tsx ──
         onRegister(email, fullPhone, fullName);
@@ -107,19 +132,26 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister })
           return;
         }
 
-        const userCredential = await signInWithEmailAndPassword(auth, email, password);
-        const user = userCredential.user;
+        const { data, error: signInError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+
+        if (signInError) throw signInError;
+        if (!data.user) throw new Error('No user returned from signin');
+
+        const user = data.user;
 
         // Set current user ID
-        setCurrentUserId(user.uid, user.email || email);
+        setCurrentUserId(user.id, user.email || email);
 
         // Notify App.tsx
         onLogin();
       }
     } catch (err: any) {
       console.error('Auth error:', err);
-      const errorCode = err?.code || '';
-      setError(getAuthErrorMessage(errorCode));
+      const errorMessage = err?.message || err?.toString() || 'Error de autenticación';
+      setError(getAuthErrorMessage(errorMessage));
     } finally {
       setLoading(false);
     }

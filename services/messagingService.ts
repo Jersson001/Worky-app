@@ -1,85 +1,72 @@
-import { database } from './firebaseConfig';
-import { ref, push, set, onValue, off, update, query, orderByChild, limitToLast, remove, get, equalTo, increment as fbIncrement } from 'firebase/database';
+import { supabase } from './supabaseConfig';
 import { Message, Contact } from '../types';
-import { auth } from './firebaseConfig';
 
-// Usuario actual - usa Firebase Auth UID si está disponible
+// ============ IDENTIDAD ============
+
+// Cache del uid en memoria. Se rellena desde la sesión de Supabase.
 let currentUserId: string | null = null;
 
-// Inicializar userId desde Firebase Auth
-export const initializeUserId = async () => {
-  try {
-    // Intentar obtener el usuario de Firebase Auth
-    if (auth && auth.currentUser) {
-      currentUserId = auth.currentUser.uid;
-      // Registrar usuario en el índice para búsqueda
-      await registerUserInIndex(auth.currentUser.uid, auth.currentUser.phoneNumber || auth.currentUser.email || '');
-      return currentUserId;
-    }
-    
-    // Fallback: usar localStorage si no hay auth
-    currentUserId = localStorage.getItem('userId');
-    if (!currentUserId) {
-      currentUserId = 'user_' + Date.now();
-      localStorage.setItem('userId', currentUserId);
-    }
-    return currentUserId;
-  } catch (error) {
-    console.error('Error inicializando userId:', error);
-    // Fallback a localStorage
-    currentUserId = localStorage.getItem('userId') || 'user_' + Date.now();
-    localStorage.setItem('userId', currentUserId);
-    return currentUserId;
-  }
+export const initializeUserId = async (): Promise<string | null> => {
+  const { data, error } = await supabase.auth.getUser();
+  if (error || !data.user) return null;
+
+  currentUserId = data.user.id;
+  await registerUserInIndex(data.user.id, data.user.email || data.user.phone || '');
+  return currentUserId;
 };
 
-// Registrar usuario en índice para búsqueda
+export const getCurrentUserId = (): string => {
+  if (!currentUserId) throw new Error('Usuario no autenticado');
+  return currentUserId;
+};
+
+export const setCurrentUserId = (userId: string, phoneOrEmail?: string) => {
+  currentUserId = userId;
+  if (phoneOrEmail) void registerUserInIndex(userId, phoneOrEmail);
+};
+
+// Normaliza igual al escribir y al buscar; si difieren, la búsqueda nunca encuentra.
+const toSafeKey = (raw: string) =>
+  raw.replace(/\s+/g, '').toLowerCase().replace(/[\.\#\$\[\]]/g, '_');
+
 const registerUserInIndex = async (userId: string, phoneOrEmail: string) => {
+  if (!phoneOrEmail) return;
+  const normalized = phoneOrEmail.replace(/\s+/g, '').toLowerCase();
+
   try {
-    if (!phoneOrEmail) return;
-    
-    // Normalizar teléfono/email (quitar espacios, convertir a minúsculas)
-    const normalized = phoneOrEmail.replace(/\s+/g, '').toLowerCase();
-    
-    // Sanitize: RTDB keys can't contain ".", "#", "$", "[", "]"
-    const safeKey = normalized.replace(/\./g, ',').replace(/[#$\[\]]/g, '_');
-    
-    // Guardar en índice: userIndex/safeKey -> userId
-    const indexRef = ref(database, `userIndex/${safeKey}`);
-    await set(indexRef, userId);
-    
-    // Guardar también en users/{userId}/publicInfo para búsqueda inversa
-    const publicInfoRef = ref(database, `users/${userId}/publicInfo`);
-    await set(publicInfoRef, {
-      phoneOrEmail: normalized,
-      registeredAt: Date.now()
-    });
+    await supabase
+      .from('user_index')
+      .upsert({ safe_key: toSafeKey(phoneOrEmail), user_id: userId }, { onConflict: 'safe_key' });
+
+    await supabase
+      .from('public_info')
+      .upsert({ user_id: userId, phone_or_email: normalized }, { onConflict: 'user_id' });
   } catch (error) {
     console.error('Error registrando usuario en índice:', error);
   }
 };
 
-export const getCurrentUserId = () => {
-  if (!currentUserId) {
-    // Intentar obtener de auth primero
-    if (auth && auth.currentUser) {
-      currentUserId = auth.currentUser.uid;
-    } else {
-      currentUserId = localStorage.getItem('userId') || 'user_' + Date.now();
-      localStorage.setItem('userId', currentUserId);
-    }
-  }
-  return currentUserId;
-};
+// ============ UTILIDADES ============
 
-// Actualizar userId cuando el usuario inicia sesión
-export const setCurrentUserId = (userId: string, phoneOrEmail?: string) => {
-  currentUserId = userId;
-  localStorage.setItem('userId', userId);
-  if (phoneOrEmail) {
-    registerUserInIndex(userId, phoneOrEmail);
-  }
-};
+// Determinista y simétrico: ambos extremos calculan el MISMO id.
+// De esto depende que no haya "chats cruzados".
+export function getChatId(userId1: string, userId2: string): string {
+  if (!userId1 || !userId2) throw new Error('getChatId: Ambos UIDs son requeridos');
+  return [userId1, userId2].sort().join('_');
+}
+
+// 'me' / 'other' es relativo a quien mira, así que NO se persiste:
+// se deriva comparando contra el uid propio en cada lectura.
+const rowToMessage = (row: any, myUid: string): Message => ({
+  id: row.id,
+  text: row.text,
+  sender: row.sender_id === myUid ? 'me' : 'other',
+  timestamp: new Date(row.timestamp),
+  type: row.type,
+  metadata: row.metadata ?? undefined,
+  isPaid: row.is_paid ?? undefined,
+  paidDate: row.paid_date ? new Date(row.paid_date) : undefined,
+});
 
 // ============ MENSAJES ============
 
@@ -87,295 +74,395 @@ export const sendMessage = async (
   contactId: string,
   message: Omit<Message, 'id'>
 ): Promise<string> => {
-  try {
-    const chatId = getChatId(currentUserId!, contactId);
-    console.log('[Chat] Enviando mensaje → chatId:', chatId, '| myUid:', currentUserId, '| contactId:', contactId);
-    const messagesRef = ref(database, `chats/${chatId}/messages`);
-    const newMessageRef = push(messagesRef);
-    
-    await set(newMessageRef, {
-      ...message,
-      id: newMessageRef.key,
-      timestamp: Date.now(),
-      // Convertir Date a timestamp para metadata si existe
-      metadata: message.metadata || undefined
-    });
+  const userId = getCurrentUserId();
+  const chatId = getChatId(userId, contactId);
 
-    // Actualizar último mensaje en la lista de chats
-    const chatInfoRef = ref(database, `userChats/${currentUserId}/${contactId}`);
-    await update(chatInfoRef, {
-      lastMessage: message.text,
-      lastMessageTime: Date.now(),
-      unread: 0
-    });
+  const { data, error } = await supabase
+    .from('messages')
+    .insert({
+      chat_id: chatId,
+      sender_id: userId,
+      recipient_id: contactId,
+      text: message.text,
+      type: message.type,
+      metadata: message.metadata ?? null,
+      timestamp: new Date().toISOString(),
+    })
+    .select('id')
+    .single();
 
-    const contactChatInfoRef = ref(database, `userChats/${contactId}/${currentUserId}`);
-    await update(contactChatInfoRef, {
-      lastMessage: message.text,
-      lastMessageTime: Date.now(),
-      unread: fbIncrement(1)
-    });
-
-    return newMessageRef.key!;
-  } catch (error) {
-    console.error('Error sending message:', error);
+  if (error) {
+    console.error('Error enviando mensaje:', error);
     throw error;
   }
+
+  // Mi lado: leído. Lado del otro: +1 no leído (vía RPC, porque RLS
+  // no me deja escribir en la fila de otro usuario).
+  await supabase
+    .from('user_chats')
+    .upsert(
+      {
+        user_id: userId,
+        contact_id: contactId,
+        last_message: message.text,
+        last_message_time: new Date().toISOString(),
+        unread: 0,
+      },
+      { onConflict: 'user_id,contact_id' }
+    );
+
+  const { error: rpcError } = await supabase.rpc('bump_unread', {
+    p_recipient: contactId,
+    p_last: message.text,
+  });
+  if (rpcError) console.warn('No se pudo actualizar no-leídos del destinatario:', rpcError.message);
+
+  return data.id;
 };
 
 export const listenToMessages = (
   contactId: string,
   callback: (messages: Message[]) => void
 ): (() => void) => {
-  const chatId = getChatId(currentUserId!, contactId);
-  console.log('[Chat] Escuchando en sala:', chatId, '| myUid:', currentUserId, '| contactId:', contactId);
-  const messagesRef = ref(database, `chats/${chatId}/messages`);
-  const messagesQuery = query(messagesRef, orderByChild('timestamp'), limitToLast(100));
+  const userId = getCurrentUserId();
+  const chatId = getChatId(userId, contactId);
 
-  const unsubscribe = onValue(messagesQuery, (snapshot) => {
-    const messages: Message[] = [];
-    snapshot.forEach((childSnapshot) => {
-      const msg = childSnapshot.val();
-      // Convertir timestamp a Date
-      if (msg.timestamp) {
-        msg.timestamp = new Date(msg.timestamp);
+  // Estado local para poder anexar en vez de re-consultar en cada evento.
+  let buffer: Message[] = [];
+  let cancelled = false;
+
+  const emit = () => {
+    if (!cancelled) callback([...buffer]);
+  };
+
+  const loadInitial = async () => {
+    const { data, error } = await supabase
+      .from('messages')
+      .select('*')
+      .eq('chat_id', chatId)
+      .order('timestamp', { ascending: true })
+      .limit(100);
+
+    if (error) {
+      console.error('Error cargando mensajes:', error);
+      return;
+    }
+    if (cancelled) return;
+
+    buffer = (data || []).map((row) => rowToMessage(row, userId));
+    emit();
+  };
+
+  // API Realtime de supabase-js v2: channel + postgres_changes.
+  const channel = supabase
+    .channel(`chat:${chatId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'messages',
+        filter: `chat_id=eq.${chatId}`,
+      },
+      (payload) => {
+        const incoming = rowToMessage(payload.new, userId);
+        // El INSERT propio también rebota por aquí: deduplicar por id.
+        if (buffer.some((m) => m.id === incoming.id)) return;
+        buffer = [...buffer, incoming].sort(
+          (a, b) => a.timestamp.getTime() - b.timestamp.getTime()
+        );
+        emit();
       }
-      messages.push(msg);
+    )
+    .subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        console.log('[Chat] Suscrito en tiempo real a', chatId);
+      } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+        console.error('[Chat] Fallo de suscripción realtime:', status);
+      }
     });
-    // Ordenar por timestamp
-    messages.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
-    callback(messages);
-  });
 
-  return () => off(messagesRef);
+  void loadInitial();
+
+  return () => {
+    cancelled = true;
+    void supabase.removeChannel(channel);
+  };
+};
+
+export const markChatAsRead = async (contactId: string): Promise<void> => {
+  const userId = getCurrentUserId();
+  await supabase
+    .from('user_chats')
+    .update({ unread: 0 })
+    .eq('user_id', userId)
+    .eq('contact_id', contactId);
 };
 
 // ============ CONTACTOS ============
 
-export const addContact = async (contact: Contact): Promise<void> => {
-  try {
-    const contactRef = ref(database, `users/${currentUserId}/contacts/${contact.id}`);
-    await set(contactRef, contact);
+// contact_user_id es el uid real del otro usuario y es lo único
+// válido para abrir un chat. El id de la fila NO sirve para eso.
+const rowToContact = (row: any): Contact => ({
+  id: row.contact_user_id ?? row.id,
+  clientName: row.client_name,
+  avatar: row.avatar,
+  phone: row.phone,
+  status: row.status,
+  role: row.role,
+  projects: [],
+  lastMessage: row.last_message || '',
+  lastMessageTime: row.last_message_time ? new Date(row.last_message_time) : new Date(),
+  unreadCount: row.unread_count || 0,
+  notes: row.notes ?? undefined,
+});
 
-    // Inicializar chat info
-    const chatInfoRef = ref(database, `userChats/${currentUserId}/${contact.id}`);
-    await set(chatInfoRef, {
-      contactId: contact.id,
-      lastMessage: '',
-      lastMessageTime: Date.now(),
-      unread: 0
-    });
-  } catch (error) {
-    console.error('Error adding contact:', error);
-    throw error;
-  }
+export const addContact = async (contact: Contact): Promise<void> => {
+  const userId = getCurrentUserId();
+
+  const { error } = await supabase.from('contacts').insert({
+    user_id: userId,
+    contact_user_id: contact.id,
+    client_name: contact.clientName,
+    avatar: contact.avatar,
+    phone: contact.phone,
+    status: contact.status,
+    role: contact.role,
+    last_message: contact.lastMessage,
+    last_message_time: contact.lastMessageTime?.toISOString?.() ?? new Date().toISOString(),
+    unread_count: contact.unreadCount ?? 0,
+    notes: contact.notes ?? null,
+  });
+
+  if (error) throw error;
+
+  await supabase.from('user_chats').upsert(
+    {
+      user_id: userId,
+      contact_id: contact.id,
+      last_message: '',
+      last_message_time: new Date().toISOString(),
+      unread: 0,
+    },
+    { onConflict: 'user_id,contact_id' }
+  );
 };
 
 export const listenToContacts = (
   callback: (contacts: Contact[]) => void
 ): (() => void) => {
-  const contactsRef = ref(database, `users/${currentUserId}/contacts`);
+  const userId = getCurrentUserId();
+  let cancelled = false;
 
-  const unsubscribe = onValue(contactsRef, (snapshot) => {
-    const contacts: Contact[] = [];
-    snapshot.forEach((childSnapshot) => {
-      const contact = childSnapshot.val();
-      // Convertir timestamps de Firebase a Date objects
-      if (contact.lastMessageTime) {
-        contact.lastMessageTime = new Date(contact.lastMessageTime);
-      }
-      if (contact.projects) {
-        contact.projects = contact.projects.map((proj: any) => ({
-          ...proj,
-          startDate: proj.startDate ? new Date(proj.startDate) : new Date(),
-          expenses: (proj.expenses || []).map((exp: any) => ({
-            ...exp,
-            date: exp.date ? new Date(exp.date) : new Date()
-          }))
-        }));
-      }
-      contacts.push(contact);
-    });
-    callback(contacts);
-  });
+  const load = async () => {
+    const { data, error } = await supabase
+      .from('contacts')
+      .select('*')
+      .eq('user_id', userId);
 
-  return () => off(contactsRef);
-};
+    if (error) {
+      console.error('Error cargando contactos:', error);
+      return;
+    }
+    if (!cancelled) callback((data || []).map(rowToContact));
+  };
 
-export const updateContactStatus = async (
-  contactId: string,
-  status: 'online' | 'offline' | 'away'
-): Promise<void> => {
-  try {
-    const statusRef = ref(database, `users/${contactId}/status`);
-    await set(statusRef, {
-      status,
-      lastSeen: Date.now()
-    });
-  } catch (error) {
-    console.error('Error updating status:', error);
-    throw error;
-  }
+  const channel = supabase
+    .channel(`contacts:${userId}`)
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'contacts', filter: `user_id=eq.${userId}` },
+      () => void load()
+    )
+    .subscribe();
+
+  void load();
+
+  return () => {
+    cancelled = true;
+    void supabase.removeChannel(channel);
+  };
 };
 
 export const deleteContact = async (contactId: string): Promise<void> => {
-  try {
-    const userId = getCurrentUserId();
-    
-    // Eliminar contacto
-    const contactRef = ref(database, `users/${userId}/contacts/${contactId}`);
-    await remove(contactRef);
-    
-    // Eliminar información del chat
-    const chatInfoRef = ref(database, `userChats/${userId}/${contactId}`);
-    await remove(chatInfoRef);
-    
-    // Nota: No eliminamos los mensajes del chat porque podrían ser útiles en el futuro
-    // Si se desea eliminar también los mensajes, se puede agregar aquí
-  } catch (error) {
-    console.error('Error deleting contact:', error);
-    throw error;
-  }
+  const userId = getCurrentUserId();
+
+  const { error } = await supabase
+    .from('contacts')
+    .delete()
+    .eq('user_id', userId)
+    .eq('contact_user_id', contactId);
+  if (error) throw error;
+
+  await supabase
+    .from('user_chats')
+    .delete()
+    .eq('user_id', userId)
+    .eq('contact_id', contactId);
 };
 
-// ============ UTILIDADES ============
+export const updateContactStatus = async (): Promise<void> => {
+  // Presencia en línea: pendiente de reimplementar con supabase.channel().track().
+};
 
-// Genera un ID determinista para el chat entre dos usuarios
-// MUST always produce the same result regardless of argument order
-export function getChatId(userId1: string, userId2: string): string {
-  return [userId1, userId2].sort().join('_');
-}
-
-// Helper increment eliminado — ahora se usa fbIncrement importado de firebase/database
-
-// ============ PERFIL DE USUARIO ============
+// ============ PERFIL ============
 
 export const saveUserProfile = async (profile: any): Promise<void> => {
-  try {
-    const profileRef = ref(database, `users/${currentUserId}/profile`);
-    await set(profileRef, profile);
-  } catch (error) {
-    console.error('Error saving profile:', error);
-    throw error;
-  }
+  const userId = getCurrentUserId();
+
+  const { error } = await supabase.from('user_profiles').upsert(
+    {
+      id: userId,
+      business_name: profile.businessName,
+      owner_name: profile.ownerName,
+      phone: profile.phone,
+      business_type: profile.businessType,
+      business_logo: profile.businessLogo,
+      profile_photo: profile.profilePhoto,
+      username: profile.username,
+      email: profile.email,
+      nit: profile.nit,
+      address: profile.address,
+      city: profile.city,
+      country: profile.country,
+    },
+    { onConflict: 'id' }
+  );
+  if (error) throw error;
+
+  // Espeja nombre y avatar en la tabla pública para que otros puedan
+  // encontrarte sin exponer el resto del perfil.
+  await supabase.from('public_info').upsert(
+    {
+      user_id: userId,
+      phone_or_email: (profile.email || profile.phone || '').toLowerCase(),
+      display_name: profile.businessName || profile.ownerName,
+      avatar_url: profile.businessLogo || profile.profilePhoto,
+    },
+    { onConflict: 'user_id' }
+  );
 };
 
 export const getUserProfile = (callback: (profile: any) => void): (() => void) => {
-  const profileRef = ref(database, `users/${currentUserId}/profile`);
-  
-  const unsubscribe = onValue(profileRef, (snapshot) => {
-    callback(snapshot.val());
-  });
+  const userId = getCurrentUserId();
+  let cancelled = false;
 
-  return () => off(profileRef);
+  const load = async () => {
+    const { data } = await supabase
+      .from('user_profiles')
+      .select('*')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (cancelled) return;
+    if (!data) {
+      callback(null);
+      return;
+    }
+
+    callback({
+      businessName: data.business_name,
+      ownerName: data.owner_name,
+      phone: data.phone,
+      businessType: data.business_type,
+      businessLogo: data.business_logo,
+      profilePhoto: data.profile_photo,
+      username: data.username,
+      email: data.email,
+      nit: data.nit,
+      address: data.address,
+      city: data.city,
+      country: data.country,
+    });
+  };
+
+  const channel = supabase
+    .channel(`profile:${userId}`)
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'user_profiles', filter: `id=eq.${userId}` },
+      () => void load()
+    )
+    .subscribe();
+
+  void load();
+
+  return () => {
+    cancelled = true;
+    void supabase.removeChannel(channel);
+  };
 };
 
 // ============ BÚSQUEDA DE USUARIOS ============
 
-/**
- * Buscar usuario por teléfono o email
- * @param phoneOrEmail - Teléfono o email del usuario a buscar
- * @returns Información del usuario encontrado o null
- */
-export const searchUserByPhoneOrEmail = async (phoneOrEmail: string): Promise<{
+export const searchUserByPhoneOrEmail = async (
+  phoneOrEmail: string
+): Promise<{ userId: string; name?: string; avatar?: string; phone?: string } | null> => {
+  if (!phoneOrEmail) return null;
+
+  const { data: indexRow } = await supabase
+    .from('user_index')
+    .select('user_id')
+    .eq('safe_key', toSafeKey(phoneOrEmail))
+    .maybeSingle();
+
+  if (!indexRow) return null;
+
+  const foundId = indexRow.user_id;
+  if (foundId === currentUserId) return null; // no agregarse a uno mismo
+
+  // Solo public_info: user_profiles permanece privado.
+  const { data: pub } = await supabase
+    .from('public_info')
+    .select('display_name, avatar_url, phone_or_email')
+    .eq('user_id', foundId)
+    .maybeSingle();
+
+  const name = pub?.display_name || 'Usuario';
+
+  return {
+    userId: foundId,
+    name,
+    avatar:
+      pub?.avatar_url ||
+      `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random`,
+    phone: pub?.phone_or_email || phoneOrEmail,
+  };
+};
+
+export const addContactFromSearch = async (foundUser: {
   userId: string;
   name?: string;
   avatar?: string;
   phone?: string;
-} | null> => {
-  try {
-    if (!phoneOrEmail) return null;
-    
-    // Normalizar búsqueda
-    const normalized = phoneOrEmail.replace(/\s+/g, '').toLowerCase();
-    
-    // Buscar en el índice
-    // Sanitize key for RTDB
-    const safeKey = normalized.replace(/\./g, ',').replace(/[#$\[\]]/g, '_');
-    const indexRef = ref(database, `userIndex/${safeKey}`);
-    const snapshot = await get(indexRef);
-    
-    if (!snapshot.exists()) {
-      return null; // Usuario no encontrado
-    }
-    
-    const userId = snapshot.val();
-    
-    // Obtener información pública del usuario
-    const publicInfoRef = ref(database, `users/${userId}/publicInfo`);
-    const profileRef = ref(database, `users/${userId}/profile`);
-    
-    const [publicInfoSnap, profileSnap] = await Promise.all([
-      get(publicInfoRef),
-      get(profileRef)
-    ]);
-    
-    const publicInfo = publicInfoSnap.val() || {};
-    const profile = profileSnap.val() || {};
-    
-    // No devolver si es el mismo usuario
-    if (userId === getCurrentUserId()) {
-      return null;
-    }
-    
-    return {
-      userId,
-      name: profile.businessName || profile.name || 'Usuario',
-      avatar: profile.businessLogo || profile.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.businessName || profile.name || 'Usuario')}&background=random`,
-      phone: publicInfo.phoneOrEmail || phoneOrEmail
-    };
-  } catch (error) {
-    console.error('Error buscando usuario:', error);
-    return null;
-  }
-};
+}): Promise<Contact> => {
+  const userId = getCurrentUserId();
 
-/**
- * Agregar contacto desde búsqueda (cuando se encuentra un usuario)
- */
-export const addContactFromSearch = async (
-  foundUser: { userId: string; name?: string; avatar?: string; phone?: string }
-): Promise<Contact> => {
-  try {
-    const userId = getCurrentUserId();
-    
-    // Verificar si ya es contacto
-    const existingContactRef = ref(database, `users/${userId}/contacts/${foundUser.userId}`);
-    const existingSnap = await get(existingContactRef);
-    
-    if (existingSnap.exists()) {
-      throw new Error('Este usuario ya está en tus contactos');
-    }
-    
-    // Crear contacto
-    const newContact: Contact = {
-      id: foundUser.userId,
-      clientName: foundUser.name || 'Usuario',
-      avatar: foundUser.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(foundUser.name || 'Usuario')}&background=random`,
-      phone: foundUser.phone || '',
-      status: 'lead' as any,
-      role: 'client',
-      projects: [],
-      lastMessage: 'Nuevo contacto',
-      lastMessageTime: new Date(),
-      unreadCount: 0
-    };
-    
-    // Guardar contacto
-    await addContact(newContact);
-    
-    // También crear el chat info para el otro usuario
-    const otherUserChatRef = ref(database, `userChats/${foundUser.userId}/${userId}`);
-    await set(otherUserChatRef, {
-      contactId: userId,
-      lastMessage: '',
-      lastMessageTime: Date.now(),
-      unread: 0
-    });
-    
-    return newContact;
-  } catch (error) {
-    console.error('Error agregando contacto desde búsqueda:', error);
-    throw error;
-  }
+  const { data: existing } = await supabase
+    .from('contacts')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('contact_user_id', foundUser.userId)
+    .maybeSingle();
+
+  if (existing) throw new Error('Este usuario ya está en tus contactos');
+
+  const name = foundUser.name || 'Usuario';
+  const newContact: Contact = {
+    id: foundUser.userId,
+    clientName: name,
+    avatar:
+      foundUser.avatar ||
+      `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random`,
+    phone: foundUser.phone || '',
+    status: 'Lead' as any,
+    role: 'client',
+    projects: [],
+    lastMessage: 'Nuevo contacto',
+    lastMessageTime: new Date(),
+    unreadCount: 0,
+  };
+
+  await addContact(newContact);
+  return newContact;
 };

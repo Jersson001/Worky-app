@@ -1,106 +1,89 @@
-import { FirebaseAuthentication } from '@capacitor-firebase/authentication';
-import { 
-  signInWithEmailLink, 
-  sendSignInLinkToEmail,
-  isSignInWithEmailLink,
-  RecaptchaVerifier,
-  signInWithPhoneNumber,
-  ConfirmationResult
-} from 'firebase/auth';
-import { auth } from './firebaseConfig';
-
-// Para verificación por teléfono
-let confirmationResult: ConfirmationResult | null = null;
+import { supabase } from './supabaseConfig';
 
 export const authService = {
   /**
-   * Enviar link de verificación al email
+   * Enviar OTP al email
    */
   async sendEmailVerification(email: string): Promise<void> {
-    const actionCodeSettings = {
-      url: window.location.href,
-      handleCodeInApp: true,
-    };
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: window.location.href,
+      },
+    });
 
-    await sendSignInLinkToEmail(auth, email, actionCodeSettings);
-    // Guardar el email en localStorage para verificar después
+    if (error) throw error;
     localStorage.setItem('emailForSignIn', email);
   },
 
   /**
    * Verificar el código del email y hacer login
    */
-  async verifyEmailCode(email: string): Promise<any> {
-    if (isSignInWithEmailLink(auth, window.location.href)) {
-      const result = await signInWithEmailLink(auth, email, window.location.href);
-      localStorage.removeItem('emailForSignIn');
-      return result.user;
-    }
-    throw new Error('Link inválido');
-  },
-
-  /**
-   * Enviar código SMS al teléfono
-   */
-  async sendPhoneVerification(phoneNumber: string, recaptchaContainer: string): Promise<void> {
-    try {
-      // Para web, necesitamos reCAPTCHA
-      const recaptchaVerifier = new RecaptchaVerifier(auth, recaptchaContainer, {
-        size: 'invisible',
-      });
-
-      confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, recaptchaVerifier);
-    } catch (error) {
-      console.error('Error enviando SMS:', error);
-      throw error;
-    }
-  },
-
-  /**
-   * Verificar el código SMS
-   */
-  async verifyPhoneCode(code: string): Promise<any> {
-    if (!confirmationResult) {
-      throw new Error('No se ha enviado código de verificación');
-    }
-
-    const result = await confirmationResult.confirm(code);
-    return result.user;
-  },
-
-  /**
-   * Método nativo para móvil usando el plugin de Capacitor
-   */
-  async signInWithPhoneNative(phoneNumber: string): Promise<any> {
-    const result = await FirebaseAuthentication.signInWithPhoneNumber({
-      phoneNumber,
+  async verifyEmailCode(email: string, token: string): Promise<any> {
+    const { data, error } = await supabase.auth.verifyOtp({
+      email,
+      token,
+      type: 'email',
     });
-    return result;
+
+    if (error) throw error;
+    localStorage.removeItem('emailForSignIn');
+    return data.user;
   },
 
   /**
-   * Verificar código SMS en móvil
+   * Enviar OTP al teléfono (WhatsApp)
    */
-  async verifyPhoneCodeNative(verificationId: string, verificationCode: string): Promise<any> {
-    const result = await FirebaseAuthentication.confirmVerificationCode({
-      verificationId,
-      verificationCode,
+  async sendPhoneVerification(phoneNumber: string): Promise<void> {
+    const { error } = await supabase.auth.signInWithOtp({
+      phone: phoneNumber,
+      options: {
+        channel: 'whatsapp', // Usar WhatsApp para enviar OTP
+      },
     });
-    return result.user;
+
+    if (error) throw error;
+    localStorage.setItem('phoneForSignIn', phoneNumber);
+  },
+
+  /**
+   * Verificar el código del teléfono
+   */
+  async verifyPhoneCode(phoneNumber: string, token: string): Promise<any> {
+    const { data, error } = await supabase.auth.verifyOtp({
+      phone: phoneNumber,
+      token,
+      type: 'sms',
+    });
+
+    if (error) throw error;
+    localStorage.removeItem('phoneForSignIn');
+    return data.user;
   },
 
   /**
    * Obtener usuario actual
    */
   async getCurrentUser(): Promise<any> {
-    const result = await FirebaseAuthentication.getCurrentUser();
-    return result.user;
+    const { data, error } = await supabase.auth.getUser();
+    if (error) throw error;
+    return data.user;
   },
 
   /**
    * Cerrar sesión
    */
   async signOut(): Promise<void> {
-    await FirebaseAuthentication.signOut();
-  }
+    const { error } = await supabase.auth.signOut();
+    if (error) throw error;
+  },
+
+  /**
+   * Escuchar cambios de autenticación
+   */
+  onAuthStateChange(callback: (user: any) => void) {
+    return supabase.auth.onAuthStateChange((event, session) => {
+      callback(session?.user || null);
+    });
+  },
 };

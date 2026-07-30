@@ -1,88 +1,71 @@
-import { storage } from './firebaseConfig';
-import { ref, uploadBytes, getDownloadURL, deleteObject, UploadResult } from 'firebase/storage';
+import { supabase } from './supabaseConfig';
 import { getCurrentUserId } from './messagingService';
 
 /**
- * Subir un archivo a Firebase Storage
- * @param file - Archivo a subir
- * @param folder - Carpeta donde guardar (opcional, por defecto 'files')
- * @returns URL de descarga del archivo
+ * Subir un archivo a Supabase Storage
  */
 export const uploadFile = async (
   file: File,
   folder: string = 'files'
 ): Promise<{ url: string; fileName: string; fileSize: number; fileType: string }> => {
   try {
-    if (!storage) {
-      throw new Error('Firebase Storage no está configurado');
-    }
-
     const userId = getCurrentUserId();
     const timestamp = Date.now();
     const fileName = `${timestamp}_${file.name}`;
-    
-    // Crear referencia al archivo en Storage
-    // Estructura: files/{userId}/{folder}/{timestamp}_{filename}
-    const storageRef = ref(storage, `${folder}/${userId}/${fileName}`);
-    
-    // Subir el archivo
-    const uploadResult: UploadResult = await uploadBytes(storageRef, file);
-    
-    // Obtener URL de descarga
-    const downloadURL = await getDownloadURL(uploadResult.ref);
-    
+    const filePath = `${folder}/${userId}/${fileName}`;
+
+    // Subir archivo
+    const { error: uploadError } = await supabase.storage
+      .from('files')
+      .upload(filePath, file);
+
+    if (uploadError) throw uploadError;
+
+    // Obtener URL pública
+    const { data } = supabase.storage.from('files').getPublicUrl(filePath);
+
     return {
-      url: downloadURL,
+      url: data.publicUrl,
       fileName: file.name,
       fileSize: file.size,
-      fileType: file.type
+      fileType: file.type,
     };
   } catch (error) {
     console.error('Error subiendo archivo:', error);
-    throw new Error(`Error al subir archivo: ${error instanceof Error ? error.message : 'Error desconocido'}`);
+    throw new Error(
+      `Error al subir archivo: ${error instanceof Error ? error.message : 'Error desconocido'}`
+    );
   }
 };
 
 /**
  * Subir archivo para un chat específico
- * @param file - Archivo a subir
- * @param contactId - ID del contacto con quien se comparte
- * @returns URL de descarga y metadata del archivo
  */
 export const uploadFileForChat = async (
   file: File,
   contactId: string
 ): Promise<{ url: string; fileName: string; fileSize: number; fileType: string }> => {
   try {
-    if (!storage) {
-      throw new Error('Firebase Storage no está configurado');
-    }
-
-    // Verificar autenticación
-    const { auth } = await import('./firebaseConfig');
-    if (!auth || !auth.currentUser) {
-      throw new Error('Debes estar autenticado para subir archivos. Por favor inicia sesión.');
-    }
-
-    const userId = auth.currentUser.uid; // Usar UID de Firebase Auth
+    const userId = getCurrentUserId();
     const timestamp = Date.now();
     const fileName = `${timestamp}_${file.name}`;
-    
-    // Crear referencia al archivo en Storage
-    // Estructura: chats/{userId}/{contactId}/{timestamp}_{filename}
-    const storageRef = ref(storage, `chats/${userId}/${contactId}/${fileName}`);
-    
-    // Subir el archivo
-    const uploadResult: UploadResult = await uploadBytes(storageRef, file);
-    
-    // Obtener URL de descarga
-    const downloadURL = await getDownloadURL(uploadResult.ref);
-    
+    const filePath = `chats/${userId}/${contactId}/${fileName}`;
+
+    // Subir archivo
+    const { error: uploadError } = await supabase.storage
+      .from('chats')
+      .upload(filePath, file);
+
+    if (uploadError) throw uploadError;
+
+    // Obtener URL pública
+    const { data } = supabase.storage.from('chats').getPublicUrl(filePath);
+
     return {
-      url: downloadURL,
+      url: data.publicUrl,
       fileName: file.name,
       fileSize: file.size,
-      fileType: file.type
+      fileType: file.type,
     };
   } catch (error) {
     console.error('Error subiendo archivo para chat:', error);
@@ -91,42 +74,41 @@ export const uploadFileForChat = async (
 };
 
 /**
- * Eliminar un archivo de Firebase Storage
- * @param fileUrl - URL del archivo a eliminar
+ * Eliminar un archivo de Supabase Storage
  */
 export const deleteFile = async (fileUrl: string): Promise<void> => {
   try {
-    if (!storage) {
-      throw new Error('Firebase Storage no está configurado');
+    // Extraer la ruta del archivo desde la URL
+    const url = new URL(fileUrl);
+    const pathArray = url.pathname.split('/');
+    // La ruta está después de /storage/v1/object/public/
+    const filePath = pathArray.slice(6).join('/');
+
+    if (!filePath) {
+      console.warn('No se pudo extraer la ruta del archivo');
+      return;
     }
 
-    // Crear referencia desde la URL
-    const fileRef = ref(storage, fileUrl);
-    
-    // Eliminar el archivo
-    await deleteObject(fileRef);
-  } catch (error) {
-    console.error('Error eliminando archivo:', error);
-    // No lanzar error si el archivo no existe
-    if (error instanceof Error && !error.message.includes('not found')) {
+    // Determinar el bucket (files o chats)
+    const bucket = pathArray[5] || 'files';
+
+    const { error } = await supabase.storage.from(bucket).remove([filePath]);
+
+    if (error && !error.message.includes('not found')) {
       throw error;
     }
+  } catch (error) {
+    console.error('Error eliminando archivo:', error);
   }
 };
 
 /**
  * Obtener URL de descarga de un archivo
- * @param filePath - Ruta del archivo en Storage
- * @returns URL de descarga
  */
 export const getFileDownloadURL = async (filePath: string): Promise<string> => {
   try {
-    if (!storage) {
-      throw new Error('Firebase Storage no está configurado');
-    }
-
-    const fileRef = ref(storage, filePath);
-    return await getDownloadURL(fileRef);
+    const { data } = supabase.storage.from('files').getPublicUrl(filePath);
+    return data.publicUrl;
   } catch (error) {
     console.error('Error obteniendo URL de descarga:', error);
     throw error;
@@ -135,8 +117,6 @@ export const getFileDownloadURL = async (filePath: string): Promise<string> => {
 
 /**
  * Validar tipo de archivo permitido
- * @param file - Archivo a validar
- * @returns true si el archivo es permitido
  */
 export const isFileTypeAllowed = (file: File): boolean => {
   const allowedTypes = [
@@ -147,26 +127,24 @@ export const isFileTypeAllowed = (file: File): boolean => {
     'image/webp',
     'application/pdf',
     'application/msword',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     'application/vnd.ms-excel',
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     'text/plain',
     'application/zip',
-    'application/x-zip-compressed'
+    'application/x-zip-compressed',
   ];
-  
+
   return allowedTypes.includes(file.type);
 };
 
 /**
  * Obtener tamaño máximo de archivo permitido (10MB)
  */
-export const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+export const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
 /**
  * Validar tamaño de archivo
- * @param file - Archivo a validar
- * @returns true si el tamaño es válido
  */
 export const isFileSizeValid = (file: File): boolean => {
   return file.size <= MAX_FILE_SIZE;
@@ -174,31 +152,29 @@ export const isFileSizeValid = (file: File): boolean => {
 
 /**
  * Formatear tamaño de archivo para mostrar
- * @param bytes - Tamaño en bytes
- * @returns Tamaño formateado (KB, MB, etc.)
  */
 export const formatFileSize = (bytes: number): string => {
   if (bytes === 0) return '0 Bytes';
-  
+
   const k = 1024;
   const sizes = ['Bytes', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  
-  return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+
+  return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
 };
 
 /**
  * Obtener icono según tipo de archivo
- * @param fileType - Tipo MIME del archivo
- * @returns Nombre del icono de Font Awesome
  */
 export const getFileIcon = (fileType: string): string => {
   if (fileType.startsWith('image/')) return 'fa-image';
   if (fileType === 'application/pdf') return 'fa-file-pdf';
-  if (fileType.includes('word') || fileType.includes('document')) return 'fa-file-word';
-  if (fileType.includes('excel') || fileType.includes('spreadsheet')) return 'fa-file-excel';
-  if (fileType.includes('zip') || fileType.includes('compressed')) return 'fa-file-zipper';
+  if (fileType.includes('word') || fileType.includes('document'))
+    return 'fa-file-word';
+  if (fileType.includes('excel') || fileType.includes('spreadsheet'))
+    return 'fa-file-excel';
+  if (fileType.includes('zip') || fileType.includes('compressed'))
+    return 'fa-file-zipper';
   if (fileType === 'text/plain') return 'fa-file-lines';
   return 'fa-file';
 };
-

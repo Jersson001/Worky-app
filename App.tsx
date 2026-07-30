@@ -20,8 +20,7 @@ import { WelcomeOnboarding } from './components/WelcomeOnboarding';
 import { authService } from './services/authService';
 import { sendMessage as sendMessageToFirebase, listenToMessages, listenToContacts, addContact, deleteContact, saveUserProfile, getUserProfile, initializeUserId, setCurrentUserId, getCurrentUserId, searchUserByPhoneOrEmail, addContactFromSearch } from './services/messagingService';
 import { saveProduct, deleteProduct, listenToProducts, saveCategory, deleteCategory, listenToCategories, saveProject, updateProject, addExpenseToProject, updateContactWithProjects, listenToPaymentAccounts, savePaymentAccount, PaymentAccountData } from './services/dataService';
-import { onAuthStateChanged, signOut as firebaseSignOut, User as FirebaseUser } from 'firebase/auth';
-import { auth } from './services/firebaseConfig';
+import { supabase } from './services/supabaseConfig';
 
 // Mock Data (usado como fallback o inicial)
 const MOCK_CONTACTS: Contact[] = [
@@ -145,18 +144,22 @@ const App: React.FC = () => {
     }
   }, []);
 
-  // ── Firebase Auth: onAuthStateChanged ──
+  // ── Supabase Auth: onAuthStateChange ──
   // This is the single source of truth for authentication state.
-  // Firebase SDK persists the session automatically (IndexedDB).
+  // Supabase persists the session automatically (localStorage).
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
-      if (firebaseUser) {
+    let unsubProfileRef: (() => void) | null = null;
+
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      const user = session?.user;
+      if (user) {
         // User is signed in
-        setCurrentUserId(firebaseUser.uid, firebaseUser.email || '');
+        setCurrentUserId(user.id, user.email || user.phone || '');
         await initializeUserId();
 
-        // Try to load profile from Firebase RTDB
-        const unsubProfile = getUserProfile((profile) => {
+        // Try to load profile from Supabase
+        unsubProfileRef?.();
+        unsubProfileRef = getUserProfile((profile) => {
           if (profile) {
             setUserProfile(profile);
             if (profile.businessLogo) {
@@ -170,19 +173,20 @@ const App: React.FC = () => {
             setIsAuthenticated(true);
           }
         });
-
-        // Cleanup profile listener after first read
-        // (the data-loading useEffect below will set up the persistent listener)
-        return () => unsubProfile();
       } else {
         // User is signed out
+        unsubProfileRef?.();
+        unsubProfileRef = null;
         setIsAuthenticated(false);
         setUserProfile(null);
         setNeedsOnboarding(false);
       }
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubProfileRef?.();
+      authListener?.subscription?.unsubscribe();
+    };
   }, []);
 
   // Estado para cuentas de pago
@@ -343,7 +347,7 @@ const App: React.FC = () => {
   // Manejar cerrar sesión — sign out from Firebase Auth
   const handleLogout = useCallback(async () => {
     try {
-      await firebaseSignOut(auth);
+      await supabase.auth.signOut();
     } catch (error) {
       console.error('Error cerrando sesión:', error);
     }
