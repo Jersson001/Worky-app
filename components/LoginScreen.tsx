@@ -56,35 +56,47 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister })
           return;
         }
 
+        const fullName = `${firstName} ${lastName}`;
+        const fullPhone = `${countryCode} ${phone}`;
+        const normalizedEmail = email.trim().toLowerCase();
+
         // ── Supabase Auth: Create user with email/password ──
+        // full_name y phone viajan como metadata: el trigger
+        // on_auth_user_created los lee para espejar el usuario en
+        // user_profiles y public_info sin depender del cliente.
         const { data, error: signUpError } = await supabase.auth.signUp({
-          email,
+          email: normalizedEmail,
           password,
+          options: {
+            data: { full_name: fullName, phone: fullPhone },
+          },
         });
 
         if (signUpError) throw signUpError;
         if (!data.user) throw new Error('No user returned from signup');
 
         const user = data.user;
-        const fullName = `${firstName} ${lastName}`;
-        const fullPhone = `${countryCode} ${phone}`;
 
-        // ── Create user profile in user_profiles table ──
+        // El trigger ya creó la fila; esto solo la enriquece con los datos
+        // que Auth no conoce. upsert, no insert: con el trigger por delante
+        // un insert chocaría por clave duplicada y rompería el registro.
         const { error: profileError } = await supabase
           .from('user_profiles')
-          .insert({
-            id: user.id,
-            business_name: fullName,
-            owner_name: fullName,
-            email: email,
-            phone: fullPhone,
-          });
+          .upsert(
+            {
+              id: user.id,
+              business_name: fullName,
+              owner_name: fullName,
+              email: normalizedEmail,
+              phone: fullPhone,
+            },
+            { onConflict: 'id' }
+          );
 
-        if (profileError) throw profileError;
+        if (profileError) console.warn('Profile upsert:', profileError.message);
 
         // ── Register in user index for search ──
         // upsert, no insert: reintentar el registro no debe romper por clave duplicada.
-        const normalizedEmail = email.replace(/\s+/g, '').toLowerCase();
         const safeEmail = normalizedEmail.replace(/[\.\#\$\[\]]/g, '_');
         const normalizedPhone = fullPhone.replace(/\s+/g, '').toLowerCase();
 

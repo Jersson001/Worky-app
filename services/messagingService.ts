@@ -398,36 +398,71 @@ export const getUserProfile = (callback: (profile: any) => void): (() => void) =
 export const searchUserByPhoneOrEmail = async (
   phoneOrEmail: string
 ): Promise<{ userId: string; name?: string; avatar?: string; phone?: string } | null> => {
-  if (!phoneOrEmail) return null;
+  if (!phoneOrEmail?.trim()) return null;
 
-  const { data: indexRow } = await supabase
+  // public_info guarda el identificador ya normalizado en minúsculas,
+  // así que la búsqueda normaliza igual. Si difieren, no encuentra nada.
+  const term = phoneOrEmail.trim().toLowerCase();
+
+  const buildResult = (row: any) => {
+    const name = row.display_name || 'Usuario';
+    return {
+      userId: row.user_id,
+      name,
+      avatar:
+        row.avatar_url ||
+        `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random`,
+      phone: row.phone_or_email || term,
+    };
+  };
+
+  const columns = 'user_id, display_name, avatar_url, phone_or_email';
+
+  // 1) Coincidencia exacta por correo (o teléfono tal cual se guardó).
+  const { data: exact, error } = await supabase
+    .from('public_info')
+    .select(columns)
+    .eq('phone_or_email', term)
+    .maybeSingle();
+
+  if (error) console.warn('Búsqueda en public_info:', error.message);
+
+  if (exact) {
+    return exact.user_id === currentUserId ? null : buildResult(exact);
+  }
+
+  // 2) Teléfonos: el usuario puede escribirlos con espacios o guiones
+  //    y guardarse sin ellos (o al revés).
+  const compact = term.replace(/[\s\-()]/g, '');
+  if (compact !== term) {
+    const { data: byPhone } = await supabase
+      .from('public_info')
+      .select(columns)
+      .eq('phone_or_email', compact)
+      .maybeSingle();
+    if (byPhone) {
+      return byPhone.user_id === currentUserId ? null : buildResult(byPhone);
+    }
+  }
+
+  // 3) Compatibilidad: cuentas registradas antes del trigger quedaron
+  //    solo en user_index con las claves "escapadas" al estilo Firebase.
+  const { data: legacy } = await supabase
     .from('user_index')
     .select('user_id')
     .eq('safe_key', toSafeKey(phoneOrEmail))
     .maybeSingle();
 
-  if (!indexRow) return null;
+  if (!legacy) return null;
+  if (legacy.user_id === currentUserId) return null;
 
-  const foundId = indexRow.user_id;
-  if (foundId === currentUserId) return null; // no agregarse a uno mismo
-
-  // Solo public_info: user_profiles permanece privado.
   const { data: pub } = await supabase
     .from('public_info')
-    .select('display_name, avatar_url, phone_or_email')
-    .eq('user_id', foundId)
+    .select(columns)
+    .eq('user_id', legacy.user_id)
     .maybeSingle();
 
-  const name = pub?.display_name || 'Usuario';
-
-  return {
-    userId: foundId,
-    name,
-    avatar:
-      pub?.avatar_url ||
-      `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random`,
-    phone: pub?.phone_or_email || phoneOrEmail,
-  };
+  return pub ? buildResult(pub) : { userId: legacy.user_id, name: 'Usuario', phone: term };
 };
 
 export const addContactFromSearch = async (foundUser: {
