@@ -310,7 +310,8 @@ export const updateContactStatus = async (): Promise<void> => {
 export const saveUserProfile = async (profile: any): Promise<void> => {
   const userId = getCurrentUserId();
 
-  const { error } = await supabase.from('user_profiles').upsert(
+  // Guardar perfil privado en user_profiles. Esto NO debe fallar.
+  const { error: profileError } = await supabase.from('user_profiles').upsert(
     {
       id: userId,
       business_name: profile.businessName,
@@ -328,11 +329,11 @@ export const saveUserProfile = async (profile: any): Promise<void> => {
     },
     { onConflict: 'id' }
   );
-  if (error) throw error;
+  if (profileError) throw new Error(`Fallo al guardar perfil: ${profileError.message}`);
 
-  // Espeja nombre y avatar en la tabla pública para que otros puedan
-  // encontrarte sin exponer el resto del perfil.
-  await supabase.from('public_info').upsert(
+  // Espeja nombre y avatar en public_info para que otros puedan encontrarte.
+  // Si falla, se logguea pero no aborta: la tabla privada ya guardó.
+  const { error: publicError } = await supabase.from('public_info').upsert(
     {
       user_id: userId,
       phone_or_email: (profile.email || profile.phone || '').toLowerCase(),
@@ -341,6 +342,9 @@ export const saveUserProfile = async (profile: any): Promise<void> => {
     },
     { onConflict: 'user_id' }
   );
+  if (publicError) {
+    console.warn('Fallo al actualizar public_info (no crítico):', publicError.message);
+  }
 };
 
 export const getUserProfile = (callback: (profile: any) => void): (() => void) => {

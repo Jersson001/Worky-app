@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { UserProfileData } from '../types';
 
 interface WelcomeOnboardingProps {
-  onComplete: (userData: UserProfileData) => void;
+  onComplete: (userData: UserProfileData) => Promise<void>;
   onBack?: () => void;
   initialEmail?: string;
   initialPhone?: string;
@@ -13,7 +13,7 @@ export const WelcomeOnboarding: React.FC<WelcomeOnboardingProps> = ({ onComplete
   // Cargar credenciales temporales si existen
   const tempCreds = localStorage.getItem('tempCredentials');
   const savedCreds = tempCreds ? JSON.parse(tempCreds) : null;
-  
+
   const [step, setStep] = useState(1);
   const [businessName, setBusinessName] = useState('');
   const [ownerName, setOwnerName] = useState(initialName);
@@ -29,6 +29,8 @@ export const WelcomeOnboarding: React.FC<WelcomeOnboardingProps> = ({ onComplete
   const [address, setAddress] = useState('');
   const [city, setCity] = useState('');
   const [country, setCountry] = useState('Colombia');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
 
   const handleLogoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -41,7 +43,10 @@ export const WelcomeOnboarding: React.FC<WelcomeOnboardingProps> = ({ onComplete
     }
   };
 
-  const handleComplete = () => {
+  const handleComplete = async () => {
+    setIsSubmitting(true);
+    setSubmitError('');
+
     const userData: UserProfileData = {
       businessName,
       ownerName,
@@ -54,12 +59,20 @@ export const WelcomeOnboarding: React.FC<WelcomeOnboardingProps> = ({ onComplete
       nit,
       address,
       city,
-      country
+      country,
     };
-    
-    // Limpiar credenciales temporales
-    localStorage.removeItem('tempCredentials');
-    onComplete(userData);
+
+    try {
+      // Guardar perfil en Supabase. Esperar a que termine.
+      await onComplete(userData);
+      // Si llegamos aquí, guardó exitosamente.
+      localStorage.removeItem('tempCredentials');
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Error desconocido';
+      setSubmitError(errorMsg);
+      setIsSubmitting(false);
+      // No continuar hasta que se arregle
+    }
   };
 
   const canComplete = businessName.trim() && ownerName.trim() && city.trim() && country.trim() && phone.trim() && businessType.trim();
@@ -259,13 +272,28 @@ export const WelcomeOnboarding: React.FC<WelcomeOnboardingProps> = ({ onComplete
                 </div>
               </div>
 
-              <button 
+              {submitError && (
+                <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                  {submitError}
+                </div>
+              )}
+
+              <button
                 onClick={handleComplete}
-                disabled={!canComplete}
+                disabled={!canComplete || isSubmitting}
                 className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-4 rounded-xl font-bold text-lg hover:from-indigo-700 hover:to-purple-700 transition shadow-lg shadow-indigo-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Completar Registro
-                <i className="fa-solid fa-check"></i>
+                {isSubmitting ? (
+                  <>
+                    <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                    Guardando...
+                  </>
+                ) : (
+                  <>
+                    Completar Registro
+                    <i className="fa-solid fa-check"></i>
+                  </>
+                )}
               </button>
             </div>
           </div>

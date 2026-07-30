@@ -134,6 +134,7 @@ const App: React.FC = () => {
   const [mobileTab, setMobileTab] = useState<'home' | 'chats'>('home');
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
   const [sharedDocumentId, setSharedDocumentId] = useState<string | null>(null);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
 
   // Verificar si hay un documento compartido en la URL
   useEffect(() => {
@@ -154,6 +155,7 @@ const App: React.FC = () => {
       const user = session?.user;
       if (user) {
         // User is signed in
+        setIsLoadingProfile(true);
         setCurrentUserId(user.id, user.email || user.phone || '');
         await initializeUserId();
 
@@ -172,6 +174,7 @@ const App: React.FC = () => {
             setNeedsOnboarding(true);
             setIsAuthenticated(true);
           }
+          setIsLoadingProfile(false);
         });
       } else {
         // User is signed out
@@ -180,6 +183,7 @@ const App: React.FC = () => {
         setIsAuthenticated(false);
         setUserProfile(null);
         setNeedsOnboarding(false);
+        setIsLoadingProfile(false);
       }
     });
 
@@ -296,12 +300,8 @@ const App: React.FC = () => {
 
   // Manejar la finalización del onboarding
   const handleOnboardingComplete = async (userData: UserProfileData) => {
-    localStorage.setItem('userProfile', JSON.stringify(userData));
-    setUserProfile(userData);
-    setNeedsOnboarding(false);
-    
-    // Inicializar userId y registrar usuario en índice
     try {
+      // Inicializar userId y registrar usuario en índice
       await initializeUserId();
       const userId = getCurrentUserId();
       // Registrar con email o teléfono si está disponible
@@ -309,20 +309,24 @@ const App: React.FC = () => {
       if (phoneOrEmail) {
         setCurrentUserId(userId, phoneOrEmail);
       }
-    } catch (error) {
-      console.error('Error inicializando userId:', error);
-    }
-    
-    // Guardar perfil en Firebase
-    try {
+
+      // Guardar perfil en Supabase. ESTO DEBE COMPLETARSE exitosamente.
+      // Si falla, la pantalla de onboarding seguirá visible.
       await saveUserProfile(userData);
+
+      // Solo cuando todo está guardado, podemos continuar
+      localStorage.setItem('userProfile', JSON.stringify(userData));
+      setUserProfile(userData);
+      if (userData.businessLogo) {
+        setBusinessLogo(userData.businessLogo);
+      }
+      // Ahora sí permitir salir del onboarding
+      setNeedsOnboarding(false);
     } catch (error) {
-      console.error('Error guardando perfil en Firebase:', error);
-    }
-    
-    // Si tiene logo, guardarlo también en el estado de la app
-    if (userData.businessLogo) {
-      setBusinessLogo(userData.businessLogo);
+      // Si algo falla, mantener en onboarding para reintentar
+      const errorMsg = error instanceof Error ? error.message : 'Error desconocido';
+      console.error('Error completando onboarding:', errorMsg);
+      throw new Error(`No se pudo guardar el perfil. Intenta de nuevo. (${errorMsg})`);
     }
   };
 
@@ -1200,12 +1204,24 @@ const App: React.FC = () => {
     return <LoginScreen onLogin={handleLogin} onRegister={handleRegister} />;
   }
 
+  // Mostrar spinner mientras carga el perfil (evita pantalla negra)
+  if (isLoadingProfile) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center" style={{ background: 'linear-gradient(135deg, #0f172a 0%, #020617 100%)' }}>
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-12 w-12 animate-spin rounded-full border-4 border-slate-600 border-t-blue-500"></div>
+          <p className="text-slate-400">Cargando perfil...</p>
+        </div>
+      </div>
+    );
+  }
+
   // Mostrar onboarding si es usuario nuevo
   if (needsOnboarding) {
     return (
-      <WelcomeOnboarding 
-        onComplete={handleOnboardingComplete} 
-        initialEmail={registrationData.email} 
+      <WelcomeOnboarding
+        onComplete={handleOnboardingComplete}
+        initialEmail={registrationData.email}
         initialPhone={registrationData.phone}
         initialName={registrationData.fullName}
         onBack={handleLogout}
