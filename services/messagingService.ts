@@ -221,8 +221,13 @@ const rowToContact = (row: any): Contact => ({
 
 export const addContact = async (contact: Contact): Promise<void> => {
   const userId = getCurrentUserId();
+  const now = new Date().toISOString();
 
-  const { error } = await supabase.from('contacts').insert({
+  // Crear la fila en ambas direcciones: yo → contacto Y contacto → yo
+  // Así si A agrega a B, B automáticamente ve a A en su lista sin tener
+  // que hacer nada (siempre que refresque). Las descripciones pueden ser
+  // asimétricas: lo que yo llamo "Proveedor" el otro lo llama "Cliente".
+  const contactRow = {
     user_id: userId,
     contact_user_id: contact.id,
     client_name: contact.clientName,
@@ -231,19 +236,54 @@ export const addContact = async (contact: Contact): Promise<void> => {
     status: contact.status,
     role: contact.role,
     last_message: contact.lastMessage,
-    last_message_time: contact.lastMessageTime?.toISOString?.() ?? new Date().toISOString(),
-    unread_count: contact.unreadCount ?? 0,
+    last_message_time: now,
+    unread_count: 0,
     notes: contact.notes ?? null,
+  };
+
+  const { error: fwd } = await supabase.from('contacts').insert(contactRow);
+  if (fwd) throw fwd;
+
+  // Fila inversa: el otro usuario me tiene a mí en sus contactos.
+  // Datos mínimos (sin notas ni descripciones personalizadas): el otro usuario
+  // puede editarlas más tarde. El avatar y nombre vienen de public_info.
+  const { error: inv } = await supabase.from('contacts').insert({
+    user_id: contact.id,
+    contact_user_id: userId,
+    client_name: 'Usuario',  // Se actualiza cuando el otro me edita
+    avatar: null,             // Se toma de public_info
+    phone: null,
+    status: 'Lead',
+    role: 'client',
+    last_message: '',
+    last_message_time: now,
+    unread_count: 0,
+    notes: null,
   });
+  // Si la inversa ya existe (porque el otro me agregó primero), ignorar el error
+  if (inv && inv.code !== '23505') throw inv;
 
-  if (error) throw error;
-
+  // Crear/actualizar metadatos del chat (contador de no-leídos, último mensaje)
   await supabase.from('user_chats').upsert(
     {
       user_id: userId,
       contact_id: contact.id,
       last_message: '',
-      last_message_time: new Date().toISOString(),
+      last_message_time: now,
+      unread: 0,
+    },
+    { onConflict: 'user_id,contact_id' }
+  );
+
+  // El otro usuario también obtiene su fila de user_chats automáticamente
+  // cuando recibe el primer mensaje (vía bump_unread). Por coherencia,
+  // crearla ahora mismo.
+  await supabase.from('user_chats').upsert(
+    {
+      user_id: contact.id,
+      contact_id: userId,
+      last_message: '',
+      last_message_time: now,
       unread: 0,
     },
     { onConflict: 'user_id,contact_id' }
