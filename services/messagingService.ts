@@ -220,74 +220,26 @@ const rowToContact = (row: any): Contact => ({
 });
 
 export const addContact = async (contact: Contact): Promise<void> => {
-  const userId = getCurrentUserId();
-  const now = new Date().toISOString();
-
-  // Crear la fila en ambas direcciones: yo → contacto Y contacto → yo
-  // Así si A agrega a B, B automáticamente ve a A en su lista sin tener
-  // que hacer nada (siempre que refresque). Las descripciones pueden ser
-  // asimétricas: lo que yo llamo "Proveedor" el otro lo llama "Cliente".
-  const contactRow = {
-    user_id: userId,
-    contact_user_id: contact.id,
-    client_name: contact.clientName,
-    avatar: contact.avatar,
-    phone: contact.phone,
-    status: contact.status,
-    role: contact.role,
-    last_message: contact.lastMessage,
-    last_message_time: now,
-    unread_count: 0,
-    notes: contact.notes ?? null,
-  };
-
-  const { error: fwd } = await supabase.from('contacts').insert(contactRow);
-  if (fwd) throw fwd;
-
-  // Fila inversa: el otro usuario me tiene a mí en sus contactos.
-  // Datos mínimos (sin notas ni descripciones personalizadas): el otro usuario
-  // puede editarlas más tarde. El avatar y nombre vienen de public_info.
-  const { error: inv } = await supabase.from('contacts').insert({
-    user_id: contact.id,
-    contact_user_id: userId,
-    client_name: 'Usuario',  // Se actualiza cuando el otro me edita
-    avatar: null,             // Se toma de public_info
-    phone: null,
-    status: 'Lead',
-    role: 'client',
-    last_message: '',
-    last_message_time: now,
-    unread_count: 0,
-    notes: null,
+  // Alta mutua vía RPC SECURITY DEFINER (add_contact_mutual): el cliente NO
+  // puede insertar una fila de contacts en nombre del otro usuario (el RLS
+  // "auth.uid() = user_id" lo bloquea, y así debe ser). Sin esto, mi fila
+  // se guardaba pero la del otro fallaba, y el otro usuario nunca veía el
+  // contacto ni podía leer los mensajes que sí llegaban a la tabla `messages`.
+  const { error } = await supabase.rpc('add_contact_mutual', {
+    p_other_user: contact.id,
+    p_client_name: contact.clientName,
+    p_avatar: contact.avatar ?? null,
+    p_phone: contact.phone ?? null,
+    p_status: contact.status,
+    p_role: contact.role,
   });
-  // Si la inversa ya existe (porque el otro me agregó primero), ignorar el error
-  if (inv && inv.code !== '23505') throw inv;
 
-  // Crear/actualizar metadatos del chat (contador de no-leídos, último mensaje)
-  await supabase.from('user_chats').upsert(
-    {
-      user_id: userId,
-      contact_id: contact.id,
-      last_message: '',
-      last_message_time: now,
-      unread: 0,
-    },
-    { onConflict: 'user_id,contact_id' }
-  );
-
-  // El otro usuario también obtiene su fila de user_chats automáticamente
-  // cuando recibe el primer mensaje (vía bump_unread). Por coherencia,
-  // crearla ahora mismo.
-  await supabase.from('user_chats').upsert(
-    {
-      user_id: contact.id,
-      contact_id: userId,
-      last_message: '',
-      last_message_time: now,
-      unread: 0,
-    },
-    { onConflict: 'user_id,contact_id' }
-  );
+  if (error) {
+    if (error.message.includes('function public.add_contact_mutual') || error.code === '42883') {
+      throw new Error('Falta aplicar supabase_contacts_mutual_rpc.sql en Supabase.');
+    }
+    throw error;
+  }
 };
 
 export const listenToContacts = (

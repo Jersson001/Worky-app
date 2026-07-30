@@ -202,6 +202,16 @@ const App: React.FC = () => {
     };
   }, []);
 
+  // Recordar el chat abierto: sin esto, cualquier F5 saca al usuario
+  // del chat porque selectedContactId es puramente estado de React.
+  useEffect(() => {
+    if (selectedContactId) {
+      localStorage.setItem('worky_selectedContactId', selectedContactId);
+    } else {
+      localStorage.removeItem('worky_selectedContactId');
+    }
+  }, [selectedContactId]);
+
   // Estado para cuentas de pago
   const [paymentAccounts, setPaymentAccounts] = useState<PaymentAccount[]>(MOCK_ACCOUNTS);
 
@@ -245,8 +255,17 @@ const App: React.FC = () => {
             projects: uniqueByName
           };
         });
-        
+
         setContacts(cleanedContacts);
+
+        // Restaurar el chat abierto tras un refresh completo de la página
+        // (selectedContactId es estado local, se pierde al recargar).
+        // Solo si no hay ya uno seleccionado y el contacto sigue existiendo.
+        setSelectedContactId(prev => {
+          if (prev) return prev;
+          const saved = localStorage.getItem('worky_selectedContactId');
+          return saved && cleanedContacts.some(c => c.id === saved) ? saved : prev;
+        });
       }
     });
 
@@ -1149,8 +1168,11 @@ const App: React.FC = () => {
               startDate: new Date()
           };
 
-          const newContact: Contact = { 
-              id: Date.now().toString(), 
+          const newContact: Contact = {
+              // contacts.contact_user_id es UUID en Supabase: un id tipo
+              // Date.now().toString() era rechazado con "invalid input
+              // syntax for type uuid" y el contacto nunca se guardaba.
+              id: crypto.randomUUID(),
               clientName: newContactName, 
               avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(newContactName)}&background=random`, 
               phone: newContactPhone, 
