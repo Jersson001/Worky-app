@@ -320,8 +320,10 @@ export const saveUserProfile = async (profile: any): Promise<void> => {
       business_type: profile.businessType,
       business_logo: profile.businessLogo,
       profile_photo: profile.profilePhoto,
-      username: profile.username,
-      email: profile.email,
+      // username tiene constraint UNIQUE. Un '' cuenta como valor y colisiona
+      // entre usuarios; NULL no (Postgres permite múltiples NULL en unique).
+      username: profile.username?.trim() || null,
+      email: profile.email?.trim().toLowerCase() || null,
       nit: profile.nit,
       address: profile.address,
       city: profile.city,
@@ -329,7 +331,13 @@ export const saveUserProfile = async (profile: any): Promise<void> => {
     },
     { onConflict: 'id' }
   );
-  if (profileError) throw new Error(`Fallo al guardar perfil: ${profileError.message}`);
+  if (profileError) {
+    // 23505 = unique_violation. Si es el username, decirlo en cristiano.
+    if (profileError.code === '23505' && profileError.message.includes('username')) {
+      throw new Error('Ese nombre de usuario ya está en uso. Elige otro.');
+    }
+    throw new Error(`Fallo al guardar perfil: ${profileError.message}`);
+  }
 
   // Espeja nombre y avatar en public_info para que otros puedan encontrarte.
   // Si falla, se logguea pero no aborta: la tabla privada ya guardó.
@@ -352,13 +360,19 @@ export const getUserProfile = (callback: (profile: any) => void): (() => void) =
   let cancelled = false;
 
   const load = async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('user_profiles')
       .select('*')
       .eq('id', userId)
       .maybeSingle();
 
     if (cancelled) return;
+    if (error) {
+      // Fallo de lectura (red, RLS). callback(null) manda al usuario al
+      // setup en vez de dejar la pantalla en negro; el log distingue este
+      // caso de "el perfil no existe".
+      console.error('Error leyendo user_profiles:', error.message);
+    }
     if (!data) {
       callback(null);
       return;

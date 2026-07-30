@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 // Manejo de errores global
 window.addEventListener('error', (event) => {
@@ -19,9 +20,11 @@ if (!rootElement) {
   newRoot.id = 'root';
   document.body.appendChild(newRoot);
   const root = ReactDOM.createRoot(newRoot);
-  root.render(<App />);
+  root.render(<ErrorBoundary><App /></ErrorBoundary>);
 } else {
   const root = ReactDOM.createRoot(rootElement);
   // Desactivar StrictMode temporalmente para evitar problemas en Android
-  root.render(<App />);
+  // ErrorBoundary: si algo revienta en render, muestra pantalla de
+  // recuperación en vez de dejar todo en negro.
+  root.render(<ErrorBoundary><App /></ErrorBoundary>);
 }
