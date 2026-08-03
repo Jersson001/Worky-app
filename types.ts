@@ -30,6 +30,10 @@ export interface UserProfileData {
   address?: string;
   city?: string;
   country?: string;
+  isPro?: boolean;
+  trialEndsAt?: string | null;
+  subscriptionEndsAt?: string | null;
+  isAdmin?: boolean;
 }
 
 export interface PaymentAccount {
@@ -155,6 +159,8 @@ export interface Message {
   metadata?: any;
   isPaid?: boolean;
   paidDate?: Date;
+  mediaUrl?: string;
+  mediaType?: string;
 }
 
 export interface FileMetadata {

@@ -57,16 +57,29 @@ export function getChatId(userId1: string, userId2: string): string {
 
 // 'me' / 'other' es relativo a quien mira, así que NO se persiste:
 // se deriva comparando contra el uid propio en cada lectura.
-const rowToMessage = (row: any, myUid: string): Message => ({
-  id: row.id,
-  text: row.text,
-  sender: row.sender_id === myUid ? 'me' : 'other',
-  timestamp: new Date(row.timestamp),
-  type: row.type,
-  metadata: row.metadata ?? undefined,
-  isPaid: row.is_paid ?? undefined,
-  paidDate: row.paid_date ? new Date(row.paid_date) : undefined,
-});
+const rowToMessage = (row: any, myUid: string): Message => {
+  let metadata = row.metadata ?? undefined;
+  if (row.media_url && !metadata) {
+    metadata = {
+      url: row.media_url,
+      fileName: row.text || 'Archivo adjunto',
+      fileType: row.media_type || 'application/octet-stream',
+      fileSize: 0,
+    };
+  }
+  return {
+    id: row.id,
+    text: row.text,
+    sender: row.sender_id === myUid ? 'me' : 'other',
+    timestamp: new Date(row.timestamp),
+    type: row.type,
+    metadata,
+    isPaid: row.is_paid ?? undefined,
+    paidDate: row.paid_date ? new Date(row.paid_date) : undefined,
+    mediaUrl: row.media_url ?? undefined,
+    mediaType: row.media_type ?? undefined,
+  };
+};
 
 // ============ MENSAJES ============
 
@@ -87,6 +100,8 @@ export const sendMessage = async (
       type: message.type,
       metadata: message.metadata ?? null,
       timestamp: new Date().toISOString(),
+      media_url: message.mediaUrl ?? null,
+      media_type: message.mediaType ?? null,
     })
     .select('id')
     .single();
@@ -174,6 +189,68 @@ export const listenToMessages = (
           (a, b) => a.timestamp.getTime() - b.timestamp.getTime()
         );
         emit();
+
+        // ── NOTIFICACIONES WEB Y TOASTS ──
+        const senderId = payload.new.sender_id || payload.new.user_id;
+        if (senderId && senderId !== userId) {
+          const isMedia = payload.new.type === 'image' || payload.new.type === 'file' || !!payload.new.media_url;
+          const bodyText = isMedia ? 'Archivo recibido' : (payload.new.text || '');
+
+          // Notificación del navegador
+          if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+            try {
+              new Notification('Nuevo mensaje', {
+                body: bodyText,
+                icon: '/worky-logo 2.png',
+                tag: senderId,
+              });
+            } catch (err) {
+              console.warn('No se pudo mostrar la notificación nativa:', err);
+            }
+          }
+
+          // Evento global para in-app toast
+          if (typeof window !== 'undefined') {
+            const event = new CustomEvent('worky-new-message', {
+              detail: {
+                id: payload.new.id,
+                text: bodyText,
+                type: payload.new.type,
+                mediaUrl: payload.new.media_url,
+                senderId: senderId,
+              }
+            });
+            window.dispatchEvent(event);
+          }
+        }
+      }
+    )
+    .on(
+      'postgres_changes',
+      {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'messages',
+        filter: `chat_id=eq.${chatId}`,
+      },
+      (payload) => {
+        const incoming = rowToMessage(payload.new, userId);
+        buffer = buffer.map((m) => (m.id === incoming.id ? incoming : m));
+        emit();
+      }
+    )
+    .on(
+      'postgres_changes',
+      {
+        event: 'DELETE',
+        schema: 'public',
+        table: 'messages',
+        filter: `chat_id=eq.${chatId}`,
+      },
+      (payload) => {
+        const deletedId = payload.old.id;
+        buffer = buffer.filter((m) => m.id !== deletedId);
+        emit();
       }
     )
     .subscribe((status) => {
@@ -199,6 +276,50 @@ export const markChatAsRead = async (contactId: string): Promise<void> => {
     .update({ unread: 0 })
     .eq('user_id', userId)
     .eq('contact_id', contactId);
+};
+
+export const updateMessage = async (
+  messageId: string,
+  updates: Partial<Message>
+): Promise<void> => {
+  const payload: any = {};
+  if (updates.isPaid !== undefined) {
+    payload.is_paid = updates.isPaid;
+  }
+  if (updates.paidDate !== undefined) {
+    payload.paid_date = updates.paidDate ? updates.paidDate.toISOString() : null;
+  }
+  if (updates.metadata !== undefined) {
+    payload.metadata = updates.metadata;
+  }
+  if (updates.text !== undefined) {
+    payload.text = updates.text;
+  }
+  if (updates.type !== undefined) {
+    payload.type = updates.type;
+  }
+
+  const { error } = await supabase
+    .from('messages')
+    .update(payload)
+    .eq('id', messageId);
+
+  if (error) {
+    console.error('Error actualizando mensaje:', error);
+    throw error;
+  }
+};
+
+export const deleteMessage = async (messageId: string): Promise<void> => {
+  const { error } = await supabase
+    .from('messages')
+    .delete()
+    .eq('id', messageId);
+
+  if (error) {
+    console.error('Error al eliminar mensaje:', error);
+    throw error;
+  }
 };
 
 // ============ CONTACTOS ============
@@ -385,6 +506,10 @@ export const getUserProfile = (callback: (profile: any) => void): (() => void) =
       address: data.address,
       city: data.city,
       country: data.country,
+      isPro: data.is_pro ?? false,
+      trialEndsAt: data.trial_ends_at ?? null,
+      subscriptionEndsAt: data.subscription_ends_at ?? null,
+      isAdmin: data.is_admin ?? false,
     });
   };
 

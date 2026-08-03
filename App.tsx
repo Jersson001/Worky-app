@@ -2,6 +2,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { ChatList } from './components/ChatList';
 import { ChatWindow } from './components/ChatWindow';
 import { FinancialReport } from './components/FinancialReport';
+import ContractGenerator from './components/ContractGenerator';
+import ProFeatureGuard from './components/ProFeatureGuard';
+import AdminPanel from './components/AdminPanel';
 import { generateProductDescription } from './services/geminiService';
 import { StatusView } from './components/StatusView';
 import { WalletModal } from './components/WalletModal';
@@ -18,8 +21,8 @@ import { Contact, Message, UserStatus, ProjectStage, Product, Expense, Story, Pa
 import { LoginScreen } from './components/LoginScreen';
 import { WelcomeOnboarding } from './components/WelcomeOnboarding';
 import { authService } from './services/authService';
-import { sendMessage as sendMessageToFirebase, listenToMessages, listenToContacts, addContact, deleteContact, saveUserProfile, getUserProfile, initializeUserId, setCurrentUserId, getCurrentUserId, searchUserByPhoneOrEmail, addContactFromSearch } from './services/messagingService';
-import { saveProduct, deleteProduct, listenToProducts, saveCategory, deleteCategory, listenToCategories, saveProject, updateProject, addExpenseToProject, updateContactWithProjects, listenToPaymentAccounts, savePaymentAccount, PaymentAccountData } from './services/dataService';
+import { sendMessage as sendMessageToFirebase, listenToMessages, listenToContacts, addContact, deleteContact, saveUserProfile, getUserProfile, initializeUserId, setCurrentUserId, getCurrentUserId, searchUserByPhoneOrEmail, addContactFromSearch, deleteMessage, updateMessage } from './services/messagingService';
+import { saveProduct, deleteProduct, listenToProducts, saveCategory, deleteCategory, listenToCategories, saveProject, updateProject, addExpenseToProject, updateContactWithProjects, listenToPaymentAccounts, savePaymentAccount, deletePaymentAccount, PaymentAccountData } from './services/dataService';
 import { supabase } from './services/supabaseConfig';
 
 // Mock Data (usado como fallback o inicial)
@@ -32,19 +35,19 @@ const MOCK_CONTACTS: Contact[] = [
     status: UserStatus.Client,
     role: 'client',
     projects: [
-        {
-            id: 'p1',
-            name: 'Cocina Integral',
-            value: 20000000,
-            stage: ProjectStage.InProgress,
-            startDate: new Date(),
-            expenses: [
-                { id: 'e1', description: 'Madera Cedro y Triplex', amount: 4500000, date: new Date(new Date().setMonth(new Date().getMonth() - 5)), category: 'material' },
-                { id: 'e2', description: 'Adelanto Carpintero Juan', amount: 1200000, date: new Date(new Date().setMonth(new Date().getMonth() - 4)), category: 'labor' },
-                { id: 'e3', description: 'Herrajes y Manijas', amount: 850000, date: new Date(new Date().setMonth(new Date().getMonth() - 2)), category: 'material' },
-                { id: 'e4', description: 'Almuerzos equipo', amount: 45000, date: new Date(), category: 'other' }
-            ]
-        }
+      {
+        id: 'p1',
+        name: 'Cocina Integral',
+        value: 20000000,
+        stage: ProjectStage.InProgress,
+        startDate: new Date(),
+        expenses: [
+          { id: 'e1', description: 'Madera Cedro y Triplex', amount: 4500000, date: new Date(new Date().setMonth(new Date().getMonth() - 5)), category: 'material' },
+          { id: 'e2', description: 'Adelanto Carpintero Juan', amount: 1200000, date: new Date(new Date().setMonth(new Date().getMonth() - 4)), category: 'labor' },
+          { id: 'e3', description: 'Herrajes y Manijas', amount: 850000, date: new Date(new Date().setMonth(new Date().getMonth() - 2)), category: 'material' },
+          { id: 'e4', description: 'Almuerzos equipo', amount: 45000, date: new Date(), category: 'other' }
+        ]
+      }
     ],
     lastMessage: '💸 Gasto registrado: Almuerzos equipo',
     lastMessageTime: new Date(),
@@ -58,16 +61,16 @@ const MOCK_CONTACTS: Contact[] = [
     status: UserStatus.Lead,
     role: 'client',
     projects: [
-        {
-            id: 'p2',
-            name: 'Mobiliario Restaurante La Sazón',
-            value: 8500000,
-            stage: ProjectStage.Proposal,
-            startDate: new Date(),
-            expenses: [
-                { id: 'e1', description: 'Transporte visita técnica', amount: 50000, date: new Date(new Date().setMonth(new Date().getMonth() - 1)), category: 'other' }
-            ]
-        }
+      {
+        id: 'p2',
+        name: 'Mobiliario Restaurante La Sazón',
+        value: 8500000,
+        stage: ProjectStage.Proposal,
+        startDate: new Date(),
+        expenses: [
+          { id: 'e1', description: 'Transporte visita técnica', amount: 50000, date: new Date(new Date().setMonth(new Date().getMonth() - 1)), category: 'other' }
+        ]
+      }
     ],
     lastMessage: 'Quedamos atentos a la cotización final.',
     lastMessageTime: new Date(Date.now() - 3600000),
@@ -99,7 +102,7 @@ const MOCK_MESSAGES: Record<string, Message[]> = {
     { id: 'm2', text: 'Hola Marta, claro que sí. ¿Qué tipo de mobiliario necesitan?', sender: 'me', timestamp: new Date(Date.now() - 3600000), type: 'text' },
   ],
   '4': [
-      { id: 'm1', text: 'Hola, necesito 10 láminas de RH.', sender: 'me', timestamp: new Date(Date.now() - 200000000), type: 'text' }
+    { id: 'm1', text: 'Hola, necesito 10 láminas de RH.', sender: 'me', timestamp: new Date(Date.now() - 200000000), type: 'text' }
   ]
 };
 
@@ -114,7 +117,7 @@ const MOCK_PRODUCTS: Product[] = [
 ];
 
 const MOCK_STORIES: Story[] = [
-    { id: 's1', contactId: '2', content: 'Oferta especial en maderas este fin de semana', type: 'text', timestamp: new Date(Date.now() - 3600000), expiresAt: new Date(Date.now() + 86400000), color: '#3b82f6' }
+  { id: 's1', contactId: '2', content: 'Oferta especial en maderas este fin de semana', type: 'text', timestamp: new Date(Date.now() - 3600000), expiresAt: new Date(Date.now() + 86400000), color: '#3b82f6' }
 ];
 
 const MOCK_ACCOUNTS: PaymentAccount[] = [
@@ -123,18 +126,25 @@ const MOCK_ACCOUNTS: PaymentAccount[] = [
 ];
 
 const MOCK_THIRD_PARTY: ThirdPartyAccount[] = [
-    { id: 'tp1', alias: 'Proveedor Maderas El Roble', bankName: 'Bancolombia', accountNumber: '987-654321-00', accountType: 'Corriente', holderName: 'Maderas El Roble SAS', documentId: '900.123.123' },
+  { id: 'tp1', alias: 'Proveedor Maderas El Roble', bankName: 'Bancolombia', accountNumber: '987-654321-00', accountType: 'Corriente', holderName: 'Maderas El Roble SAS', documentId: '900.123.123' },
 ];
 
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
-  const [registrationData, setRegistrationData] = useState<{email: string, phone: string, fullName: string}>({email: '', phone: '', fullName: ''});
+  const [registrationData, setRegistrationData] = useState<{ email: string, phone: string, fullName: string }>({ email: '', phone: '', fullName: '' });
   const [userProfile, setUserProfile] = useState<UserProfileData | null>(null);
   const [mobileTab, setMobileTab] = useState<'home' | 'chats'>('home');
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
   const [sharedDocumentId, setSharedDocumentId] = useState<string | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
+  const [activeToast, setActiveToast] = useState<{
+    id: string;
+    senderId: string;
+    senderName: string;
+    text: string;
+    avatar?: string;
+  } | null>(null);
 
   // Verificar si hay un documento compartido en la URL
   useEffect(() => {
@@ -212,6 +222,8 @@ const App: React.FC = () => {
     }
   }, [selectedContactId]);
 
+
+
   // Estado para cuentas de pago
   const [paymentAccounts, setPaymentAccounts] = useState<PaymentAccount[]>(MOCK_ACCOUNTS);
 
@@ -227,7 +239,7 @@ const App: React.FC = () => {
           if (!contact.projects || contact.projects.length === 0) {
             return contact;
           }
-          
+
           // Primero, eliminar duplicados por quoteCode (para proyectos aprobados)
           const approvedProjects = contact.projects.filter((p: any) => p.metadata?.quoteCode);
           const uniqueByQuoteCode = approvedProjects.reduce((acc: Project[], project: Project) => {
@@ -240,16 +252,16 @@ const App: React.FC = () => {
             }
             return acc;
           }, []);
-          
+
           // Mantener proyectos no aprobados (sin quoteCode)
           const nonApprovedProjects = contact.projects.filter((p: any) => !p.metadata?.quoteCode);
-          
+
           // Combinar y luego eliminar duplicados por nombre (mantener el primero)
           const allProjects = [...uniqueByQuoteCode, ...nonApprovedProjects];
-          const uniqueByName = allProjects.filter((project, index, self) => 
+          const uniqueByName = allProjects.filter((project, index, self) =>
             index === self.findIndex(p => p.name === project.name)
           );
-          
+
           return {
             ...contact,
             projects: uniqueByName
@@ -313,11 +325,16 @@ const App: React.FC = () => {
     if (!selectedContactId || !isAuthenticated) return;
 
     const unsubscribeMessages = listenToMessages(selectedContactId, (firebaseMessages) => {
-      if (firebaseMessages && firebaseMessages.length > 0) {
-        setMessages(prev => ({
-          ...prev,
-          [selectedContactId]: firebaseMessages
-        }));
+      if (firebaseMessages) {
+        setMessages(prev => {
+          const uniqueMessages = firebaseMessages.filter((msg, index, self) =>
+            index === self.findIndex((m) => m.id === msg.id)
+          );
+          return {
+            ...prev,
+            [selectedContactId]: uniqueMessages
+          };
+        });
       }
     });
 
@@ -398,19 +415,19 @@ const App: React.FC = () => {
   const handleSaveProfile = async (updatedProfile: UserProfileData) => {
     setUserProfile(updatedProfile);
     localStorage.setItem('userProfile', JSON.stringify(updatedProfile));
-    
+
     // Actualizar logo si cambió
     if (updatedProfile.businessLogo) {
       setBusinessLogo(updatedProfile.businessLogo);
     }
-    
+
     // Guardar en Firebase
     try {
       await saveUserProfile(updatedProfile);
     } catch (error) {
       console.error('Error guardando perfil en Firebase:', error);
     }
-    
+
     setShowProfileEditor(false);
   };
 
@@ -422,13 +439,13 @@ const App: React.FC = () => {
   const [showGanttChart, setShowGanttChart] = useState(false);
   const [showGroupsManager, setShowGroupsManager] = useState(false);
   const [selectedGanttProjectId, setSelectedGanttProjectId] = useState<string | undefined>(undefined);
-  
+
   // Groups state
   const [groups, setGroups] = useState<ChatGroup[]>([]);
   const [groupMessages, setGroupMessages] = useState<Record<string, GroupMessage[]>>({});
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [selectedSubGroupId, setSelectedSubGroupId] = useState<string | null>(null);
-  
+
   const [chatAction, setChatAction] = useState<'invoice' | 'quote' | 'collection_account' | 'expense' | null>(null);
   const [pendingDocumentAction, setPendingDocumentAction] = useState<'invoice' | 'quote' | 'collection_account' | 'expense' | null>(null);
   const [showClientSelectionModal, setShowClientSelectionModal] = useState(false);
@@ -442,8 +459,79 @@ const App: React.FC = () => {
   const [messages, setMessages] = useState<Record<string, Message[]>>({});
   const [stories, setStories] = useState<Story[]>([]);
   const [savedAccounts, setSavedAccounts] = useState<ThirdPartyAccount[]>([]);
+
+  // Cargar datos persistentes de localStorage al montar
+  useEffect(() => {
+    const storedAccounts = localStorage.getItem('worky_saved_accounts');
+    if (storedAccounts) {
+      try {
+        setSavedAccounts(JSON.parse(storedAccounts));
+      } catch (err) {
+        console.error('Error parsing saved accounts from localStorage:', err);
+      }
+    }
+
+    const storedGroups = localStorage.getItem('worky_chat_groups');
+    if (storedGroups) {
+      try {
+        setGroups(JSON.parse(storedGroups));
+      } catch (err) {
+        console.error('Error parsing chat groups from localStorage:', err);
+      }
+    }
+
+    const storedGroupMsg = localStorage.getItem('worky_group_messages');
+    if (storedGroupMsg) {
+      try {
+        const parsed = JSON.parse(storedGroupMsg);
+        const formatted = Object.keys(parsed).reduce((acc, gId) => {
+          acc[gId] = parsed[gId].map((msg: any) => ({
+            ...msg,
+            timestamp: new Date(msg.timestamp)
+          }));
+          return acc;
+        }, {} as Record<string, GroupMessage[]>);
+        setGroupMessages(formatted);
+      } catch (err) {
+        console.error('Error parsing group messages from localStorage:', err);
+      }
+    }
+
+    const storedStories = localStorage.getItem('worky_user_stories');
+    if (storedStories) {
+      try {
+        const parsed = JSON.parse(storedStories);
+        const formatted = parsed.map((story: any) => ({
+          ...story,
+          timestamp: new Date(story.timestamp),
+          expiresAt: new Date(story.expiresAt)
+        }));
+        setStories(formatted);
+      } catch (err) {
+        console.error('Error parsing stories from localStorage:', err);
+      }
+    }
+  }, []);
+
+  // Guardar datos en localStorage ante cualquier cambio
+  useEffect(() => {
+    localStorage.setItem('worky_saved_accounts', JSON.stringify(savedAccounts));
+  }, [savedAccounts]);
+
+  useEffect(() => {
+    localStorage.setItem('worky_chat_groups', JSON.stringify(groups));
+  }, [groups]);
+
+  useEffect(() => {
+    localStorage.setItem('worky_group_messages', JSON.stringify(groupMessages));
+  }, [groupMessages]);
+
+  useEffect(() => {
+    localStorage.setItem('worky_user_stories', JSON.stringify(stories));
+  }, [stories]);
   const [startCamera, setStartCamera] = useState(false);
   const [showCatalogManager, setShowCatalogManager] = useState(false);
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<ProductCategory[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -468,32 +556,138 @@ const App: React.FC = () => {
   const [viewingProduct, setViewingProduct] = useState<Product | null>(null);
   const [showProductForm, setShowProductForm] = useState(false);
   const [showDocuments, setShowDocuments] = useState(false);
-  const [documents, setDocuments] = useState<Array<{id: string, name: string, type: string, file: string, uploadDate: Date, description?: string}>>([]);
-  const [editingDocument, setEditingDocument] = useState<{id: string, name: string, type: string, file: string, uploadDate: Date, description?: string} | null>(null);
+  const [documents, setDocuments] = useState<Array<{ id: string, name: string, type: string, file: string, uploadDate: Date, description?: string }>>([]);
+  const [editingDocument, setEditingDocument] = useState<{ id: string, name: string, type: string, file: string, uploadDate: Date, description?: string } | null>(null);
   const [documentDescription, setDocumentDescription] = useState('');
   const [businessLogo, setBusinessLogo] = useState<string>('');
   const [digitalSignature, setDigitalSignature] = useState<string>('');
   const [showSignaturePad, setShowSignaturePad] = useState(false);
 
-  const handleSendMessage = async (text: string, type: 'text' | 'image' | 'file' | 'invoice' | 'product' | 'receipt' | 'quote' | 'collection_account' | 'payment_info' | 'expense_receipt' = 'text', metadata?: any) => {
-    if (!selectedContactId) return;
+  // Cargar documentos, logo y firma digital de localStorage al montar
+  useEffect(() => {
+    const storedDocs = localStorage.getItem('worky_saved_documents');
+    if (storedDocs) {
+      try {
+        const parsed = JSON.parse(storedDocs);
+        const formatted = parsed.map((doc: any) => ({
+          ...doc,
+          uploadDate: new Date(doc.uploadDate)
+        }));
+        setDocuments(formatted);
+      } catch (err) {
+        console.error('Error parsing documents from localStorage:', err);
+      }
+    }
+    const storedLogo = localStorage.getItem('worky_business_logo');
+    if (storedLogo) {
+      setBusinessLogo(storedLogo);
+    }
+    const storedSig = localStorage.getItem('worky_digital_signature');
+    if (storedSig) {
+      setDigitalSignature(storedSig);
+    }
+  }, []);
+
+  // Guardar documentos, logo y firma digital en localStorage al cambiar
+  useEffect(() => {
+    localStorage.setItem('worky_saved_documents', JSON.stringify(documents));
+  }, [documents]);
+
+  useEffect(() => {
+    if (businessLogo) {
+      localStorage.setItem('worky_business_logo', businessLogo);
+    } else {
+      localStorage.removeItem('worky_business_logo');
+    }
+  }, [businessLogo]);
+
+  useEffect(() => {
+    if (digitalSignature) {
+      localStorage.setItem('worky_digital_signature', digitalSignature);
+    } else {
+      localStorage.removeItem('worky_digital_signature');
+    }
+  }, [digitalSignature]);
+
+  // Solicitar permisos de notificación nativa
+  const requestNotificationPermission = useCallback(async () => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      if (Notification.permission === 'default') {
+        try {
+          const permission = await Notification.requestPermission();
+          console.log('Permiso de notificaciones obtenido:', permission);
+        } catch (err) {
+          console.error('Error solicitando permisos de notificación:', err);
+        }
+      }
+    }
+  }, []);
+
+  // Solicitar permisos al hacer login o cargar la app autenticado
+  useEffect(() => {
+    if (isAuthenticated) {
+      void requestNotificationPermission();
+    }
+  }, [isAuthenticated, requestNotificationPermission]);
+
+  // Manejar notificaciones flotantes (Toasts)
+  const showToast = useCallback((text: string, senderName: string, senderId: string, avatar?: string) => {
+    const toastId = Math.random().toString();
+    setActiveToast({ id: toastId, senderId, senderName, text, avatar });
     
+    // Auto-ocultar después de 5 segundos
+    setTimeout(() => {
+      setActiveToast((current) => {
+        if (current && current.id === toastId) {
+          return null;
+        }
+        return current;
+      });
+    }, 5000);
+  }, []);
+
+  // Escuchar el evento de nuevo mensaje para disparar el Toast
+  useEffect(() => {
+    const handleNewMessage = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      const { text, senderId } = customEvent.detail;
+
+      // Si el chat con el remitente está abierto y la ventana está visible, no mostrar Toast
+      if (selectedContactId === senderId && document.visibilityState === 'visible') {
+        return;
+      }
+
+      // Buscar el nombre y avatar del contacto
+      const contact = contacts.find((c) => c.id === senderId);
+      const senderName = contact ? contact.clientName : 'Usuario';
+      const avatar = contact ? contact.avatar : undefined;
+
+      showToast(text, senderName, senderId, avatar);
+    };
+
+    window.addEventListener('worky-new-message', handleNewMessage);
+    return () => {
+      window.removeEventListener('worky-new-message', handleNewMessage);
+    };
+  }, [selectedContactId, contacts, showToast]);
+
+  const handleSendMessage = async (text: string, type: 'text' | 'image' | 'file' | 'invoice' | 'product' | 'receipt' | 'quote' | 'collection_account' | 'payment_info' | 'expense_receipt' = 'text', metadata?: any, mediaUrl?: string, mediaType?: string) => {
+    if (!selectedContactId) return;
+
     const messageData: Omit<Message, 'id'> = {
       text,
       sender: 'me',
       timestamp: new Date(),
       type,
-      metadata
+      metadata,
+      mediaUrl,
+      mediaType
     };
 
     try {
       // Enviar a Firebase
-      const messageId = await sendMessageToFirebase(selectedContactId, messageData);
-      
-      // Actualizar estado local (Firebase listener también actualizará, pero esto es para feedback inmediato)
-      const newMessage: Message = { ...messageData, id: messageId };
-      setMessages(prev => ({ ...prev, [selectedContactId]: [...(prev[selectedContactId] || []), newMessage] }));
-      
+      await sendMessageToFirebase(selectedContactId, messageData);
+
       // Actualizar último mensaje según el tipo
       let lastMessageText = text;
       if (type === 'file' && metadata?.fileName) {
@@ -503,7 +697,7 @@ const App: React.FC = () => {
       } else if (!['text', 'image', 'file'].includes(type)) {
         lastMessageText = '📎 Documento adjunto';
       }
-      
+
       setContacts(prev => prev.map(c => c.id === selectedContactId ? { ...c, lastMessage: lastMessageText, lastMessageTime: new Date() } : c));
     } catch (error) {
       console.error('Error enviando mensaje:', error);
@@ -512,133 +706,182 @@ const App: React.FC = () => {
       setMessages(prev => ({ ...prev, [selectedContactId]: [...(prev[selectedContactId] || []), newMessage] }));
     }
   };
-  
+
   const handleUpdateMessageMetadata = async (messageId: string, updatedMessage: any) => {
     if (!selectedContactId) return;
-    
+
     // 1. Update the message itself
     setMessages(prev => {
-        const chatMessages = prev[selectedContactId] || [];
-        return {
-            ...prev,
-            [selectedContactId]: chatMessages.map(msg => 
-                msg.id === messageId ? { ...msg, ...updatedMessage } : msg
-            )
-        };
+      const chatMessages = prev[selectedContactId] || [];
+      return {
+        ...prev,
+        [selectedContactId]: chatMessages.map(msg =>
+          msg.id === messageId ? { ...msg, ...updatedMessage } : msg
+        )
+      };
     });
+
+    // Save to Supabase
+    try {
+      await updateMessage(messageId, updatedMessage);
+    } catch (error) {
+      console.error('Error actualizando mensaje en Supabase:', error);
+    }
 
     // 2. Business Logic: If Quote Approved -> Create New Project
     if (updatedMessage.metadata?.status === 'accepted') {
-       // Find the message to get total and details
-       const currentMessages = messages[selectedContactId] || [];
-       const targetMessage = currentMessages.find(m => m.id === messageId);
-       
-       if (targetMessage && targetMessage.metadata) {
-           const quoteCode = targetMessage.metadata.number;
-           
-           // Check if project already exists for this quote code to avoid duplicates
-           const existingContact = contacts.find(c => c.id === selectedContactId);
-           const projectExists = existingContact?.projects.some(p => 
-               (p as any).metadata?.quoteCode === quoteCode
-           );
-           
-           if (projectExists) {
-               console.log('Proyecto ya existe para esta cotización:', quoteCode);
-               return; // Don't create duplicate project
-           }
-           
-           // Use first item's description as project name, or fallback to "Proyecto [code]"
-           const projectName = targetMessage.metadata.items && targetMessage.metadata.items.length > 0 
-               ? targetMessage.metadata.items[0].description 
-               : `Proyecto ${quoteCode}`;
-           
-           const newProject: Project = {
-               id: Date.now().toString(),
-               name: projectName,
-               value: targetMessage.metadata.total,
-               stage: ProjectStage.InProgress,
-               expenses: [],
-               startDate: new Date(),
-               metadata: { quoteCode: quoteCode }
-           };
+      // Find the message to get total and details
+      const currentMessages = messages[selectedContactId] || [];
+      const targetMessage = currentMessages.find(m => m.id === messageId);
 
-           // Add Project to Contact
-           setContacts(prev => prev.map(c => 
-               c.id === selectedContactId 
-               ? { ...c, projects: [newProject, ...c.projects] } // Add to top
-               : c
-           ));
+      if (targetMessage && targetMessage.metadata) {
+        const quoteCode = targetMessage.metadata.number;
 
-           // Save project to Firebase
-           try {
-               await saveProject(selectedContactId, newProject);
-           } catch (error) {
-               console.error('Error guardando proyecto en Firebase:', error);
-           }
+        // Check if project already exists for this quote code to avoid duplicates
+        const existingContact = contacts.find(c => c.id === selectedContactId);
+        const projectExists = existingContact?.projects.some(p =>
+          (p as any).metadata?.quoteCode === quoteCode
+        );
 
-           setTimeout(() => {
-                handleSendMessage(`✅ Cotización Aprobada. Se ha creado el proyecto: "${newProject.name}"`, 'text', { isSystem: true });
-           }, 500);
-       }
+        if (projectExists) {
+          console.log('Proyecto ya existe para esta cotización:', quoteCode);
+          return; // Don't create duplicate project
+        }
+
+        // Use first item's description as project name, or fallback to "Proyecto [code]"
+        const projectName = targetMessage.metadata.items && targetMessage.metadata.items.length > 0
+          ? targetMessage.metadata.items[0].description
+          : `Proyecto ${quoteCode}`;
+
+        const newProject: Project = {
+          id: Date.now().toString(),
+          name: projectName,
+          value: targetMessage.metadata.total,
+          stage: ProjectStage.InProgress,
+          expenses: [],
+          startDate: new Date(),
+          metadata: { quoteCode: quoteCode }
+        };
+
+        // Add Project to Contact
+        setContacts(prev => prev.map(c =>
+          c.id === selectedContactId
+            ? { ...c, projects: [newProject, ...c.projects] } // Add to top
+            : c
+        ));
+
+        // Save project to Firebase
+        try {
+          await saveProject(selectedContactId, newProject);
+        } catch (error) {
+          console.error('Error guardando proyecto en Firebase:', error);
+        }
+
+        setTimeout(() => {
+          handleSendMessage(`✅ Cotización Aprobada. Se ha creado el proyecto: "${newProject.name}"`, 'text', { isSystem: true });
+        }, 500);
+      }
+    }
+
+    // 3. Business Logic: If Payment Confirmed -> Send confirmation message to the chat
+    if (updatedMessage.metadata?.paymentConfirmed === true && !updatedMessage.metadata?.confirmationSent) {
+      const currentMessages = messages[selectedContactId] || [];
+      const targetMessage = currentMessages.find(m => m.id === messageId);
+
+      // Verify that it wasn't already confirmed in the current local state
+      if (targetMessage && targetMessage.metadata && !targetMessage.metadata.paymentConfirmed) {
+        const docType = updatedMessage.type === 'invoice' ? 'Factura' : 
+                        updatedMessage.type === 'collection_account' ? 'Cuenta de Cobro' : 'Recibo';
+        const docNum = updatedMessage.metadata.number || '';
+        const docValue = updatedMessage.metadata.amount || updatedMessage.metadata.total || 0;
+        const formattedVal = docValue ? ` por $${docValue.toLocaleString()}` : '';
+        const text = `✅ Pago confirmado por el contratista para la ${docType} ${docNum}${formattedVal}.`;
+
+        updatedMessage.metadata.confirmationSent = true;
+        try {
+          await updateMessage(messageId, { metadata: updatedMessage.metadata });
+        } catch (err) {
+          console.error('Error updating confirmationSent metadata:', err);
+        }
+
+        setTimeout(() => {
+          handleSendMessage(text, 'text');
+        }, 500);
+      }
     }
   };
 
-  const handleUpdateStage = async (stage: ProjectStage, projectId: string) => { 
+  const handleDeleteMessage = async (messageId: string) => {
+    try {
+      await deleteMessage(messageId);
       if (selectedContactId) {
-          try {
-            await updateProject(selectedContactId, projectId, { stage });
-            setContacts(prev => prev.map(c => {
-                if (c.id === selectedContactId) {
-                    return {
-                        ...c,
-                        projects: c.projects.map(p => p.id === projectId ? { ...p, stage } : p)
-                    };
-                }
-                return c;
-            }));
-          } catch (error) {
-            console.error('Error actualizando etapa del proyecto:', error);
-            // Fallback: actualizar estado local
-            setContacts(prev => prev.map(c => {
-                if (c.id === selectedContactId) {
-                    return {
-                        ...c,
-                        projects: c.projects.map(p => p.id === projectId ? { ...p, stage } : p)
-                    };
-                }
-                return c;
-            }));
-          }
+        setMessages(prev => ({
+          ...prev,
+          [selectedContactId]: (prev[selectedContactId] || []).filter(m => m.id !== messageId)
+        }));
       }
+    } catch (error) {
+      console.error('Error al eliminar el mensaje:', error);
+      alert('No se pudo eliminar el mensaje.');
+    }
   };
 
-  const handleUpdateProjectInfo = async (value: number, name: string, projectId: string) => { 
-      if (selectedContactId) {
-          try {
-            await updateProject(selectedContactId, projectId, { value, name });
-            setContacts(prev => prev.map(c => {
-                if (c.id === selectedContactId) {
-                    return {
-                        ...c,
-                        projects: c.projects.map(p => p.id === projectId ? { ...p, value: value, name: name } : p)
-                    };
-                }
-                return c;
-            }));
-          } catch (error) {
-            console.error('Error actualizando proyecto:', error);
-            // Fallback: actualizar estado local
-            setContacts(prev => prev.map(c => {
-                if (c.id === selectedContactId) {
-                    return {
-                        ...c,
-                        projects: c.projects.map(p => p.id === projectId ? { ...p, value: value, name: name } : p)
-                    };
-                }
-                return c;
-            }));
+  const handleUpdateStage = async (stage: ProjectStage, projectId: string) => {
+    if (selectedContactId) {
+      try {
+        await updateProject(selectedContactId, projectId, { stage });
+        setContacts(prev => prev.map(c => {
+          if (c.id === selectedContactId) {
+            return {
+              ...c,
+              projects: c.projects.map(p => p.id === projectId ? { ...p, stage } : p)
+            };
           }
+          return c;
+        }));
+      } catch (error) {
+        console.error('Error actualizando etapa del proyecto:', error);
+        // Fallback: actualizar estado local
+        setContacts(prev => prev.map(c => {
+          if (c.id === selectedContactId) {
+            return {
+              ...c,
+              projects: c.projects.map(p => p.id === projectId ? { ...p, stage } : p)
+            };
+          }
+          return c;
+        }));
       }
+    }
+  };
+
+  const handleUpdateProjectInfo = async (value: number, name: string, projectId: string) => {
+    if (selectedContactId) {
+      try {
+        await updateProject(selectedContactId, projectId, { value, name });
+        setContacts(prev => prev.map(c => {
+          if (c.id === selectedContactId) {
+            return {
+              ...c,
+              projects: c.projects.map(p => p.id === projectId ? { ...p, value: value, name: name } : p)
+            };
+          }
+          return c;
+        }));
+      } catch (error) {
+        console.error('Error actualizando proyecto:', error);
+        // Fallback: actualizar estado local
+        setContacts(prev => prev.map(c => {
+          if (c.id === selectedContactId) {
+            return {
+              ...c,
+              projects: c.projects.map(p => p.id === projectId ? { ...p, value: value, name: name } : p)
+            };
+          }
+          return c;
+        }));
+      }
+    }
   };
 
   // Función para actualizar un proyecto completo (usado por el Gantt)
@@ -671,82 +914,169 @@ const App: React.FC = () => {
 
   const handleAddExpense = async (amount: number, description: string, targetProjectId?: string) => {
     if (!selectedContactId) return;
-    
+
     const newExpense: Expense = { id: Date.now().toString(), amount, description, date: new Date(), category: 'other', projectId: targetProjectId };
 
     try {
       // Determinar el projectId final
       const finalProjectId = targetProjectId || (contacts.find(c => c.id === selectedContactId)?.projects[0]?.id);
-      
+
       if (finalProjectId) {
         await addExpenseToProject(selectedContactId, finalProjectId, { ...newExpense, projectId: finalProjectId });
       }
-      
+
       // Actualizar estado local
       setContacts(prev => prev.map(c => {
-          // If targetProjectId is provided, find the contact who has this project and add expense there
-          if (targetProjectId) {
-              const projectExists = c.projects.find(p => p.id === targetProjectId);
-              if (projectExists) {
-                   return {
-                      ...c,
-                      projects: c.projects.map(p => p.id === targetProjectId ? { ...p, expenses: [...p.expenses, newExpense] } : p)
-                   };
-              }
-          } 
-          // If NO targetProjectId, default to selected contact (only if it's the one being iterated and has projects)
-          else if (c.id === selectedContactId) {
-               if (c.projects.length > 0) {
-                   // Add to first project by default
-                   return {
-                      ...c,
-                      projects: c.projects.map((p, idx) => idx === 0 ? { ...p, expenses: [...p.expenses, { ...newExpense, projectId: p.id }] } : p)
-                   };
-               }
+        // If targetProjectId is provided, find the contact who has this project and add expense there
+        if (targetProjectId) {
+          const projectExists = c.projects.find(p => p.id === targetProjectId);
+          if (projectExists) {
+            return {
+              ...c,
+              projects: c.projects.map(p => p.id === targetProjectId ? { ...p, expenses: [...p.expenses, newExpense] } : p)
+            };
           }
-          return c;
+        }
+        // If NO targetProjectId, default to selected contact (only if it's the one being iterated and has projects)
+        else if (c.id === selectedContactId) {
+          if (c.projects.length > 0) {
+            // Add to first project by default
+            return {
+              ...c,
+              projects: c.projects.map((p, idx) => idx === 0 ? { ...p, expenses: [...p.expenses, { ...newExpense, projectId: p.id }] } : p)
+            };
+          }
+        }
+        return c;
       }));
     } catch (error) {
       console.error('Error agregando gasto:', error);
       // Fallback: actualizar solo estado local
       setContacts(prev => prev.map(c => {
-          if (targetProjectId) {
-              const projectExists = c.projects.find(p => p.id === targetProjectId);
-              if (projectExists) {
-                   return {
-                      ...c,
-                      projects: c.projects.map(p => p.id === targetProjectId ? { ...p, expenses: [...p.expenses, newExpense] } : p)
-                   };
-              }
-          } else if (c.id === selectedContactId) {
-               if (c.projects.length > 0) {
-                   return {
-                      ...c,
-                      projects: c.projects.map((p, idx) => idx === 0 ? { ...p, expenses: [...p.expenses, { ...newExpense, projectId: p.id }] } : p)
-                   };
-               }
+        if (targetProjectId) {
+          const projectExists = c.projects.find(p => p.id === targetProjectId);
+          if (projectExists) {
+            return {
+              ...c,
+              projects: c.projects.map(p => p.id === targetProjectId ? { ...p, expenses: [...p.expenses, newExpense] } : p)
+            };
           }
-          return c;
+        } else if (c.id === selectedContactId) {
+          if (c.projects.length > 0) {
+            return {
+              ...c,
+              projects: c.projects.map((p, idx) => idx === 0 ? { ...p, expenses: [...p.expenses, { ...newExpense, projectId: p.id }] } : p)
+            };
+          }
+        }
+        return c;
       }));
     }
 
     // Ya no creamos mensaje aquí, se crea el recibo en ChatWindow.handleSaveExpense
   };
-  
+
   const handleAddStory = (content: string, type: 'text' | 'image', durationHours: number, color?: string) => setStories(prev => [{ id: Date.now().toString(), contactId: 'me', content, type, timestamp: new Date(), expiresAt: new Date(Date.now() + (durationHours * 3600000)), color }, ...prev]);
   const handleSendWalletDetails = (account: PaymentAccount) => selectedContactId && handleSendMessage(`💳 *Datos de Pago:*\n${account.bankName} - ${account.accountNumber}`, 'text');
-  const handleAddThirdPartyAccount = (account: ThirdPartyAccount) => setSavedAccounts(prev => [...prev, account]);
-  
+  const handleSavePaymentAccount = async (account: PaymentAccount) => {
+    try {
+      await savePaymentAccount(account);
+    } catch (err) {
+      console.error('Error guardando cuenta de pago:', err);
+    }
+  };
+
+  const handleDeletePaymentAccount = async (accountId: string) => {
+    try {
+      await deletePaymentAccount(accountId);
+    } catch (err) {
+      console.error('Error eliminando cuenta de pago:', err);
+    }
+  };
+
+  const handleSaveThirdPartyAccount = (account: ThirdPartyAccount) => {
+    setSavedAccounts(prev => {
+      const exists = prev.some(acc => acc.id === account.id);
+      if (exists) {
+        return prev.map(acc => acc.id === account.id ? account : acc);
+      } else {
+        return [...prev, account];
+      }
+    });
+  };
+
+  const handleDeleteThirdPartyAccount = (accountId: string) => {
+    setSavedAccounts(prev => prev.filter(acc => acc.id !== accountId));
+  };
+
+  const handleUploadContractPdf = async (pdfBlob: Blob, filename: string): Promise<string> => {
+    try {
+      const file = new File([pdfBlob], filename, { type: 'application/pdf' });
+      const filePath = `contracts/${Date.now()}_${filename}`;
+      
+      const { data, error } = await supabase.storage
+        .from('chat_media')
+        .upload(filePath, file);
+        
+      if (error) throw error;
+      
+      const { data: { publicUrl } } = supabase.storage
+        .from('chat_media')
+        .getPublicUrl(filePath);
+        
+      return publicUrl;
+    } catch (err) {
+      console.error('Error uploading contract PDF:', err);
+      throw err;
+    }
+  };
+
+  const handleShareContractPdf = async (contactId: string, pdfBlob: Blob, filename: string) => {
+    try {
+      // 1. Subir PDF a Supabase Storage
+      const publicUrl = await handleUploadContractPdf(pdfBlob, filename);
+      
+      // 2. Enviar mensaje de tipo 'file'
+      const messageData = {
+        text: filename,
+        sender: 'me',
+        timestamp: new Date(),
+        type: 'file' as const,
+        mediaUrl: publicUrl,
+        mediaType: 'application/pdf'
+      };
+      
+      await sendMessageToFirebase(contactId, messageData);
+      
+      // Actualizar último mensaje localmente para el contacto
+      setContacts(prev => prev.map(c => c.id === contactId ? { ...c, lastMessage: `📎 ${filename}`, lastMessageTime: new Date() } : c));
+      
+      // Actualizar el historial de mensajes local si ya está en memoria
+      setMessages(prev => {
+        if (prev[contactId]) {
+          return {
+            ...prev,
+            [contactId]: [...prev[contactId], { id: Date.now().toString(), ...messageData }]
+          };
+        }
+        return prev;
+      });
+    } catch (err) {
+      console.error('Error sharing contract PDF:', err);
+      throw err;
+    }
+  };
+
   // Group handlers
   const handleCreateGroup = (group: ChatGroup) => {
     setGroups(prev => [...prev, group]);
     setGroupMessages(prev => ({ ...prev, [group.id]: [] }));
   };
-  
+
   const handleUpdateGroup = (updatedGroup: ChatGroup) => {
     setGroups(prev => prev.map(g => g.id === updatedGroup.id ? updatedGroup : g));
   };
-  
+
   const handleDeleteGroup = (groupId: string) => {
     setGroups(prev => prev.filter(g => g.id !== groupId));
     setGroupMessages(prev => {
@@ -759,34 +1089,34 @@ const App: React.FC = () => {
       setSelectedSubGroupId(null);
     }
   };
-  
+
   const handleSelectGroup = (groupId: string, subGroupId?: string) => {
     setSelectedGroupId(groupId);
     setSelectedSubGroupId(subGroupId || null);
     setSelectedContactId(null); // Deselect contact when selecting group
     setMobileTab('chats');
   };
-  
+
   const handleSendGroupMessage = (message: Omit<GroupMessage, 'id' | 'timestamp'>) => {
     const newMessage: GroupMessage = {
       ...message,
       id: `gmsg-${Date.now()}`,
       timestamp: new Date(),
     };
-    
+
     setGroupMessages(prev => ({
       ...prev,
       [message.groupId]: [...(prev[message.groupId] || []), newMessage]
     }));
-    
+
     // Update last message in group
-    setGroups(prev => prev.map(g => 
-      g.id === message.groupId 
+    setGroups(prev => prev.map(g =>
+      g.id === message.groupId
         ? { ...g, lastMessage: { text: message.text, senderId: message.senderId, timestamp: newMessage.timestamp } }
         : g
     ));
   };
-  
+
   const formatCurrencyInput = (value: string): string => {
     // Remover todo excepto números
     const numbers = value.replace(/\D/g, '');
@@ -804,18 +1134,18 @@ const App: React.FC = () => {
     const formatted = formatCurrencyInput(e.target.value);
     setNewProductPrice(formatted);
   };
-  
+
   const handleSaveProduct = async () => {
     if (!newProductName || !newProductPrice) return;
-    
+
     const productImages = newProductImages.length > 0 ? newProductImages : undefined;
     const mainImage = productImages?.[0] || 'https://placehold.co/100x100/e2e8f0/64748b?text=' + newProductName.substring(0, 1);
-    
+
     let productToSave: Product;
-    
+
     // Parsear el precio removiendo el formato
     const priceValue = parseCurrencyInput(newProductPrice);
-    
+
     if (editingProduct) {
       productToSave = {
         ...editingProduct,
@@ -839,7 +1169,7 @@ const App: React.FC = () => {
         categoryId: newProductCategory || undefined
       };
     }
-    
+
     try {
       await saveProduct(productToSave);
       // El listener de Firebase actualizará el estado automáticamente
@@ -857,7 +1187,7 @@ const App: React.FC = () => {
         setProducts(prev => [...prev, productToSave]);
       }
     }
-    
+
     setNewProductName('');
     setNewProductPrice('');
     setNewProductStock('');
@@ -899,10 +1229,10 @@ const App: React.FC = () => {
 
   const handleSaveCategory = async () => {
     if (!newCategoryName) return;
-    
+
     const colors = ['bg-red-500', 'bg-blue-500', 'bg-green-500', 'bg-yellow-500', 'bg-purple-500', 'bg-pink-500', 'bg-indigo-500', 'bg-teal-500'];
     const randomColor = colors[Math.floor(Math.random() * colors.length)];
-    
+
     const newCategory: ProductCategory = {
       id: Date.now().toString(),
       name: newCategoryName,
@@ -910,7 +1240,7 @@ const App: React.FC = () => {
       color: randomColor,
       coverImage: newCategoryCoverImage || undefined
     };
-    
+
     try {
       await saveCategory(newCategory);
       setCategories(prev => [...prev, newCategory]);
@@ -919,7 +1249,7 @@ const App: React.FC = () => {
       // Fallback: agregar al estado local
       setCategories(prev => [...prev, newCategory]);
     }
-    
+
     setNewCategoryName('');
     setNewCategoryIcon('fa-box');
     setNewCategoryCoverImage('');
@@ -961,17 +1291,17 @@ const App: React.FC = () => {
       reader.onload = async (event) => {
         const imageData = event.target?.result as string;
         setNewProductImage(imageData);
-        
+
         // Analizar imagen con Gemini AI
         setIsEnhancingImage(true);
         try {
           const analysis = await generateProductDescription(imageData, newProductName);
-          
+
           // Si no hay descripción aún, usar la generada por la IA
           if (!newProductDescription) {
             setNewProductDescription(analysis.description);
           }
-          
+
           setImageEnhancementSuggestions(analysis.suggestions);
           setDetectedFeatures(analysis.detectedFeatures);
         } catch (error) {
@@ -989,7 +1319,7 @@ const App: React.FC = () => {
     if (files) {
       const fileArray = Array.from(files);
       console.log('Uploading images:', fileArray.length);
-      
+
       fileArray.forEach((file, idx) => {
         const reader = new FileReader();
         reader.onload = async (event) => {
@@ -999,7 +1329,7 @@ const App: React.FC = () => {
             console.log('Current images:', prev.length);
             return [...prev, result];
           });
-          
+
           // Analizar la primera imagen con IA
           if (idx === 0 && !newProductDescription) {
             setIsEnhancingImage(true);
@@ -1026,23 +1356,29 @@ const App: React.FC = () => {
 
   const handleDocumentUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file && file.type === 'application/pdf') {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const newDoc = {
-          id: Date.now().toString(),
-          name: file.name,
-          type: file.name.includes('RUT') || file.name.includes('rut') ? 'RUT' : 
-                file.name.includes('camara') || file.name.includes('comercio') ? 'Cámara de Comercio' :
-                file.name.includes('cedula') || file.name.includes('cédula') ? 'Cédula' : 'Otro',
-          file: event.target?.result as string,
-          uploadDate: new Date()
+    if (file) {
+      const isPdf = file.type === 'application/pdf';
+      const isImage = file.type.startsWith('image/');
+      if (isPdf || isImage) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const newDoc = {
+            id: Date.now().toString(),
+            name: file.name,
+            type: file.name.toLowerCase().includes('rut') ? 'RUT' :
+              file.name.toLowerCase().includes('camara') || file.name.toLowerCase().includes('comercio') ? 'Cámara de Comercio' :
+                file.name.toLowerCase().includes('cedula') || file.name.toLowerCase().includes('cédula') ? 'Cédula' :
+                  file.name.toLowerCase().includes('logo') ? 'Logo' :
+                    file.name.toLowerCase().includes('firma') ? 'Firma' : 'Otro',
+            file: event.target?.result as string,
+            uploadDate: new Date()
+          };
+          setDocuments(prev => [...prev, newDoc]);
         };
-        setDocuments(prev => [...prev, newDoc]);
-      };
-      reader.readAsDataURL(file);
-    } else {
-      alert('Por favor selecciona un archivo PDF');
+        reader.readAsDataURL(file);
+      } else {
+        alert('Por favor selecciona un archivo PDF o una imagen (PNG, JPG, etc.)');
+      }
     }
   };
 
@@ -1054,8 +1390,8 @@ const App: React.FC = () => {
 
   const handleSaveDocumentDescription = () => {
     if (editingDocument) {
-      setDocuments(prev => prev.map(d => 
-        d.id === editingDocument.id 
+      setDocuments(prev => prev.map(d =>
+        d.id === editingDocument.id
           ? { ...d, description: documentDescription }
           : d
       ));
@@ -1094,7 +1430,7 @@ const App: React.FC = () => {
     setDigitalSignature(signature);
     setShowSignaturePad(false);
   };
-  
+
   // Handler para buscar usuarios
   const handleSearchUser = async (phoneOrEmail: string) => {
     try {
@@ -1110,7 +1446,7 @@ const App: React.FC = () => {
   const handleAddContactFromSearch = async (user: { userId: string; name?: string; avatar?: string; phone?: string }) => {
     try {
       const newContact = await addContactFromSearch(user);
-      
+
       // Actualizar estado local
       const contact: Contact = {
         id: user.userId,
@@ -1124,7 +1460,7 @@ const App: React.FC = () => {
         lastMessageTime: new Date(),
         unreadCount: 0
       };
-      
+
       setContacts(prev => [contact, ...prev]);
       setMessages(prev => ({ ...prev, [contact.id]: [] }));
       setSelectedContactId(contact.id);
@@ -1137,19 +1473,19 @@ const App: React.FC = () => {
   const handleDeleteContact = async (contactId: string) => {
     try {
       await deleteContact(contactId);
-      
+
       // Si el contacto eliminado estaba seleccionado, deseleccionarlo
       if (selectedContactId === contactId) {
         setSelectedContactId(null);
       }
-      
+
       // Eliminar mensajes del estado local
       setMessages(prev => {
         const newMessages = { ...prev };
         delete newMessages[contactId];
         return newMessages;
       });
-      
+
       // El listener de Firebase actualizará automáticamente la lista de contactos
     } catch (error) {
       console.error('Error eliminando contacto:', error);
@@ -1158,74 +1494,74 @@ const App: React.FC = () => {
   };
 
   const handleCreateContact = async () => {
-      if(newContactName && newProjectName) {
-          const newProject: Project = {
-              id: Date.now().toString() + '_p',
-              name: newProjectName,
-              value: 0,
-              stage: ProjectStage.Inquiry,
-              expenses: [],
-              startDate: new Date()
-          };
+    if (newContactName && newProjectName) {
+      const newProject: Project = {
+        id: Date.now().toString() + '_p',
+        name: newProjectName,
+        value: 0,
+        stage: ProjectStage.Inquiry,
+        expenses: [],
+        startDate: new Date()
+      };
 
-          const newContact: Contact = {
-              // contacts.contact_user_id es UUID en Supabase: un id tipo
-              // Date.now().toString() era rechazado con "invalid input
-              // syntax for type uuid" y el contacto nunca se guardaba.
-              id: crypto.randomUUID(),
-              clientName: newContactName, 
-              avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(newContactName)}&background=random`, 
-              phone: newContactPhone, 
-              status: UserStatus.Lead, 
-              role: newContactRole, 
-              projects: [newProject], 
-              lastMessage: 'Nuevo contacto', 
-              lastMessageTime: new Date(), 
-              unreadCount: 0 
-            };
-          
-          try {
-            // Guardar contacto en Firebase
-            await addContact(newContact);
-            // Guardar proyecto
-            await saveProject(newContact.id, newProject);
-            // Actualizar contacto con proyectos
-            await updateContactWithProjects(newContact);
-            
-            setContacts(prev => [newContact, ...prev]);
-            setMessages(prev => ({ ...prev, [newContact.id]: [] }));
-          } catch (error) {
-            console.error('Error creando contacto:', error);
-            // Fallback: agregar al estado local
-            setContacts(prev => [newContact, ...prev]);
-            setMessages(prev => ({ ...prev, [newContact.id]: [] }));
-          }
-          
-          setSelectedContactId(newContact.id);
-          setShowNewContactModal(false);
-          if (pendingDocumentAction) { setChatAction(pendingDocumentAction); setPendingDocumentAction(null); }
-          
-          // Limpiar campos del formulario
-          setNewContactName('');
-          setNewProjectName('');
-          setNewContactPhone('');
-          setNewContactRole('client');
+      const newContact: Contact = {
+        // contacts.contact_user_id es UUID en Supabase: un id tipo
+        // Date.now().toString() era rechazado con "invalid input
+        // syntax for type uuid" y el contacto nunca se guardaba.
+        id: crypto.randomUUID(),
+        clientName: newContactName,
+        avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(newContactName)}&background=random`,
+        phone: newContactPhone,
+        status: UserStatus.Lead,
+        role: newContactRole,
+        projects: [newProject],
+        lastMessage: 'Nuevo contacto',
+        lastMessageTime: new Date(),
+        unreadCount: 0
+      };
+
+      try {
+        // Guardar contacto en Firebase
+        await addContact(newContact);
+        // Guardar proyecto
+        await saveProject(newContact.id, newProject);
+        // Actualizar contacto con proyectos
+        await updateContactWithProjects(newContact);
+
+        setContacts(prev => [newContact, ...prev]);
+        setMessages(prev => ({ ...prev, [newContact.id]: [] }));
+      } catch (error) {
+        console.error('Error creando contacto:', error);
+        // Fallback: agregar al estado local
+        setContacts(prev => [newContact, ...prev]);
+        setMessages(prev => ({ ...prev, [newContact.id]: [] }));
       }
+
+      setSelectedContactId(newContact.id);
+      setShowNewContactModal(false);
+      if (pendingDocumentAction) { setChatAction(pendingDocumentAction); setPendingDocumentAction(null); }
+
+      // Limpiar campos del formulario
+      setNewContactName('');
+      setNewProjectName('');
+      setNewContactPhone('');
+      setNewContactRole('client');
+    }
   };
-  
+
   const handleDocumentClick = (type: any) => { setPendingDocumentAction(type); setShowClientSelectionModal(true); };
   const handleSelectContactForDocument = (contactId: string) => { setSelectedContactId(contactId); if (pendingDocumentAction) { setChatAction(pendingDocumentAction); setPendingDocumentAction(null); } setShowClientSelectionModal(false); };
 
   // Mostrar visor de documento compartido si hay un documentId en la URL
   if (sharedDocumentId) {
     return (
-      <SharedDocumentViewer 
-        documentId={sharedDocumentId} 
+      <SharedDocumentViewer
+        documentId={sharedDocumentId}
         onClose={() => {
           setSharedDocumentId(null);
           // Limpiar la URL
           window.history.replaceState({}, document.title, window.location.pathname);
-        }} 
+        }}
       />
     );
   }
@@ -1265,13 +1601,13 @@ const App: React.FC = () => {
   const showRightCol = isChatOpen ? 'flex' : (mobileTab === 'home' ? 'flex' : 'hidden md:flex');
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden relative font-sans text-slate-200" style={{ background: 'linear-gradient(135deg, #0f172a 0%, #020617 100%)' }}> 
-      
+    <div className="flex h-screen w-screen overflow-hidden relative font-sans text-slate-200" style={{ background: 'linear-gradient(135deg, #0f172a 0%, #020617 100%)' }}>
+
       {/* Left Column: Chat List */}
       <div className={`w-full md:w-[30%] md:max-w-[400px] md:min-w-[300px] flex-col border-r border-slate-700/50 bg-slate-900 ${showLeftCol}`}>
-        <ChatList 
-          contacts={contacts} 
-          selectedContactId={selectedContactId} 
+        <ChatList
+          contacts={contacts}
+          selectedContactId={selectedContactId}
           onSelectContact={(id) => { setSelectedContactId(id); setSelectedGroupId(null); setShowFinancials(false); setShowStatus(false); setShowNotifications(false); }}
           onOpenFinancials={() => { setShowFinancials(true); setSelectedContactId(null); setSelectedGroupId(null); setShowStatus(false); setShowNotifications(false); }}
           onOpenStatus={() => { setShowStatus(true); setSelectedContactId(null); setSelectedGroupId(null); setShowFinancials(false); setShowNotifications(false); }}
@@ -1288,30 +1624,31 @@ const App: React.FC = () => {
           onOpenGroupsManager={() => setShowGroupsManager(true)}
         />
       </div>
-      
+
       {/* Right Column: Main Content */}
       <div className={`flex-1 flex flex-col h-full ${showRightCol}`} style={{ background: 'linear-gradient(180deg, #0f172a 0%, #1e293b 100%)' }}>
         {showStatus ? (
-            <StatusView contacts={contacts} myStories={stories.filter(s => s.contactId === 'me')} contactStories={stories.filter(s => s.contactId !== 'me')} onClose={() => setShowStatus(false)} onAddStory={handleAddStory} startInCamera={startCamera} />
+          <StatusView contacts={contacts} myStories={stories.filter(s => s.contactId === 'me')} contactStories={stories.filter(s => s.contactId !== 'me')} onClose={() => setShowStatus(false)} onAddStory={handleAddStory} startInCamera={startCamera} />
         ) : showNotifications ? (
           <NotificationsPanel contacts={contacts} messages={messages} onClose={() => setShowNotifications(false)} onSelectContact={(id) => { setSelectedContactId(id); setShowNotifications(false); }} />
         ) : showFinancials ? (
           <FinancialReport contacts={contacts} onClose={() => setShowFinancials(false)} />
         ) : selectedContactId ? (
-          <ChatWindow 
-            contact={contacts.find(c => c.id === selectedContactId)!} 
-            allContacts={contacts} 
-            messages={messages[selectedContactId] || []} 
-            onSendMessage={handleSendMessage} 
-            onUpdateStage={handleUpdateStage} 
-            onUpdateProjectInfo={handleUpdateProjectInfo} 
+          <ChatWindow
+            contact={contacts.find(c => c.id === selectedContactId)!}
+            allContacts={contacts}
+            messages={messages[selectedContactId] || []}
+            onSendMessage={handleSendMessage}
+            onUpdateStage={handleUpdateStage}
+            onUpdateProjectInfo={handleUpdateProjectInfo}
             products={products}
             paymentAccounts={paymentAccounts}
-            onAddExpense={handleAddExpense} 
-            onBack={() => setSelectedContactId(null)} 
-            activeAction={chatAction} 
-            onClearAction={() => setChatAction(null)} 
+            onAddExpense={handleAddExpense}
+            onBack={() => setSelectedContactId(null)}
+            activeAction={chatAction}
+            onClearAction={() => setChatAction(null)}
             onUpdateMessage={handleUpdateMessageMetadata}
+            onDeleteMessage={handleDeleteMessage}
             businessLogo={businessLogo}
             digitalSignature={digitalSignature}
             userProfile={userProfile}
@@ -1325,137 +1662,159 @@ const App: React.FC = () => {
           <div className="flex-1 flex flex-col items-center justify-center p-4 pb-24 md:pb-4 relative overflow-y-auto">
             {/* Same Dashboard UI */}
             <div className="w-full max-w-5xl flex flex-col items-center z-10">
-                {/* Hero Section */}
-                <div className="mb-6 text-center">
-                    <img src="/worky-logo.png" alt="Worky" className="w-48 mx-auto mb-2 drop-shadow-2xl" />
-                    <p className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-violet-400 text-lg font-bold uppercase tracking-wide">Gestiona tus proyectos</p>
+              {/* Hero Section */}
+              <div className="mb-6 text-center">
+                <img src="/worky-logo.png" alt="Worky" className="w-48 mx-auto mb-2 drop-shadow-2xl" />
+                <p className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-violet-400 text-lg font-bold uppercase tracking-wide">Gestiona tus proyectos</p>
+              </div>
+
+              {/* Main Grid - Unified */}
+              <div className="w-full max-w-5xl px-3 space-y-6">
+                {/* Primary Actions - Featured */}
+                <div className="bg-slate-800/50 backdrop-blur-lg rounded-2xl p-4 border border-slate-700/50">
+                  <h3 className="text-slate-300 text-xs font-bold uppercase tracking-wide mb-3 flex items-center gap-2">
+                    <i className="fa-solid fa-star text-blue-400"></i> Acciones Rápidas
+                  </h3>
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                    <button onClick={() => handleDocumentClick('quote')} className="bg-slate-700/50 hover:bg-slate-600/50 p-3 rounded-xl transition-all group border border-slate-600/50 hover:border-blue-500/50 hover:shadow-lg hover:shadow-blue-500/10 active:scale-95">
+                      <div className="flex flex-col items-center gap-2">
+                        <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center text-white shadow-lg shadow-teal-500/30">
+                          <i className="fa-solid fa-file-contract text-lg"></i>
+                        </div>
+                        <span className="text-slate-200 text-xs font-bold">Cotización</span>
+                      </div>
+                    </button>
+                    <button onClick={() => handleDocumentClick('invoice')} className="bg-slate-700/50 hover:bg-slate-600/50 p-3 rounded-xl transition-all group border border-slate-600/50 hover:border-blue-500/50 hover:shadow-lg hover:shadow-blue-500/10 active:scale-95">
+                      <div className="flex flex-col items-center gap-2">
+                        <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/30">
+                          <i className="fa-solid fa-file-invoice-dollar text-lg"></i>
+                        </div>
+                        <span className="text-slate-200 text-xs font-bold">Factura</span>
+                      </div>
+                    </button>
+                    <button onClick={() => handleDocumentClick('collection_account')} className="bg-slate-700/50 hover:bg-slate-600/50 p-3 rounded-xl transition-all group border border-slate-600/50 hover:border-blue-500/50 hover:shadow-lg hover:shadow-blue-500/10 active:scale-95">
+                      <div className="flex flex-col items-center gap-2">
+                        <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center text-white shadow-lg shadow-orange-500/30">
+                          <i className="fa-solid fa-file-invoice text-lg"></i>
+                        </div>
+                        <span className="text-slate-200 text-xs font-bold">Cuenta Cobro</span>
+                      </div>
+                    </button>
+                    <button onClick={() => handleDocumentClick('expense')} className="bg-slate-700/50 hover:bg-slate-600/50 p-3 rounded-xl transition-all group border border-slate-600/50 hover:border-blue-500/50 hover:shadow-lg hover:shadow-blue-500/10 active:scale-95">
+                      <div className="flex flex-col items-center gap-2">
+                        <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-rose-500 to-red-600 flex items-center justify-center text-white shadow-lg shadow-rose-500/30">
+                          <i className="fa-solid fa-circle-minus text-lg"></i>
+                        </div>
+                        <span className="text-slate-200 text-xs font-bold">Reg. Gasto</span>
+                      </div>
+                    </button>
+                    <ProFeatureGuard isPro={userProfile?.isPro} trialEndsAt={userProfile?.trialEndsAt}>
+                      <ContractGenerator
+                        defaultContractorName={userProfile?.ownerName || userProfile?.businessName || ''}
+                        defaultContractorId={userProfile?.nit || ''}
+                        defaultLogo={businessLogo}
+                        digitalSignature={digitalSignature}
+                        documents={documents}
+                        contacts={contacts}
+                        onShareContractPdf={handleShareContractPdf}
+                        onUploadContractPdf={handleUploadContractPdf}
+                      />
+                    </ProFeatureGuard>
+                  </div>
                 </div>
 
-                {/* Main Grid - Unified */}
-                <div className="w-full max-w-5xl px-3 space-y-6">
-                    {/* Primary Actions - Featured */}
-                    <div className="bg-slate-800/50 backdrop-blur-lg rounded-2xl p-4 border border-slate-700/50">
-                        <h3 className="text-slate-300 text-xs font-bold uppercase tracking-wide mb-3 flex items-center gap-2">
-                            <i className="fa-solid fa-star text-blue-400"></i> Acciones Rápidas
-                        </h3>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                            <button onClick={() => handleDocumentClick('quote')} className="bg-slate-700/50 hover:bg-slate-600/50 p-3 rounded-xl transition-all group border border-slate-600/50 hover:border-blue-500/50 hover:shadow-lg hover:shadow-blue-500/10 active:scale-95">
-                                <div className="flex flex-col items-center gap-2">
-                                    <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center text-white shadow-lg shadow-teal-500/30">
-                                        <i className="fa-solid fa-file-contract text-lg"></i>
-                                    </div>
-                                    <span className="text-slate-200 text-xs font-bold">Cotización</span>
-                                </div>
-                            </button>
-                            <button onClick={() => handleDocumentClick('invoice')} className="bg-slate-700/50 hover:bg-slate-600/50 p-3 rounded-xl transition-all group border border-slate-600/50 hover:border-blue-500/50 hover:shadow-lg hover:shadow-blue-500/10 active:scale-95">
-                                <div className="flex flex-col items-center gap-2">
-                                    <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/30">
-                                        <i className="fa-solid fa-file-invoice-dollar text-lg"></i>
-                                    </div>
-                                    <span className="text-slate-200 text-xs font-bold">Factura</span>
-                                </div>
-                            </button>
-                            <button onClick={() => handleDocumentClick('collection_account')} className="bg-slate-700/50 hover:bg-slate-600/50 p-3 rounded-xl transition-all group border border-slate-600/50 hover:border-blue-500/50 hover:shadow-lg hover:shadow-blue-500/10 active:scale-95">
-                                <div className="flex flex-col items-center gap-2">
-                                    <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center text-white shadow-lg shadow-orange-500/30">
-                                        <i className="fa-solid fa-file-invoice text-lg"></i>
-                                    </div>
-                                    <span className="text-slate-200 text-xs font-bold">Cuenta Cobro</span>
-                                </div>
-                            </button>
-                            <button onClick={() => handleDocumentClick('expense')} className="bg-slate-700/50 hover:bg-slate-600/50 p-3 rounded-xl transition-all group border border-slate-600/50 hover:border-blue-500/50 hover:shadow-lg hover:shadow-blue-500/10 active:scale-95">
-                                <div className="flex flex-col items-center gap-2">
-                                    <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-rose-500 to-red-600 flex items-center justify-center text-white shadow-lg shadow-rose-500/30">
-                                        <i className="fa-solid fa-circle-minus text-lg"></i>
-                                    </div>
-                                    <span className="text-slate-200 text-xs font-bold">Reg. Gasto</span>
-                                </div>
-                            </button>
+                {/* Tools Grid */}
+                <div>
+                  <h3 className="text-slate-500 text-xs font-bold uppercase tracking-wide mb-3 px-1">Herramientas</h3>
+                  <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
+                    <button onClick={() => setShowFinancials(true)} className="bg-slate-800/50 hover:bg-slate-700/50 p-4 rounded-xl transition-all group border border-slate-700/50 hover:border-emerald-500/50 hover:shadow-lg hover:shadow-emerald-500/10 active:scale-95 backdrop-blur-sm">
+                      <div className="flex flex-col items-center gap-2">
+                        <div className="w-10 h-10 rounded-lg bg-emerald-500/20 flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform">
+                          <i className="fa-solid fa-chart-pie text-lg"></i>
                         </div>
-                    </div>
+                        <span className="text-slate-300 text-xs font-semibold">Finanzas</span>
+                      </div>
+                    </button>
+                    <button onClick={() => setShowCatalogManager(true)} className="bg-slate-800/50 hover:bg-slate-700/50 p-4 rounded-xl transition-all group border border-slate-700/50 hover:border-purple-500/50 hover:shadow-lg hover:shadow-purple-500/10 active:scale-95 backdrop-blur-sm">
+                      <div className="flex flex-col items-center gap-2">
+                        <div className="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center text-purple-400 group-hover:scale-110 transition-transform">
+                          <i className="fa-solid fa-box-open text-lg"></i>
+                        </div>
+                        <span className="text-slate-300 text-xs font-semibold">Catálogo</span>
+                      </div>
+                    </button>
+                    <button onClick={() => setShowWallet(true)} className="bg-slate-800/50 hover:bg-slate-700/50 p-4 rounded-xl transition-all group border border-slate-700/50 hover:border-blue-500/50 hover:shadow-lg hover:shadow-blue-500/10 active:scale-95 backdrop-blur-sm">
+                      <div className="flex flex-col items-center gap-2">
+                        <div className="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center text-blue-400 group-hover:scale-110 transition-transform">
+                          <i className="fa-solid fa-wallet text-lg"></i>
+                        </div>
+                        <span className="text-slate-300 text-xs font-semibold">Billetera</span>
+                      </div>
+                    </button>
+                    <button onClick={() => { setShowStatus(true); setStartCamera(false); }} className="bg-slate-800/50 hover:bg-slate-700/50 p-4 rounded-xl transition-all group border border-slate-700/50 hover:border-pink-500/50 hover:shadow-lg hover:shadow-pink-500/10 active:scale-95 backdrop-blur-sm">
+                      <div className="flex flex-col items-center gap-2">
+                        <div className="w-10 h-10 rounded-lg bg-pink-500/20 flex items-center justify-center text-pink-400 group-hover:scale-110 transition-transform">
+                          <i className="fa-solid fa-circle-notch text-lg"></i>
+                        </div>
+                        <span className="text-slate-300 text-xs font-semibold">Historias</span>
+                      </div>
+                    </button>
+                    <button onClick={() => { setShowStatus(true); setStartCamera(true); }} className="bg-slate-800/50 hover:bg-slate-700/50 p-4 rounded-xl transition-all group border border-slate-700/50 hover:border-violet-500/50 hover:shadow-lg hover:shadow-violet-500/10 active:scale-95 backdrop-blur-sm">
+                      <div className="flex flex-col items-center gap-2">
+                        <div className="w-10 h-10 rounded-lg bg-violet-500/20 flex items-center justify-center text-violet-400 group-hover:scale-110 transition-transform">
+                          <i className="fa-solid fa-camera text-lg"></i>
+                        </div>
+                        <span className="text-slate-300 text-xs font-semibold">Cámara</span>
+                      </div>
+                    </button>
+                    <button onClick={() => setShowGanttChart(true)} className="bg-slate-800/50 hover:bg-slate-700/50 p-4 rounded-xl transition-all group border border-slate-700/50 hover:border-cyan-500/50 hover:shadow-lg hover:shadow-cyan-500/10 active:scale-95 backdrop-blur-sm">
+                      <div className="flex flex-col items-center gap-2">
+                        <div className="w-10 h-10 rounded-lg bg-cyan-500/20 flex items-center justify-center text-cyan-400 group-hover:scale-110 transition-transform">
+                          <i className="fa-solid fa-chart-gantt text-lg"></i>
+                        </div>
+                        <span className="text-slate-300 text-xs font-semibold">Gantt</span>
+                      </div>
+                    </button>
+                    <button onClick={() => setShowGroupsManager(true)} className="bg-slate-800/50 hover:bg-slate-700/50 p-4 rounded-xl transition-all group border border-slate-700/50 hover:border-teal-500/50 hover:shadow-lg hover:shadow-teal-500/10 active:scale-95 backdrop-blur-sm">
+                      <div className="flex flex-col items-center gap-2">
+                        <div className="w-10 h-10 rounded-lg bg-teal-500/20 flex items-center justify-center text-teal-400 group-hover:scale-110 transition-transform">
+                          <i className="fa-solid fa-users-rectangle text-lg"></i>
+                        </div>
+                        <span className="text-slate-300 text-xs font-semibold">Grupos</span>
+                      </div>
+                    </button>
+                    <button onClick={() => {
+                      // Limpiar campos antes de abrir el modal
+                      setNewContactName('');
+                      setNewProjectName('');
+                      setNewContactPhone('');
+                      setNewContactRole('client');
+                      setShowNewContactModal(true);
+                    }} className="bg-gradient-to-br from-blue-600 to-violet-600 hover:from-blue-500 hover:to-violet-500 p-4 rounded-xl transition-all group border border-blue-500/50 hover:shadow-lg shadow-blue-500/30 active:scale-95">
+                      <div className="flex flex-col items-center gap-2">
+                        <div className="w-10 h-10 rounded-lg bg-white/20 flex items-center justify-center text-white group-hover:scale-110 transition-transform">
+                          <i className="fa-solid fa-user-plus text-lg"></i>
+                        </div>
+                        <span className="text-white text-xs font-bold">Contacto</span>
+                      </div>
+                    </button>
+                    {userProfile?.isAdmin && (
+                      <button onClick={() => setShowAdminPanel(true)} className="bg-slate-800/50 hover:bg-slate-700/50 p-4 rounded-xl transition-all group border border-amber-500/30 hover:border-amber-500/60 hover:shadow-lg hover:shadow-amber-500/10 active:scale-95 backdrop-blur-sm">
+                        <div className="flex flex-col items-center gap-2">
+                          <div className="w-10 h-10 rounded-lg bg-amber-500/20 flex items-center justify-center text-amber-400 group-hover:scale-110 transition-transform">
+                            <i className="fa-solid fa-user-shield text-lg"></i>
+                          </div>
+                          <span className="text-slate-300 text-xs font-semibold">Admin</span>
+                        </div>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
 
-                    {/* Tools Grid */}
-                    <div>
-                        <h3 className="text-slate-500 text-xs font-bold uppercase tracking-wide mb-3 px-1">Herramientas</h3>
-                        <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
-                            <button onClick={() => setShowFinancials(true)} className="bg-slate-800/50 hover:bg-slate-700/50 p-4 rounded-xl transition-all group border border-slate-700/50 hover:border-emerald-500/50 hover:shadow-lg hover:shadow-emerald-500/10 active:scale-95 backdrop-blur-sm">
-                                <div className="flex flex-col items-center gap-2">
-                                    <div className="w-10 h-10 rounded-lg bg-emerald-500/20 flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform">
-                                        <i className="fa-solid fa-chart-pie text-lg"></i>
-                                    </div>
-                                    <span className="text-slate-300 text-xs font-semibold">Finanzas</span>
-                                </div>
-                            </button>
-                            <button onClick={() => setShowCatalogManager(true)} className="bg-slate-800/50 hover:bg-slate-700/50 p-4 rounded-xl transition-all group border border-slate-700/50 hover:border-purple-500/50 hover:shadow-lg hover:shadow-purple-500/10 active:scale-95 backdrop-blur-sm">
-                                <div className="flex flex-col items-center gap-2">
-                                    <div className="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center text-purple-400 group-hover:scale-110 transition-transform">
-                                        <i className="fa-solid fa-box-open text-lg"></i>
-                                    </div>
-                                    <span className="text-slate-300 text-xs font-semibold">Catálogo</span>
-                                </div>
-                            </button>
-                            <button onClick={() => setShowWallet(true)} className="bg-slate-800/50 hover:bg-slate-700/50 p-4 rounded-xl transition-all group border border-slate-700/50 hover:border-blue-500/50 hover:shadow-lg hover:shadow-blue-500/10 active:scale-95 backdrop-blur-sm">
-                                <div className="flex flex-col items-center gap-2">
-                                    <div className="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center text-blue-400 group-hover:scale-110 transition-transform">
-                                        <i className="fa-solid fa-wallet text-lg"></i>
-                                    </div>
-                                    <span className="text-slate-300 text-xs font-semibold">Billetera</span>
-                                </div>
-                            </button>
-                            <button onClick={() => { setShowStatus(true); setStartCamera(false); }} className="bg-slate-800/50 hover:bg-slate-700/50 p-4 rounded-xl transition-all group border border-slate-700/50 hover:border-pink-500/50 hover:shadow-lg hover:shadow-pink-500/10 active:scale-95 backdrop-blur-sm">
-                                <div className="flex flex-col items-center gap-2">
-                                    <div className="w-10 h-10 rounded-lg bg-pink-500/20 flex items-center justify-center text-pink-400 group-hover:scale-110 transition-transform">
-                                        <i className="fa-solid fa-circle-notch text-lg"></i>
-                                    </div>
-                                    <span className="text-slate-300 text-xs font-semibold">Historias</span>
-                                </div>
-                            </button>
-                            <button onClick={() => { setShowStatus(true); setStartCamera(true); }} className="bg-slate-800/50 hover:bg-slate-700/50 p-4 rounded-xl transition-all group border border-slate-700/50 hover:border-violet-500/50 hover:shadow-lg hover:shadow-violet-500/10 active:scale-95 backdrop-blur-sm">
-                                <div className="flex flex-col items-center gap-2">
-                                    <div className="w-10 h-10 rounded-lg bg-violet-500/20 flex items-center justify-center text-violet-400 group-hover:scale-110 transition-transform">
-                                        <i className="fa-solid fa-camera text-lg"></i>
-                                    </div>
-                                    <span className="text-slate-300 text-xs font-semibold">Cámara</span>
-                                </div>
-                            </button>
-                            <button onClick={() => setShowGanttChart(true)} className="bg-slate-800/50 hover:bg-slate-700/50 p-4 rounded-xl transition-all group border border-slate-700/50 hover:border-cyan-500/50 hover:shadow-lg hover:shadow-cyan-500/10 active:scale-95 backdrop-blur-sm">
-                                <div className="flex flex-col items-center gap-2">
-                                    <div className="w-10 h-10 rounded-lg bg-cyan-500/20 flex items-center justify-center text-cyan-400 group-hover:scale-110 transition-transform">
-                                        <i className="fa-solid fa-chart-gantt text-lg"></i>
-                                    </div>
-                                    <span className="text-slate-300 text-xs font-semibold">Gantt</span>
-                                </div>
-                            </button>
-                            <button onClick={() => setShowGroupsManager(true)} className="bg-slate-800/50 hover:bg-slate-700/50 p-4 rounded-xl transition-all group border border-slate-700/50 hover:border-teal-500/50 hover:shadow-lg hover:shadow-teal-500/10 active:scale-95 backdrop-blur-sm">
-                                <div className="flex flex-col items-center gap-2">
-                                    <div className="w-10 h-10 rounded-lg bg-teal-500/20 flex items-center justify-center text-teal-400 group-hover:scale-110 transition-transform">
-                                        <i className="fa-solid fa-users-rectangle text-lg"></i>
-                                    </div>
-                                    <span className="text-slate-300 text-xs font-semibold">Grupos</span>
-                                </div>
-                            </button>
-                            <button onClick={() => {
-                              // Limpiar campos antes de abrir el modal
-                              setNewContactName('');
-                              setNewProjectName('');
-                              setNewContactPhone('');
-                              setNewContactRole('client');
-                              setShowNewContactModal(true);
-                            }} className="bg-gradient-to-br from-blue-600 to-violet-600 hover:from-blue-500 hover:to-violet-500 p-4 rounded-xl transition-all group border border-blue-500/50 hover:shadow-lg shadow-blue-500/30 active:scale-95">
-                                <div className="flex flex-col items-center gap-2">
-                                    <div className="w-10 h-10 rounded-lg bg-white/20 flex items-center justify-center text-white group-hover:scale-110 transition-transform">
-                                        <i className="fa-solid fa-user-plus text-lg"></i>
-                                    </div>
-                                    <span className="text-white text-xs font-bold">Contacto</span>
-                                </div>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            
-                <div className="mt-8 text-slate-500 text-xs flex items-center gap-2">
-                    <i className="fa-solid fa-lock text-[10px]"></i> Conexión segura cifrada.
-                </div>
+              <div className="mt-8 text-slate-500 text-xs flex items-center gap-2">
+                <i className="fa-solid fa-lock text-[10px]"></i> Conexión segura cifrada.
+              </div>
             </div>
           </div>
         )}
@@ -1463,88 +1822,88 @@ const App: React.FC = () => {
 
       {/* MOBILE NAV (Dark) */}
       {!isChatOpen && (
-          <div className="md:hidden fixed bottom-0 left-0 w-full h-16 border-t border-slate-700/50 flex justify-around items-center z-50 backdrop-blur-xl" style={{ background: 'linear-gradient(180deg, rgba(30,41,59,0.95) 0%, rgba(15,23,42,0.98) 100%)' }}>
-             <button onClick={() => setMobileTab('home')} className={`flex flex-col items-center gap-1 ${mobileTab === 'home' ? 'text-blue-400' : 'text-slate-500'}`}>
-                <i className="fa-solid fa-house text-xl"></i>
-                <span className="text-[10px] font-bold">Inicio</span>
-             </button>
-             <button onClick={() => setShowDocuments(true)} className="flex flex-col items-center gap-1 text-slate-500 hover:text-slate-300 transition">
-                <i className="fa-solid fa-folder-open text-xl"></i>
-                <span className="text-[10px] font-bold">Documentos</span>
-             </button>
-             <button onClick={() => { setShowNotifications(true); setSelectedContactId(null); setShowFinancials(false); setShowStatus(false); }} className="flex flex-col items-center gap-1 text-slate-500 relative hover:text-slate-300 transition">
-                <i className="fa-solid fa-bell text-xl"></i>
-                <span className="absolute top-0 right-3 w-2 h-2 bg-gradient-to-r from-rose-500 to-pink-500 rounded-full border border-slate-900 animate-pulse"></span>
-                <span className="text-[10px] font-bold">Alertas</span>
-             </button>
-             <button onClick={() => setMobileTab('chats')} className={`flex flex-col items-center gap-1 ${mobileTab === 'chats' ? 'text-blue-400' : 'text-slate-500'}`}>
-                <i className="fa-solid fa-comment-dots text-xl"></i>
-                <span className="text-[10px] font-bold">Chats</span>
-             </button>
-          </div>
+        <div className="md:hidden fixed bottom-0 left-0 w-full h-16 border-t border-slate-700/50 flex justify-around items-center z-50 backdrop-blur-xl" style={{ background: 'linear-gradient(180deg, rgba(30,41,59,0.95) 0%, rgba(15,23,42,0.98) 100%)' }}>
+          <button onClick={() => setMobileTab('home')} className={`flex flex-col items-center gap-1 ${mobileTab === 'home' ? 'text-blue-400' : 'text-slate-500'}`}>
+            <i className="fa-solid fa-house text-xl"></i>
+            <span className="text-[10px] font-bold">Inicio</span>
+          </button>
+          <button onClick={() => setShowDocuments(true)} className="flex flex-col items-center gap-1 text-slate-500 hover:text-slate-300 transition">
+            <i className="fa-solid fa-folder-open text-xl"></i>
+            <span className="text-[10px] font-bold">Documentos</span>
+          </button>
+          <button onClick={() => { setShowNotifications(true); setSelectedContactId(null); setShowFinancials(false); setShowStatus(false); }} className="flex flex-col items-center gap-1 text-slate-500 relative hover:text-slate-300 transition">
+            <i className="fa-solid fa-bell text-xl"></i>
+            <span className="absolute top-0 right-3 w-2 h-2 bg-gradient-to-r from-rose-500 to-pink-500 rounded-full border border-slate-900 animate-pulse"></span>
+            <span className="text-[10px] font-bold">Alertas</span>
+          </button>
+          <button onClick={() => setMobileTab('chats')} className={`flex flex-col items-center gap-1 ${mobileTab === 'chats' ? 'text-blue-400' : 'text-slate-500'}`}>
+            <i className="fa-solid fa-comment-dots text-xl"></i>
+            <span className="text-[10px] font-bold">Chats</span>
+          </button>
+        </div>
       )}
 
       {/* MODALS (Client Selection, New Contact, etc) - Modern Dark */}
       {showClientSelectionModal && (
-          <div className="absolute inset-0 bg-slate-950/80 z-[100] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
-             <div className="bg-slate-800 w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden border border-slate-700/50">
-                <div className="p-4 border-b border-slate-700/50 flex justify-between items-center" style={{ background: 'linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%)' }}>
-                    <h3 className="text-white font-bold">Seleccionar Cliente</h3>
-                    <button onClick={() => { setShowClientSelectionModal(false); }} className="text-slate-400 hover:text-white transition"><i className="fa-solid fa-xmark"></i></button>
-                </div>
-                <div className="p-4">
-                    <button onClick={() => { 
-                      setShowClientSelectionModal(false); 
-                      // Limpiar campos antes de abrir el modal
-                      setNewContactName('');
-                      setNewProjectName('');
-                      setNewContactPhone('');
-                      setNewContactRole('client');
-                      setShowNewContactModal(true); 
-                    }} className="w-full bg-gradient-to-r from-blue-600 to-violet-600 text-white py-3 rounded-xl font-bold mb-4 hover:from-blue-500 hover:to-violet-500 transition shadow-lg shadow-blue-500/30">
-                        <i className="fa-solid fa-user-plus mr-2"></i> Nuevo contacto
-                    </button>
-                    <div className="text-slate-500 text-xs font-bold uppercase mb-2">Recientes</div>
-                    <div className="max-h-60 overflow-y-auto custom-scrollbar space-y-2">
-                        {contacts.map(c => (
-                            <div key={c.id} onClick={() => handleSelectContactForDocument(c.id)} className="p-3 hover:bg-slate-700/50 rounded-lg cursor-pointer flex items-center gap-3 transition border border-transparent hover:border-slate-600/50">
-                                <img src={c.avatar} className="w-8 h-8 rounded-full shadow-lg border border-slate-600" />
-                                <div className="text-sm font-bold text-slate-200">{c.clientName}</div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-             </div>
+        <div className="absolute inset-0 bg-slate-950/80 z-[100] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
+          <div className="bg-slate-800 w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden border border-slate-700/50">
+            <div className="p-4 border-b border-slate-700/50 flex justify-between items-center" style={{ background: 'linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%)' }}>
+              <h3 className="text-white font-bold">Seleccionar Cliente</h3>
+              <button onClick={() => { setShowClientSelectionModal(false); }} className="text-slate-400 hover:text-white transition"><i className="fa-solid fa-xmark"></i></button>
+            </div>
+            <div className="p-4">
+              <button onClick={() => {
+                setShowClientSelectionModal(false);
+                // Limpiar campos antes de abrir el modal
+                setNewContactName('');
+                setNewProjectName('');
+                setNewContactPhone('');
+                setNewContactRole('client');
+                setShowNewContactModal(true);
+              }} className="w-full bg-gradient-to-r from-blue-600 to-violet-600 text-white py-3 rounded-xl font-bold mb-4 hover:from-blue-500 hover:to-violet-500 transition shadow-lg shadow-blue-500/30">
+                <i className="fa-solid fa-user-plus mr-2"></i> Nuevo contacto
+              </button>
+              <div className="text-slate-500 text-xs font-bold uppercase mb-2">Recientes</div>
+              <div className="max-h-60 overflow-y-auto custom-scrollbar space-y-2">
+                {contacts.map(c => (
+                  <div key={c.id} onClick={() => handleSelectContactForDocument(c.id)} className="p-3 hover:bg-slate-700/50 rounded-lg cursor-pointer flex items-center gap-3 transition border border-transparent hover:border-slate-600/50">
+                    <img src={c.avatar} className="w-8 h-8 rounded-full shadow-lg border border-slate-600" />
+                    <div className="text-sm font-bold text-slate-200">{c.clientName}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
+        </div>
       )}
 
       {showNewContactModal && (
-          <div className="absolute inset-0 bg-slate-950/80 z-[110] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
-             <div className="bg-slate-800 w-full max-w-sm rounded-2xl shadow-2xl p-6 relative border border-slate-700/50">
-                <button onClick={() => {
-                  setShowNewContactModal(false);
-                  // Limpiar campos al cerrar
-                  setNewContactName('');
-                  setNewProjectName('');
-                  setNewContactPhone('');
-                  setNewContactRole('client');
-                }} className="absolute top-4 right-4 text-slate-400 hover:text-white transition"><i className="fa-solid fa-xmark"></i></button>
-                <h3 className="text-white font-bold text-xl mb-6">Nuevo Contacto</h3>
-                <div className="space-y-4">
-                    <div className="flex bg-slate-900/50 p-1 rounded-xl border border-slate-700/50">
-                        {['client', 'supplier', 'collaborator'].map(role => (
-                            <button key={role} onClick={() => setNewContactRole(role as any)} className={`flex-1 py-2 text-xs font-bold rounded-lg capitalize transition ${newContactRole === role ? 'bg-gradient-to-r from-blue-600 to-violet-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}>
-                                {role === 'client' ? 'Cliente' : role === 'supplier' ? 'Proveedor' : 'Colaborador'}
-                            </button>
-                        ))}
-                    </div>
-                    <input type="text" placeholder="Nombre" value={newContactName} onChange={e => setNewContactName(e.target.value)} className="w-full bg-slate-700/50 text-white p-3 rounded-xl outline-none border border-slate-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 placeholder-slate-500" />
-                    <input type="text" placeholder="Primer Proyecto / Empresa" value={newProjectName} onChange={e => setNewProjectName(e.target.value)} className="w-full bg-slate-700/50 text-white p-3 rounded-xl outline-none border border-slate-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 placeholder-slate-500" />
-                    <input type="tel" placeholder="Teléfono" value={newContactPhone} onChange={e => setNewContactPhone(e.target.value)} className="w-full bg-slate-700/50 text-white p-3 rounded-xl outline-none border border-slate-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 placeholder-slate-500" />
-                </div>
-                <button onClick={handleCreateContact} disabled={!newContactName} className="w-full bg-gradient-to-r from-blue-600 to-violet-600 text-white py-3 rounded-xl font-bold mt-6 hover:from-blue-500 hover:to-violet-500 transition disabled:opacity-50 shadow-lg shadow-blue-500/30">Guardar</button>
-             </div>
+        <div className="absolute inset-0 bg-slate-950/80 z-[110] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
+          <div className="bg-slate-800 w-full max-w-sm rounded-2xl shadow-2xl p-6 relative border border-slate-700/50">
+            <button onClick={() => {
+              setShowNewContactModal(false);
+              // Limpiar campos al cerrar
+              setNewContactName('');
+              setNewProjectName('');
+              setNewContactPhone('');
+              setNewContactRole('client');
+            }} className="absolute top-4 right-4 text-slate-400 hover:text-white transition"><i className="fa-solid fa-xmark"></i></button>
+            <h3 className="text-white font-bold text-xl mb-6">Nuevo Contacto</h3>
+            <div className="space-y-4">
+              <div className="flex bg-slate-900/50 p-1 rounded-xl border border-slate-700/50">
+                {['client', 'supplier', 'collaborator'].map(role => (
+                  <button key={role} onClick={() => setNewContactRole(role as any)} className={`flex-1 py-2 text-xs font-bold rounded-lg capitalize transition ${newContactRole === role ? 'bg-gradient-to-r from-blue-600 to-violet-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}>
+                    {role === 'client' ? 'Cliente' : role === 'supplier' ? 'Proveedor' : 'Colaborador'}
+                  </button>
+                ))}
+              </div>
+              <input type="text" placeholder="Nombre" value={newContactName} onChange={e => setNewContactName(e.target.value)} className="w-full bg-slate-700/50 text-white p-3 rounded-xl outline-none border border-slate-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 placeholder-slate-500" />
+              <input type="text" placeholder="Primer Proyecto / Empresa" value={newProjectName} onChange={e => setNewProjectName(e.target.value)} className="w-full bg-slate-700/50 text-white p-3 rounded-xl outline-none border border-slate-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 placeholder-slate-500" />
+              <input type="tel" placeholder="Teléfono" value={newContactPhone} onChange={e => setNewContactPhone(e.target.value)} className="w-full bg-slate-700/50 text-white p-3 rounded-xl outline-none border border-slate-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 placeholder-slate-500" />
+            </div>
+            <button onClick={handleCreateContact} disabled={!newContactName} className="w-full bg-gradient-to-r from-blue-600 to-violet-600 text-white py-3 rounded-xl font-bold mt-6 hover:from-blue-500 hover:to-violet-500 transition disabled:opacity-50 shadow-lg shadow-blue-500/30">Guardar</button>
           </div>
+        </div>
       )}
 
       {/* User Search Modal */}
@@ -1555,8 +1914,23 @@ const App: React.FC = () => {
         onAddContact={handleAddContactFromSearch}
       />
 
-      {showWallet && <WalletModal accounts={paymentAccounts} savedAccounts={savedAccounts} onClose={() => setShowWallet(false)} onSendDetails={selectedContactId ? handleSendWalletDetails : undefined} onAddThirdParty={handleAddThirdPartyAccount} />}
-      
+      {showWallet && (
+        <WalletModal
+          accounts={paymentAccounts}
+          savedAccounts={savedAccounts}
+          onClose={() => setShowWallet(false)}
+          onSendDetails={selectedContactId ? handleSendWalletDetails : undefined}
+          onSavePaymentAccount={handleSavePaymentAccount}
+          onDeletePaymentAccount={handleDeletePaymentAccount}
+          onSaveThirdPartyAccount={handleSaveThirdPartyAccount}
+          onDeleteThirdPartyAccount={handleDeleteThirdPartyAccount}
+        />
+      )}
+
+      {showAdminPanel && userProfile?.isAdmin && (
+        <AdminPanel onClose={() => setShowAdminPanel(false)} />
+      )}
+
       {showProfileEditor && userProfile && (
         <ProfileEditor
           userProfile={userProfile}
@@ -1564,7 +1938,7 @@ const App: React.FC = () => {
           onClose={() => setShowProfileEditor(false)}
         />
       )}
-      
+
       {showSignaturePad && (
         <SignaturePad
           onSave={handleSaveSignature}
@@ -1637,9 +2011,9 @@ const App: React.FC = () => {
                 <i className="fa-solid fa-times"></i>
               </button>
             </div>
-            
+
             <div className="flex-1 overflow-y-auto p-6">
-              
+
               {/* View Toggle - Only show when in products view */}
               {catalogView === 'products' && (
                 <button
@@ -1668,7 +2042,7 @@ const App: React.FC = () => {
                         Nueva Carpeta
                       </button>
                     </div>
-                    
+
                     {showCategoryForm && (
                       <div className="mb-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
                         <div className="space-y-4">
@@ -1689,7 +2063,7 @@ const App: React.FC = () => {
                               Crear
                             </button>
                           </div>
-                          
+
                           {/* Cover Image Upload */}
                           <div>
                             <label className="block text-sm font-semibold text-slate-700 mb-2">
@@ -1735,13 +2109,13 @@ const App: React.FC = () => {
                         </div>
                       </div>
                     )}
-                    
+
                     {/* Folder Grid */}
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                       {categories.map(category => {
                         const categoryProducts = products.filter(p => p.categoryId === category.id);
                         const previewImages = categoryProducts.slice(0, 4).map(p => p.image);
-                        
+
                         return (
                           <div
                             key={category.id}
@@ -1751,8 +2125,8 @@ const App: React.FC = () => {
                             {/* Cover Image or Preview Images Grid */}
                             <div className="aspect-square bg-slate-100 overflow-hidden">
                               {category.coverImage ? (
-                                <img 
-                                  src={category.coverImage} 
+                                <img
+                                  src={category.coverImage}
                                   alt={category.name}
                                   className="w-full h-full object-cover"
                                 />
@@ -1777,9 +2151,9 @@ const App: React.FC = () => {
                                 </div>
                               )}
                             </div>
-                            
+
                             {/* Folder Info */}
-                            <div 
+                            <div
                               className="p-3"
                               style={{ backgroundColor: category.color + '15' }}
                             >
@@ -1790,7 +2164,7 @@ const App: React.FC = () => {
                                 {categoryProducts.length} producto{categoryProducts.length !== 1 ? 's' : ''}
                               </p>
                             </div>
-                            
+
                             {/* Add Product Button */}
                             <button
                               onClick={(e) => {
@@ -1805,7 +2179,7 @@ const App: React.FC = () => {
                             >
                               <i className="fa-solid fa-plus"></i>
                             </button>
-                            
+
                             {/* Delete Folder Button */}
                             <button
                               onClick={(e) => {
@@ -1824,334 +2198,334 @@ const App: React.FC = () => {
                 </>
               ) : (
                 <>
-              {/* Add/Edit Product Form */}
-              {showProductForm && (
-              <div className="bg-slate-50 rounded-xl p-6 mb-6 border border-slate-200">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-bold text-slate-800 flex items-center gap-2">
-                    <i className="fa-solid fa-plus-circle text-purple-500"></i>
-                    {editingProduct ? 'Editar Producto' : 'Agregar Producto'}
-                  </h3>
-                  <button
-                    onClick={() => {
-                      setShowProductForm(false);
-                      setEditingProduct(null);
-                      setNewProductName('');
-                      setNewProductPrice('');
-                      setNewProductStock('');
-                      setNewProductDescription('');
-                      setNewProductImage('');
-                      setNewProductImages([]);
-                      setImageEnhancementSuggestions('');
-                      setDetectedFeatures([]);
-                    }}
-                    className="text-slate-400 hover:text-slate-600 text-xl"
-                  >
-                    <i className="fa-solid fa-times"></i>
-                  </button>
-                </div>
-                
-                <div className="grid md:grid-cols-2 gap-4 mb-4">
-                  <input 
-                    type="text" 
-                    placeholder="Nombre del producto" 
-                    value={newProductName}
-                    onChange={e => setNewProductName(e.target.value)}
-                    className="bg-white p-3 rounded-lg border border-slate-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-100 outline-none"
-                  />
-                  <input 
-                    type="text" 
-                    placeholder="Precio (ej: 500.000)" 
-                    value={newProductPrice}
-                    onChange={handleProductPriceChange}
-                    className="bg-white p-3 rounded-lg border border-slate-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-100 outline-none"
-                  />
-                </div>
-                
-                <div className="grid md:grid-cols-2 gap-4 mb-4">
-                  <input 
-                    type="number" 
-                    placeholder="Stock disponible" 
-                    value={newProductStock}
-                    onChange={e => setNewProductStock(e.target.value)}
-                    className="bg-white p-3 rounded-lg border border-slate-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-100 outline-none"
-                  />
-                  <div className="relative">
-                    <select
-                      value={newProductCategory}
-                      onChange={e => setNewProductCategory(e.target.value)}
-                      className="bg-white p-3 rounded-lg border border-slate-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-100 outline-none w-full"
-                      style={newProductCategory ? {
-                        backgroundColor: categories.find(c => c.id === newProductCategory)?.color + '20',
-                        borderColor: categories.find(c => c.id === newProductCategory)?.color,
-                        fontWeight: '600'
-                      } : {}}
-                    >
-                      <option value="">Sin categoría</option>
-                      {categories.map(cat => (
-                        <option key={cat.id} value={cat.id}>{cat.name}</option>
-                      ))}
-                    </select>
-                    {newProductCategory && (
-                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
-                        <i 
-                          className={`${categories.find(c => c.id === newProductCategory)?.icon} mr-2`}
-                          style={{ color: categories.find(c => c.id === newProductCategory)?.color }}
-                        ></i>
+                  {/* Add/Edit Product Form */}
+                  {showProductForm && (
+                    <div className="bg-slate-50 rounded-xl p-6 mb-6 border border-slate-200">
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="font-bold text-slate-800 flex items-center gap-2">
+                          <i className="fa-solid fa-plus-circle text-purple-500"></i>
+                          {editingProduct ? 'Editar Producto' : 'Agregar Producto'}
+                        </h3>
+                        <button
+                          onClick={() => {
+                            setShowProductForm(false);
+                            setEditingProduct(null);
+                            setNewProductName('');
+                            setNewProductPrice('');
+                            setNewProductStock('');
+                            setNewProductDescription('');
+                            setNewProductImage('');
+                            setNewProductImages([]);
+                            setImageEnhancementSuggestions('');
+                            setDetectedFeatures([]);
+                          }}
+                          className="text-slate-400 hover:text-slate-600 text-xl"
+                        >
+                          <i className="fa-solid fa-times"></i>
+                        </button>
                       </div>
-                    )}
-                  </div>
-                </div>
-                
-                <div className="mb-4">
-                  <textarea 
-                    placeholder="Descripción" 
-                    value={newProductDescription}
-                    onChange={e => setNewProductDescription(e.target.value)}
-                    className="w-full bg-white p-3 rounded-lg border border-slate-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-100 outline-none resize-none"
-                    rows={2}
-                  />
-                </div>
-                
-                <div className="mb-4">
-                  <label className="block text-sm font-semibold text-slate-600 mb-2">
-                    Imágenes del Producto
-                    <span className="text-xs text-slate-400 ml-2">(Puedes subir múltiples fotos)</span>
-                    {newProductImages.length > 0 && (
-                      <span className="ml-2 text-xs font-bold text-purple-600">
-                        {newProductImages.length} {newProductImages.length === 1 ? 'imagen' : 'imágenes'} cargada{newProductImages.length !== 1 ? 's' : ''}
-                      </span>
-                    )}
-                  </label>
-                  <div className="flex gap-2">
-                    <button 
-                      onClick={() => {
-                        const input = document.createElement('input');
-                        input.type = 'file';
-                        input.accept = 'image/*';
-                        input.capture = 'environment' as any;
-                        input.multiple = true;
-                        input.onchange = handleProductMultipleImagesUpload as any;
-                        input.click();
-                      }}
-                      className="flex-1 bg-purple-50 text-purple-600 py-2 px-4 rounded-lg border border-purple-200 font-semibold hover:bg-purple-100 transition"
-                    >
-                      <i className="fa-solid fa-camera mr-2"></i> Cámara
-                    </button>
-                    <button 
-                      onClick={() => {
-                        const input = document.createElement('input');
-                        input.type = 'file';
-                        input.accept = 'image/*';
-                        input.multiple = true;
-                        input.onchange = handleProductMultipleImagesUpload as any;
-                        input.click();
-                      }}
-                      className="flex-1 bg-pink-50 text-pink-600 py-2 px-4 rounded-lg border border-pink-200 font-semibold hover:bg-pink-100 transition"
-                    >
-                      <i className="fa-solid fa-image mr-2"></i> Galería
-                    </button>
-                  </div>
-                  
-                  {/* Preview de imágenes */}
-                  <div className="mt-3">
-                    {newProductImages.length > 0 ? (
-                      <div className="flex flex-wrap gap-2">
-                        {newProductImages.map((img, idx) => (
-                          <div key={idx} className="relative inline-block group">
-                            <img 
-                              src={img} 
-                              alt={`Preview ${idx + 1}`}
-                              onClick={() => { setViewingImage(img); setViewingImageIndex(idx); }}
-                              className="w-24 h-24 rounded-lg object-cover border-2 border-slate-200 cursor-pointer hover:border-purple-500 transition" 
-                            />
-                            <div 
-                              onClick={() => { setViewingImage(img); setViewingImageIndex(idx); }}
-                              className="absolute inset-0 bg-black/0 hover:bg-black/20 rounded-lg transition cursor-pointer flex items-center justify-center"
-                            >
-                              <i className="fa-solid fa-search-plus text-white text-2xl opacity-0 group-hover:opacity-100 transition"></i>
+
+                      <div className="grid md:grid-cols-2 gap-4 mb-4">
+                        <input
+                          type="text"
+                          placeholder="Nombre del producto"
+                          value={newProductName}
+                          onChange={e => setNewProductName(e.target.value)}
+                          className="bg-white p-3 rounded-lg border border-slate-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-100 outline-none"
+                        />
+                        <input
+                          type="text"
+                          placeholder="Precio (ej: 500.000)"
+                          value={newProductPrice}
+                          onChange={handleProductPriceChange}
+                          className="bg-white p-3 rounded-lg border border-slate-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-100 outline-none"
+                        />
+                      </div>
+
+                      <div className="grid md:grid-cols-2 gap-4 mb-4">
+                        <input
+                          type="number"
+                          placeholder="Stock disponible"
+                          value={newProductStock}
+                          onChange={e => setNewProductStock(e.target.value)}
+                          className="bg-white p-3 rounded-lg border border-slate-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-100 outline-none"
+                        />
+                        <div className="relative">
+                          <select
+                            value={newProductCategory}
+                            onChange={e => setNewProductCategory(e.target.value)}
+                            className="bg-white p-3 rounded-lg border border-slate-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-100 outline-none w-full"
+                            style={newProductCategory ? {
+                              backgroundColor: categories.find(c => c.id === newProductCategory)?.color + '20',
+                              borderColor: categories.find(c => c.id === newProductCategory)?.color,
+                              fontWeight: '600'
+                            } : {}}
+                          >
+                            <option value="">Sin categoría</option>
+                            {categories.map(cat => (
+                              <option key={cat.id} value={cat.id}>{cat.name}</option>
+                            ))}
+                          </select>
+                          {newProductCategory && (
+                            <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
+                              <i
+                                className={`${categories.find(c => c.id === newProductCategory)?.icon} mr-2`}
+                                style={{ color: categories.find(c => c.id === newProductCategory)?.color }}
+                              ></i>
                             </div>
-                            <button 
-                              onClick={(e) => { e.stopPropagation(); handleRemoveProductImage(idx); }}
-                              className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600 z-10"
-                            >
-                              <i className="fa-solid fa-times"></i>
-                            </button>
-                            {idx === 0 && (
-                              <div className="absolute bottom-1 left-1 bg-purple-600 text-white text-xs px-2 py-0.5 rounded font-semibold">
-                                Principal
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="mb-4">
+                        <textarea
+                          placeholder="Descripción"
+                          value={newProductDescription}
+                          onChange={e => setNewProductDescription(e.target.value)}
+                          className="w-full bg-white p-3 rounded-lg border border-slate-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-100 outline-none resize-none"
+                          rows={2}
+                        />
+                      </div>
+
+                      <div className="mb-4">
+                        <label className="block text-sm font-semibold text-slate-600 mb-2">
+                          Imágenes del Producto
+                          <span className="text-xs text-slate-400 ml-2">(Puedes subir múltiples fotos)</span>
+                          {newProductImages.length > 0 && (
+                            <span className="ml-2 text-xs font-bold text-purple-600">
+                              {newProductImages.length} {newProductImages.length === 1 ? 'imagen' : 'imágenes'} cargada{newProductImages.length !== 1 ? 's' : ''}
+                            </span>
+                          )}
+                        </label>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => {
+                              const input = document.createElement('input');
+                              input.type = 'file';
+                              input.accept = 'image/*';
+                              input.capture = 'environment' as any;
+                              input.multiple = true;
+                              input.onchange = handleProductMultipleImagesUpload as any;
+                              input.click();
+                            }}
+                            className="flex-1 bg-purple-50 text-purple-600 py-2 px-4 rounded-lg border border-purple-200 font-semibold hover:bg-purple-100 transition"
+                          >
+                            <i className="fa-solid fa-camera mr-2"></i> Cámara
+                          </button>
+                          <button
+                            onClick={() => {
+                              const input = document.createElement('input');
+                              input.type = 'file';
+                              input.accept = 'image/*';
+                              input.multiple = true;
+                              input.onchange = handleProductMultipleImagesUpload as any;
+                              input.click();
+                            }}
+                            className="flex-1 bg-pink-50 text-pink-600 py-2 px-4 rounded-lg border border-pink-200 font-semibold hover:bg-pink-100 transition"
+                          >
+                            <i className="fa-solid fa-image mr-2"></i> Galería
+                          </button>
+                        </div>
+
+                        {/* Preview de imágenes */}
+                        <div className="mt-3">
+                          {newProductImages.length > 0 ? (
+                            <div className="flex flex-wrap gap-2">
+                              {newProductImages.map((img, idx) => (
+                                <div key={idx} className="relative inline-block group">
+                                  <img
+                                    src={img}
+                                    alt={`Preview ${idx + 1}`}
+                                    onClick={() => { setViewingImage(img); setViewingImageIndex(idx); }}
+                                    className="w-24 h-24 rounded-lg object-cover border-2 border-slate-200 cursor-pointer hover:border-purple-500 transition"
+                                  />
+                                  <div
+                                    onClick={() => { setViewingImage(img); setViewingImageIndex(idx); }}
+                                    className="absolute inset-0 bg-black/0 hover:bg-black/20 rounded-lg transition cursor-pointer flex items-center justify-center"
+                                  >
+                                    <i className="fa-solid fa-search-plus text-white text-2xl opacity-0 group-hover:opacity-100 transition"></i>
+                                  </div>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); handleRemoveProductImage(idx); }}
+                                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600 z-10"
+                                  >
+                                    <i className="fa-solid fa-times"></i>
+                                  </button>
+                                  {idx === 0 && (
+                                    <div className="absolute bottom-1 left-1 bg-purple-600 text-white text-xs px-2 py-0.5 rounded font-semibold">
+                                      Principal
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="text-center py-4 bg-slate-50 rounded-lg border-2 border-dashed border-slate-200">
+                              <i className="fa-solid fa-images text-slate-300 text-3xl mb-2"></i>
+                              <p className="text-xs text-slate-400">No hay imágenes cargadas</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* AI Enhancement Status & Suggestions */}
+                      {isEnhancingImage && (
+                        <div className="mb-4 p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg border border-purple-200 animate-pulse">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-purple-500 flex items-center justify-center">
+                              <i className="fa-solid fa-wand-magic-sparkles text-white text-sm animate-spin"></i>
+                            </div>
+                            <div className="flex-1">
+                              <p className="text-sm font-semibold text-purple-700">Analizando imagen con IA...</p>
+                              <p className="text-xs text-purple-600">Generando descripción profesional y sugerencias</p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {imageEnhancementSuggestions && !isEnhancingImage && (
+                        <div className="mb-4 space-y-3">
+                          {/* Sugerencias de mejora */}
+                          <div className="p-4 bg-gradient-to-br from-amber-50 to-orange-50 rounded-lg border border-amber-200">
+                            <div className="flex items-start gap-3">
+                              <div className="w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <i className="fa-solid fa-lightbulb text-white text-sm"></i>
+                              </div>
+                              <div className="flex-1">
+                                <p className="text-sm font-semibold text-amber-900 mb-1">Sugerencias para mejorar tu foto</p>
+                                <p className="text-xs text-amber-700 leading-relaxed">{imageEnhancementSuggestions}</p>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Características detectadas */}
+                          {detectedFeatures.length > 0 && (
+                            <div className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
+                              <div className="flex items-start gap-3">
+                                <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                  <i className="fa-solid fa-eye text-white text-sm"></i>
+                                </div>
+                                <div className="flex-1">
+                                  <p className="text-sm font-semibold text-blue-900 mb-2">Características detectadas</p>
+                                  <div className="flex flex-wrap gap-2">
+                                    {detectedFeatures.map((feature, idx) => (
+                                      <span key={idx} className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full border border-blue-200 font-medium">
+                                        <i className="fa-solid fa-check mr-1"></i>
+                                        {feature}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      <button
+                        onClick={handleSaveProduct}
+                        className="w-full bg-purple-600 text-white py-3 rounded-lg font-bold hover:bg-purple-700 transition shadow-lg"
+                      >
+                        <i className="fa-solid fa-save mr-2"></i>
+                        {editingProduct ? 'Actualizar Producto' : 'Guardar Producto'}
+                      </button>
+
+                      {editingProduct && (
+                        <button
+                          onClick={() => { setEditingProduct(null); setNewProductName(''); setNewProductPrice(''); setNewProductStock(''); setNewProductDescription(''); setNewProductImage(''); setNewProductImages([]); setImageEnhancementSuggestions(''); setDetectedFeatures([]); setShowProductForm(false); }}
+                          className="w-full bg-slate-200 text-slate-600 py-2 rounded-lg font-semibold hover:bg-slate-300 transition mt-2"
+                        >
+                          Cancelar Edición
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Products Gallery */}
+                  <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                    <i className="fa-solid fa-images text-purple-500"></i>
+                    {selectedCategory
+                      ? `${categories.find(c => c.id === selectedCategory)?.name} (${products.filter(p => p.categoryId === selectedCategory).length})`
+                      : `Productos en Catálogo (${products.length})`
+                    }
+                  </h3>
+
+                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                    {/* Add Product Button */}
+                    <button
+                      onClick={() => { setShowProductForm(true); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                      className="aspect-square bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl border-2 border-dashed border-purple-300 hover:border-purple-500 hover:from-purple-100 hover:to-pink-100 transition flex flex-col items-center justify-center gap-2 group"
+                    >
+                      <div className="w-16 h-16 rounded-full bg-purple-500 group-hover:bg-purple-600 transition flex items-center justify-center">
+                        <i className="fa-solid fa-plus text-white text-2xl"></i>
+                      </div>
+                      <span className="text-sm font-semibold text-purple-600 group-hover:text-purple-700">Nuevo Producto</span>
+                    </button>
+
+                    {/* Products */}
+                    {products
+                      .filter(p => selectedCategory === null || p.categoryId === selectedCategory)
+                      .map(product => (
+                        <div
+                          key={product.id}
+                          className="aspect-square bg-white rounded-xl border border-slate-200 overflow-hidden hover:shadow-lg transition group relative cursor-pointer"
+                          onClick={() => {
+                            setViewingProduct(product);
+                            if (product.images && product.images.length > 0) {
+                              setViewingImage(product.images[0]);
+                              setViewingImageIndex(0);
+                            } else {
+                              setViewingImage(product.image);
+                              setViewingImageIndex(0);
+                            }
+                          }}
+                        >
+                          <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
+
+                          {/* Hover Overlay */}
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition flex flex-col justify-end p-3">
+                            <h4 className="font-bold text-white text-sm mb-1 truncate">{product.name}</h4>
+                            <div className="text-white font-bold text-xs">
+                              {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(product.price)}
+                            </div>
+                            {product.stock !== undefined && (
+                              <div className="text-white/80 text-xs mt-1">Stock: {product.stock}</div>
+                            )}
+                            {product.images && product.images.length > 1 && (
+                              <div className="absolute top-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded-full">
+                                <i className="fa-solid fa-images mr-1"></i>
+                                {product.images.length}
                               </div>
                             )}
                           </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-center py-4 bg-slate-50 rounded-lg border-2 border-dashed border-slate-200">
-                        <i className="fa-solid fa-images text-slate-300 text-3xl mb-2"></i>
-                        <p className="text-xs text-slate-400">No hay imágenes cargadas</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
 
-                {/* AI Enhancement Status & Suggestions */}
-                {isEnhancingImage && (
-                  <div className="mb-4 p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg border border-purple-200 animate-pulse">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-purple-500 flex items-center justify-center">
-                        <i className="fa-solid fa-wand-magic-sparkles text-white text-sm animate-spin"></i>
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-sm font-semibold text-purple-700">Analizando imagen con IA...</p>
-                        <p className="text-xs text-purple-600">Generando descripción profesional y sugerencias</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {imageEnhancementSuggestions && !isEnhancingImage && (
-                  <div className="mb-4 space-y-3">
-                    {/* Sugerencias de mejora */}
-                    <div className="p-4 bg-gradient-to-br from-amber-50 to-orange-50 rounded-lg border border-amber-200">
-                      <div className="flex items-start gap-3">
-                        <div className="w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center flex-shrink-0 mt-0.5">
-                          <i className="fa-solid fa-lightbulb text-white text-sm"></i>
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-sm font-semibold text-amber-900 mb-1">Sugerencias para mejorar tu foto</p>
-                          <p className="text-xs text-amber-700 leading-relaxed">{imageEnhancementSuggestions}</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Características detectadas */}
-                    {detectedFeatures.length > 0 && (
-                      <div className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
-                        <div className="flex items-start gap-3">
-                          <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0 mt-0.5">
-                            <i className="fa-solid fa-eye text-white text-sm"></i>
-                          </div>
-                          <div className="flex-1">
-                            <p className="text-sm font-semibold text-blue-900 mb-2">Características detectadas</p>
-                            <div className="flex flex-wrap gap-2">
-                              {detectedFeatures.map((feature, idx) => (
-                                <span key={idx} className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full border border-blue-200 font-medium">
-                                  <i className="fa-solid fa-check mr-1"></i>
-                                  {feature}
-                                </span>
-                              ))}
-                            </div>
+                          {/* Action Buttons */}
+                          <div className="absolute top-2 left-2 flex gap-1 opacity-0 group-hover:opacity-100 transition">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleEditProduct(product); setShowProductForm(true); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                              className="w-8 h-8 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition flex items-center justify-center shadow-lg"
+                            >
+                              <i className="fa-solid fa-edit text-xs"></i>
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleDeleteProduct(product.id); }}
+                              className="w-8 h-8 bg-red-500 text-white rounded-full hover:bg-red-600 transition flex items-center justify-center shadow-lg"
+                            >
+                              <i className="fa-solid fa-trash text-xs"></i>
+                            </button>
                           </div>
                         </div>
-                      </div>
-                    )}
+                      ))}
                   </div>
-                )}
-                
-                <button 
-                  onClick={handleSaveProduct}
-                  className="w-full bg-purple-600 text-white py-3 rounded-lg font-bold hover:bg-purple-700 transition shadow-lg"
-                >
-                  <i className="fa-solid fa-save mr-2"></i>
-                  {editingProduct ? 'Actualizar Producto' : 'Guardar Producto'}
-                </button>
-                
-                {editingProduct && (
-                  <button 
-                    onClick={() => { setEditingProduct(null); setNewProductName(''); setNewProductPrice(''); setNewProductStock(''); setNewProductDescription(''); setNewProductImage(''); setNewProductImages([]); setImageEnhancementSuggestions(''); setDetectedFeatures([]); setShowProductForm(false); }}
-                    className="w-full bg-slate-200 text-slate-600 py-2 rounded-lg font-semibold hover:bg-slate-300 transition mt-2"
-                  >
-                    Cancelar Edición
-                  </button>
-                )}
-              </div>
-              )}
-              
-              {/* Products Gallery */}
-              <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
-                <i className="fa-solid fa-images text-purple-500"></i>
-                {selectedCategory 
-                  ? `${categories.find(c => c.id === selectedCategory)?.name} (${products.filter(p => p.categoryId === selectedCategory).length})`
-                  : `Productos en Catálogo (${products.length})`
-                }
-              </h3>
-              
-              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                {/* Add Product Button */}
-                <button
-                  onClick={() => { setShowProductForm(true); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                  className="aspect-square bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl border-2 border-dashed border-purple-300 hover:border-purple-500 hover:from-purple-100 hover:to-pink-100 transition flex flex-col items-center justify-center gap-2 group"
-                >
-                  <div className="w-16 h-16 rounded-full bg-purple-500 group-hover:bg-purple-600 transition flex items-center justify-center">
-                    <i className="fa-solid fa-plus text-white text-2xl"></i>
-                  </div>
-                  <span className="text-sm font-semibold text-purple-600 group-hover:text-purple-700">Nuevo Producto</span>
-                </button>
 
-                {/* Products */}
-                {products
-                  .filter(p => selectedCategory === null || p.categoryId === selectedCategory)
-                  .map(product => (
-                  <div 
-                    key={product.id} 
-                    className="aspect-square bg-white rounded-xl border border-slate-200 overflow-hidden hover:shadow-lg transition group relative cursor-pointer"
-                    onClick={() => {
-                      setViewingProduct(product);
-                      if (product.images && product.images.length > 0) {
-                        setViewingImage(product.images[0]);
-                        setViewingImageIndex(0);
-                      } else {
-                        setViewingImage(product.image);
-                        setViewingImageIndex(0);
-                      }
-                    }}
-                  >
-                    <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
-                    
-                    {/* Hover Overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition flex flex-col justify-end p-3">
-                      <h4 className="font-bold text-white text-sm mb-1 truncate">{product.name}</h4>
-                      <div className="text-white font-bold text-xs">
-                        {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(product.price)}
-                      </div>
-                      {product.stock !== undefined && (
-                        <div className="text-white/80 text-xs mt-1">Stock: {product.stock}</div>
-                      )}
-                      {product.images && product.images.length > 1 && (
-                        <div className="absolute top-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded-full">
-                          <i className="fa-solid fa-images mr-1"></i>
-                          {product.images.length}
-                        </div>
-                      )}
+                  {products.filter(p => selectedCategory === null || p.categoryId === selectedCategory).length === 0 && (
+                    <div className="text-center py-12 text-slate-400">
+                      <i className="fa-solid fa-box-open text-6xl mb-4 opacity-20"></i>
+                      <p className="font-semibold">No hay productos en esta categoría</p>
+                      <p className="text-sm">Agrega tu primer producto arriba</p>
                     </div>
-
-                    {/* Action Buttons */}
-                    <div className="absolute top-2 left-2 flex gap-1 opacity-0 group-hover:opacity-100 transition">
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); handleEditProduct(product); setShowProductForm(true); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                        className="w-8 h-8 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition flex items-center justify-center shadow-lg"
-                      >
-                        <i className="fa-solid fa-edit text-xs"></i>
-                      </button>
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); handleDeleteProduct(product.id); }}
-                        className="w-8 h-8 bg-red-500 text-white rounded-full hover:bg-red-600 transition flex items-center justify-center shadow-lg"
-                      >
-                        <i className="fa-solid fa-trash text-xs"></i>
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              
-              {products.filter(p => selectedCategory === null || p.categoryId === selectedCategory).length === 0 && (
-                <div className="text-center py-12 text-slate-400">
-                  <i className="fa-solid fa-box-open text-6xl mb-4 opacity-20"></i>
-                  <p className="font-semibold">No hay productos en esta categoría</p>
-                  <p className="text-sm">Agrega tu primer producto arriba</p>
-                </div>
-              )}
-              </>
+                  )}
+                </>
               )}
             </div>
           </div>
@@ -2160,7 +2534,7 @@ const App: React.FC = () => {
 
       {/* Image Viewer Modal */}
       {viewingImage && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/90 z-[60] flex items-center justify-center p-4 animate-fade-in"
           onClick={() => { setViewingImage(null); setViewingProduct(null); }}
         >
@@ -2170,7 +2544,7 @@ const App: React.FC = () => {
           >
             <i className="fa-solid fa-times"></i>
           </button>
-          
+
           {/* Navigation for product images or form images */}
           {((viewingProduct?.images && viewingProduct.images.length > 1) || newProductImages.length > 1) && (
             <>
@@ -2186,7 +2560,7 @@ const App: React.FC = () => {
               >
                 <i className="fa-solid fa-chevron-left"></i>
               </button>
-              
+
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -2201,14 +2575,14 @@ const App: React.FC = () => {
               </button>
             </>
           )}
-          
+
           <div className="max-w-5xl max-h-[90vh] relative" onClick={(e) => e.stopPropagation()}>
-            <img 
-              src={viewingImage} 
+            <img
+              src={viewingImage}
               alt="Vista completa"
               className="max-w-full max-h-[90vh] object-contain rounded-lg"
             />
-            
+
             {/* Image counter and product info */}
             <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex flex-col items-center gap-2">
               {((viewingProduct?.images && viewingProduct.images.length > 1) || newProductImages.length > 1) && (
@@ -2244,7 +2618,7 @@ const App: React.FC = () => {
                 <i className="fa-solid fa-times"></i>
               </button>
             </div>
-            
+
             <div className="flex-1 overflow-y-auto p-6">
               {/* Logo Upload Section */}
               <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-6 mb-6 border border-purple-200">
@@ -2354,7 +2728,7 @@ const App: React.FC = () => {
                 onClick={() => {
                   const input = document.createElement('input');
                   input.type = 'file';
-                  input.accept = 'application/pdf';
+                  input.accept = 'application/pdf,image/*';
                   input.onchange = handleDocumentUpload as any;
                   input.click();
                 }}
@@ -2365,8 +2739,8 @@ const App: React.FC = () => {
                     <i className="fa-solid fa-upload text-white text-2xl"></i>
                   </div>
                   <div className="text-center">
-                    <p className="font-bold text-slate-800 text-lg">Subir Documento PDF</p>
-                    <p className="text-sm text-slate-500 mt-1">RUT, Cámara de Comercio, Cédula, etc.</p>
+                    <p className="font-bold text-slate-800 text-lg">Subir Documento o Imagen</p>
+                    <p className="text-sm text-slate-500 mt-1">PDF (RUT, Cámara de Comercio, Cédula) o Imagen (Logo, Firma, etc.)</p>
                   </div>
                 </div>
               </button>
@@ -2394,7 +2768,7 @@ const App: React.FC = () => {
                               {doc.uploadDate.toLocaleDateString('es-ES')}
                             </span>
                           </div>
-                          
+
                           {/* Description */}
                           {editingDocument?.id === doc.id ? (
                             <div className="mt-2">
@@ -2499,6 +2873,40 @@ const App: React.FC = () => {
 
       {/* Firebase Connection Status */}
       {/* <FirebaseConnectionTest /> */}
+
+      {/* Toast Notification Container */}
+      {activeToast && (
+        <div 
+          onClick={() => {
+            setSelectedContactId(activeToast.senderId);
+            setActiveToast(null);
+          }}
+          className="fixed top-4 right-4 z-[999] max-w-sm w-full bg-slate-800/95 border border-slate-700/50 rounded-2xl shadow-2xl p-4 cursor-pointer backdrop-blur-md transition-all duration-300 hover:scale-[1.02] hover:border-blue-500/50 flex gap-3 animate-slide-in-right"
+        >
+          <div className="flex-shrink-0">
+            {activeToast.avatar ? (
+              <img src={activeToast.avatar} alt={activeToast.senderName} className="w-12 h-12 rounded-full object-cover border-2 border-blue-500/20" />
+            ) : (
+              <div className="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 font-bold text-lg">
+                {activeToast.senderName.charAt(0).toUpperCase()}
+              </div>
+            )}
+          </div>
+          <div className="flex-grow">
+            <h4 className="font-bold text-white text-sm">{activeToast.senderName}</h4>
+            <p className="text-slate-300 text-xs mt-0.5 line-clamp-2">{activeToast.text}</p>
+          </div>
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              setActiveToast(null);
+            }} 
+            className="flex-shrink-0 text-slate-400 hover:text-white transition w-6 h-6 rounded-full flex items-center justify-center bg-slate-700/30 self-start"
+          >
+            <i className="fa-solid fa-xmark text-xs"></i>
+          </button>
+        </div>
+      )}
     </div>
   );
 };
