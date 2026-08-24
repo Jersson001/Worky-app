@@ -25,16 +25,23 @@ export const formatCurrency = (value: string | number): string => {
 
 /**
  * Extracts the raw numeric string from a user-typed currency input.
- * Use this in every `onChange` handler that deals with money fields.
+ * Permite puntos (.) y comas (,) como separadores decimales.
  */
 export const extractRawAmount = (input: string): string => {
-  return input.replace(/\D/g, '');
+  return input.replace(/[^\d.,]/g, '');
 };
 
 /**
- * Converts a raw amount string to a number, defaulting to 0 if empty.
+ * Convierte un string de monto a número, soportando . o , como decimal.
+ * Ej: "1.500,50" → 1500.50, "1,500.50" → 1500.50
  */
 export const parseAmount = (raw: string): number => {
-  const n = Number(raw);
+  if (!raw) return 0;
+
+  const normalized = raw
+    .replace(/\s/g, '')
+    .replace(/[.,]/g, (match) => match === ',' ? '.' : '');
+
+  const n = Number(normalized);
   return Number.isFinite(n) ? n : 0;
 };
