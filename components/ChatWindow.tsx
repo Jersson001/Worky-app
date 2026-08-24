@@ -44,6 +44,7 @@ interface ChatWindowProps {
   activeAction?: 'invoice' | 'quote' | 'collection_account' | 'expense' | null;
   onClearAction?: () => void;
   onUpdateMessage: (messageId: string, metadata: any) => void;
+  onDeleteMessage?: (messageId: string) => void;
   businessLogo?: string;
   digitalSignature?: string;
   userProfile?: UserProfileData | null;
@@ -55,7 +56,7 @@ interface ChatWindowProps {
 export const ChatWindow: React.FC<ChatWindowProps> = ({
   contact, allContacts, messages, onSendMessage, onUpdateStage, onAddExpense,
   onUpdateProjectInfo, products, paymentAccounts, onBack, activeAction, onClearAction,
-  onUpdateMessage, businessLogo, digitalSignature, userProfile, onOpenGantt,
+  onUpdateMessage, businessLogo, digitalSignature, userProfile, onOpenGantt, onDeleteMessage,
 }) => {
   // ── UI Toggles ──
   const [showInfo, setShowInfo] = useState(false);
@@ -394,6 +395,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
           onViewDocument={(type, data) => setViewingDocument({ type, data })}
           onMarkPayment={handleMarkPayment}
           onUpdateMessage={onUpdateMessage}
+          onDeleteMessage={onDeleteMessage}
           onCopyPaymentInfo={handleCopyPaymentInfo}
           onShowQR={handleShowQR}
         />

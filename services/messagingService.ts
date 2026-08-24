@@ -311,14 +311,18 @@ export const updateMessage = async (
 };
 
 export const deleteMessage = async (messageId: string): Promise<void> => {
-  const { error } = await supabase
+  const { error, count } = await supabase
     .from('messages')
-    .delete()
+    .delete({ count: 'exact' })
     .eq('id', messageId);
 
   if (error) {
     console.error('Error al eliminar mensaje:', error);
     throw error;
+  }
+
+  if (count === 0) {
+    throw new Error('No se pudo eliminar el mensaje en la base de datos (0 filas afectadas). Asegúrate de haber ejecutado el script SQL de permisos RLS (supabase_delete_messages_rls.sql).');
   }
 };
 
@@ -329,6 +333,7 @@ export const deleteMessage = async (messageId: string): Promise<void> => {
 const rowToContact = (row: any): Contact => ({
   id: row.contact_user_id ?? row.id,
   clientName: row.client_name,
+  alias: row.alias ?? undefined,
   avatar: row.avatar,
   phone: row.phone,
   status: row.status,
@@ -341,11 +346,7 @@ const rowToContact = (row: any): Contact => ({
 });
 
 export const addContact = async (contact: Contact): Promise<void> => {
-  // Alta mutua vía RPC SECURITY DEFINER (add_contact_mutual): el cliente NO
-  // puede insertar una fila de contacts en nombre del otro usuario (el RLS
-  // "auth.uid() = user_id" lo bloquea, y así debe ser). Sin esto, mi fila
-  // se guardaba pero la del otro fallaba, y el otro usuario nunca veía el
-  // contacto ni podía leer los mensajes que sí llegaban a la tabla `messages`.
+  // Alta mutua vía RPC SECURITY DEFINER (add_contact_mutual)
   const { error } = await supabase.rpc('add_contact_mutual', {
     p_other_user: contact.id,
     p_client_name: contact.clientName,
@@ -353,11 +354,12 @@ export const addContact = async (contact: Contact): Promise<void> => {
     p_phone: contact.phone ?? null,
     p_status: contact.status,
     p_role: contact.role,
+    p_alias: contact.alias ?? null,
   });
 
   if (error) {
     if (error.message.includes('function public.add_contact_mutual') || error.code === '42883') {
-      throw new Error('Falta aplicar supabase_contacts_mutual_rpc.sql en Supabase.');
+      throw new Error('Falta aplicar supabase_contacts_alias_and_anchor.sql en Supabase.');
     }
     throw error;
   }

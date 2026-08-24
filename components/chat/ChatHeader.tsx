@@ -38,7 +38,10 @@ export const ChatHeader: React.FC<ChatHeaderProps> = React.memo(({
           <img src={contact.avatar} alt={contact.clientName} className="w-10 h-10 rounded-full object-cover mr-3 shadow-lg border-2 border-slate-600" />
         </div>
         <div className="flex flex-col">
-          <h2 className="text-white font-semibold text-base">{contact.clientName}</h2>
+          <h2 className="text-white font-semibold text-base flex items-center gap-1.5">
+            {contact.alias || contact.clientName}
+            {contact.alias && <span className="text-xs text-slate-400 font-normal">({contact.clientName})</span>}
+          </h2>
           <span className="text-xs text-blue-400 font-medium truncate flex items-center gap-1">
             {hasMultipleProjects && (
               <span className="bg-blue-500/20 text-blue-400 px-1 rounded text-[9px] font-bold">{approvedProjectsCount}</span>

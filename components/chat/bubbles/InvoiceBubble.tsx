@@ -2,16 +2,18 @@
  * Invoice message bubble component.
  */
 import React from 'react';
-import { Message } from '../../../types';
+import { Message, ContactRole } from '../../../types';
 import { formatCurrency } from '../../../utils/currency';
 
 interface InvoiceBubbleProps {
   msg: Message;
+  contactRole?: ContactRole;
   onView: () => void;
   onMarkPayment: () => void;
+  onUpdateMessage: (messageId: string, metadata: any) => void;
 }
 
-export const InvoiceBubble: React.FC<InvoiceBubbleProps> = React.memo(({ msg, onView, onMarkPayment }) => {
+export const InvoiceBubble: React.FC<InvoiceBubbleProps> = React.memo(({ msg, contactRole, onView, onMarkPayment, onUpdateMessage }) => {
   const meta = msg.metadata;
   if (!meta) return null;
 
@@ -20,9 +22,21 @@ export const InvoiceBubble: React.FC<InvoiceBubbleProps> = React.memo(({ msg, on
       {/* Status Badge */}
       <div className="absolute top-2 right-2 z-10">
         {msg.isPaid ? (
-          <span className="bg-emerald-500 text-white text-[9px] font-bold uppercase px-2 py-1 rounded-full shadow-lg">
-            Pagada
-          </span>
+          meta.paymentConfirmed === true ? (
+            <span className="bg-emerald-500 text-white text-[9px] font-bold uppercase px-2 py-1 rounded-full shadow-lg">
+              Pagada
+            </span>
+          ) : (
+            msg.sender === 'me' ? (
+              <span className="bg-amber-500 text-amber-950 text-[9px] font-bold uppercase px-2 py-1 rounded-full shadow-lg animate-pulse">
+                Por Confirmar
+              </span>
+            ) : (
+              <span className="bg-emerald-500 text-white text-[9px] font-bold uppercase px-2 py-1 rounded-full shadow-lg">
+                Pagada
+              </span>
+            )
+          )
         ) : (
           <span className="bg-amber-500 text-amber-950 text-[9px] font-bold uppercase px-2 py-1 rounded-full shadow-lg">
             Pendiente
@@ -42,13 +56,24 @@ export const InvoiceBubble: React.FC<InvoiceBubbleProps> = React.memo(({ msg, on
       </div>
 
       {msg.isPaid && (
-        <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-2 mb-2 flex items-center gap-2">
-          <i className="fa-solid fa-circle-check text-emerald-600"></i>
-          <div className="text-[10px] text-emerald-700">
-            <div className="font-bold">PAGADO</div>
-            <div>{msg.paidDate ? new Date(msg.paidDate).toLocaleDateString() : ''}</div>
+        meta.paymentConfirmed === true ? (
+          <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-2 mb-2 flex items-center gap-2 text-slate-800">
+            <i className="fa-solid fa-circle-check text-emerald-600"></i>
+            <div className="text-[10px] text-emerald-700">
+              <span className="font-bold text-slate-800 block text-[9px] uppercase tracking-wider">
+                PAGO CONFIRMADO
+              </span>
+              <span>{msg.paidDate ? new Date(msg.paidDate).toLocaleDateString() : ''}</span>
+            </div>
           </div>
-        </div>
+        ) : msg.sender === 'me' ? (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-2 mb-2 flex items-center gap-2 text-slate-800 animate-pulse">
+            <i className="fa-solid fa-triangle-exclamation text-amber-600 animate-pulse"></i>
+            <div className="text-[10px] text-amber-700 font-bold uppercase block text-[9px] tracking-wider">
+              Pago por Confirmar
+            </div>
+          </div>
+        ) : null
       )}
 
       <div className="text-xs space-y-2 max-h-40 overflow-y-auto custom-scrollbar">
@@ -70,17 +95,58 @@ export const InvoiceBubble: React.FC<InvoiceBubbleProps> = React.memo(({ msg, on
         <button onClick={onView} className="flex-1 bg-indigo-600 text-white py-2.5 rounded-lg text-xs font-bold hover:bg-indigo-700 transition flex items-center justify-center gap-2">
           <i className="fa-solid fa-eye"></i> Ver
         </button>
-        {!msg.isPaid ? (
-          <button
-            onClick={onMarkPayment}
-            className="flex-1 bg-amber-500 text-white py-2.5 rounded-lg text-xs font-bold hover:bg-amber-600 transition flex items-center justify-center gap-2"
-          >
-            <i className="fa-solid fa-clock"></i> Por Pagar
-          </button>
-        ) : (
-          <div className="flex-1 bg-slate-100 text-slate-500 py-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-2 cursor-not-allowed">
-            <i className="fa-solid fa-paper-plane"></i> Comprobante Enviado
-          </div>
+        {!msg.isPaid ? (() => {
+          const isPendingCollection = contactRole === 'client' && msg.sender === 'me';
+          return (
+            <button
+              onClick={onMarkPayment}
+              className="flex-1 bg-amber-500 text-white py-2.5 rounded-lg text-xs font-bold hover:bg-amber-600 transition flex items-center justify-center gap-2"
+            >
+              <i className={isPendingCollection ? "fa-solid fa-hand-holding-dollar" : "fa-solid fa-clock"}></i>
+              {isPendingCollection ? 'Por Cobrar' : 'A Pagar'}
+            </button>
+          );
+        })() : (
+          meta.paymentConfirmed === true ? (
+            <div className="flex-1 bg-emerald-600 text-white py-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-2 shadow-sm shadow-emerald-500/20">
+              <i className="fa-solid fa-check-circle"></i> Confirmado
+            </div>
+          ) : msg.sender === 'me' ? (
+            <div className="flex-1 flex gap-1">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onUpdateMessage(msg.id, {
+                    ...msg,
+                    metadata: { ...meta, paymentConfirmed: true }
+                  });
+                }}
+                className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded-lg text-[10px] font-bold transition flex items-center justify-center gap-1 shadow-sm"
+                title="Confirmar Pago"
+              >
+                <i className="fa-solid fa-check text-[11px]"></i> Confirmar
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onUpdateMessage(msg.id, {
+                    ...msg,
+                    isPaid: false,
+                    paidDate: null,
+                    metadata: { ...meta, paymentConfirmed: false }
+                  });
+                }}
+                className="flex-1 bg-rose-600 hover:bg-rose-700 text-white py-2 rounded-lg text-[10px] font-bold transition flex items-center justify-center gap-1 shadow-sm"
+                title="Rechazar Pago"
+              >
+                <i className="fa-solid fa-xmark text-[11px]"></i> Rechazar
+              </button>
+            </div>
+          ) : (
+            <div className="flex-1 bg-amber-500 text-white py-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-2 shadow-sm animate-pulse">
+              <i className="fa-solid fa-clock"></i> Por Confirmar
+            </div>
+          )
         )}
       </div>
     </div>

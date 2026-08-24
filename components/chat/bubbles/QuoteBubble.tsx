@@ -50,7 +50,7 @@ export const QuoteBubble: React.FC<QuoteBubbleProps> = React.memo(({ msg, onView
         <div className="w-full bg-rose-50 text-rose-700 py-2 rounded-lg text-xs font-bold border border-rose-100 flex items-center justify-center gap-1">
           <i className="fa-solid fa-circle-xmark"></i> Rechazada
         </div>
-      ) : msg.sender === 'me' ? (
+      ) : msg.sender !== 'me' ? (
         <div className="flex gap-2">
           <button
             onClick={() => onUpdateMessage(msg.id, { metadata: { ...meta, status: 'rejected', approved: false } })}

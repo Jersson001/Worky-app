@@ -114,10 +114,15 @@ export const ChatFooter: React.FC<ChatFooterProps> = React.memo(({
 
       {/* Camera button */}
       <div className="relative">
-        <button onClick={onCameraCapture} className="text-slate-400 text-xl hover:text-blue-400 transition">
+        <button onClick={onCameraCapture} className="text-slate-400 text-xl hover:text-blue-400 transition" title="Cámara">
           <i className="fa-solid fa-camera"></i>
         </button>
       </div>
+
+      {/* Clip/Attach button */}
+      <button onClick={onTriggerDocumentInput} className="text-slate-400 text-xl hover:text-blue-400 transition" title="Adjuntar archivo" type="button">
+        <i className="fa-solid fa-paperclip"></i>
+      </button>
 
       {inputText ? (
         <button onClick={handleSend} className="text-white bg-gradient-to-r from-blue-600 to-violet-600 w-10 h-10 rounded-full flex items-center justify-center hover:from-blue-500 hover:to-violet-500 transition shadow-lg shadow-blue-500/30">

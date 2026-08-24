@@ -14,13 +14,14 @@ interface MessageListProps {
   onViewDocument: (type: 'quote' | 'invoice' | 'receipt' | 'collection_account', data: any) => void;
   onMarkPayment: (msg: Message) => void;
   onUpdateMessage: (messageId: string, metadata: any) => void;
+  onDeleteMessage?: (messageId: string) => void;
   onCopyPaymentInfo: (metadata: any) => void;
   onShowQR: (qrUrl: string, metadata: any) => void;
 }
 
 export const MessageList: React.FC<MessageListProps> = React.memo(({
   messages, showSystemMessages, contactRole, contactName, copiedText,
-  onViewDocument, onMarkPayment, onUpdateMessage, onCopyPaymentInfo, onShowQR,
+  onViewDocument, onMarkPayment, onUpdateMessage, onDeleteMessage, onCopyPaymentInfo, onShowQR,
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -50,6 +51,7 @@ export const MessageList: React.FC<MessageListProps> = React.memo(({
           onViewDocument={onViewDocument}
           onMarkPayment={onMarkPayment}
           onUpdateMessage={onUpdateMessage}
+          onDeleteMessage={onDeleteMessage}
           onCopyPaymentInfo={onCopyPaymentInfo}
           onShowQR={onShowQR}
         />

@@ -452,6 +452,7 @@ const App: React.FC = () => {
   const [showNewContactModal, setShowNewContactModal] = useState(false);
   const [showUserSearchModal, setShowUserSearchModal] = useState(false);
   const [newContactName, setNewContactName] = useState('');
+  const [newContactAlias, setNewContactAlias] = useState('');
   const [newProjectName, setNewProjectName] = useState('');
   const [newContactPhone, setNewContactPhone] = useState('');
   const [newContactRole, setNewContactRole] = useState<ContactRole>('client');
@@ -820,9 +821,9 @@ const App: React.FC = () => {
           [selectedContactId]: (prev[selectedContactId] || []).filter(m => m.id !== messageId)
         }));
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error al eliminar el mensaje:', error);
-      alert('No se pudo eliminar el mensaje.');
+      alert('No se pudo eliminar el mensaje: ' + (error.message || 'Error al conectar con Supabase.'));
     }
   };
 
@@ -1494,58 +1495,62 @@ const App: React.FC = () => {
   };
 
   const handleCreateContact = async () => {
-    if (newContactName && newProjectName) {
-      const newProject: Project = {
-        id: Date.now().toString() + '_p',
-        name: newProjectName,
-        value: 0,
-        stage: ProjectStage.Inquiry,
-        expenses: [],
-        startDate: new Date()
-      };
+    if (!newContactName.trim() || !newProjectName.trim()) {
+      alert('El nombre del contacto y del proyecto son obligatorios.');
+      return;
+    }
 
-      const newContact: Contact = {
-        // contacts.contact_user_id es UUID en Supabase: un id tipo
-        // Date.now().toString() era rechazado con "invalid input
-        // syntax for type uuid" y el contacto nunca se guardaba.
-        id: crypto.randomUUID(),
-        clientName: newContactName,
-        avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(newContactName)}&background=random`,
-        phone: newContactPhone,
-        status: UserStatus.Lead,
-        role: newContactRole,
-        projects: [newProject],
-        lastMessage: 'Nuevo contacto',
-        lastMessageTime: new Date(),
-        unreadCount: 0
-      };
+    if (!newContactPhone.trim()) {
+      alert('El número de teléfono es obligatorio. Servirá como Ancla de vinculación cuando el cliente se registre en Worky.');
+      return;
+    }
 
-      try {
-        // Guardar contacto en Firebase
-        await addContact(newContact);
-        // Guardar proyecto
-        await saveProject(newContact.id, newProject);
-        // Actualizar contacto con proyectos
-        await updateContactWithProjects(newContact);
+    const newProject: Project = {
+      id: Date.now().toString() + '_p',
+      name: newProjectName.trim(),
+      value: 0,
+      stage: ProjectStage.Inquiry,
+      expenses: [],
+      startDate: new Date()
+    };
 
-        setContacts(prev => [newContact, ...prev]);
-        setMessages(prev => ({ ...prev, [newContact.id]: [] }));
-      } catch (error) {
-        console.error('Error creando contacto:', error);
-        // Fallback: agregar al estado local
-        setContacts(prev => [newContact, ...prev]);
-        setMessages(prev => ({ ...prev, [newContact.id]: [] }));
-      }
+    const newContact: Contact = {
+      id: crypto.randomUUID(),
+      clientName: newContactName.trim(),
+      alias: newContactAlias.trim() || undefined,
+      avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(newContactName.trim())}&background=random`,
+      phone: newContactPhone.trim(),
+      status: UserStatus.Lead,
+      role: newContactRole,
+      projects: [newProject],
+      lastMessage: 'Nuevo contacto',
+      lastMessageTime: new Date(),
+      unreadCount: 0
+    };
 
+    try {
+      // Guardar contacto y proyecto en Supabase (await)
+      await addContact(newContact);
+      await saveProject(newContact.id, newProject);
+      await updateContactWithProjects(newContact);
+
+      // SOLO actualizar la UI local si Supabase guardó con éxito el contacto
+      setContacts(prev => [newContact, ...prev]);
+      setMessages(prev => ({ ...prev, [newContact.id]: [] }));
       setSelectedContactId(newContact.id);
       setShowNewContactModal(false);
       if (pendingDocumentAction) { setChatAction(pendingDocumentAction); setPendingDocumentAction(null); }
 
       // Limpiar campos del formulario
       setNewContactName('');
+      setNewContactAlias('');
       setNewProjectName('');
       setNewContactPhone('');
       setNewContactRole('client');
+    } catch (error: any) {
+      console.error('Error creando contacto en Supabase:', error);
+      alert('Error al guardar el contacto en la base de datos: ' + (error.message || 'No se pudo conectar con Supabase.'));
+      // NO se actualiza la UI local si la base de datos rechazó el guardado.
     }
   };
 
@@ -1786,6 +1791,7 @@ const App: React.FC = () => {
                     <button onClick={() => {
                       // Limpiar campos antes de abrir el modal
                       setNewContactName('');
+                      setNewContactAlias('');
                       setNewProjectName('');
                       setNewContactPhone('');
                       setNewContactRole('client');
@@ -1884,6 +1890,7 @@ const App: React.FC = () => {
               setShowNewContactModal(false);
               // Limpiar campos al cerrar
               setNewContactName('');
+              setNewContactAlias('');
               setNewProjectName('');
               setNewContactPhone('');
               setNewContactRole('client');
@@ -1897,11 +1904,12 @@ const App: React.FC = () => {
                   </button>
                 ))}
               </div>
-              <input type="text" placeholder="Nombre" value={newContactName} onChange={e => setNewContactName(e.target.value)} className="w-full bg-slate-700/50 text-white p-3 rounded-xl outline-none border border-slate-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 placeholder-slate-500" />
-              <input type="text" placeholder="Primer Proyecto / Empresa" value={newProjectName} onChange={e => setNewProjectName(e.target.value)} className="w-full bg-slate-700/50 text-white p-3 rounded-xl outline-none border border-slate-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 placeholder-slate-500" />
-              <input type="tel" placeholder="Teléfono" value={newContactPhone} onChange={e => setNewContactPhone(e.target.value)} className="w-full bg-slate-700/50 text-white p-3 rounded-xl outline-none border border-slate-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 placeholder-slate-500" />
+              <input type="text" placeholder="Nombre completo *" value={newContactName} onChange={e => setNewContactName(e.target.value)} className="w-full bg-slate-700/50 text-white p-3 rounded-xl outline-none border border-slate-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 placeholder-slate-500" />
+              <input type="text" placeholder="Alias (Opcional - solo visible para ti)" value={newContactAlias} onChange={e => setNewContactAlias(e.target.value)} className="w-full bg-slate-700/50 text-white p-3 rounded-xl outline-none border border-slate-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 placeholder-slate-500" />
+              <input type="text" placeholder="Primer Proyecto / Empresa *" value={newProjectName} onChange={e => setNewProjectName(e.target.value)} className="w-full bg-slate-700/50 text-white p-3 rounded-xl outline-none border border-slate-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 placeholder-slate-500" />
+              <input type="tel" placeholder="Teléfono (Obligatorio - Ancla de vinculación) *" value={newContactPhone} onChange={e => setNewContactPhone(e.target.value)} className="w-full bg-slate-700/50 text-white p-3 rounded-xl outline-none border border-slate-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 placeholder-slate-500" />
             </div>
-            <button onClick={handleCreateContact} disabled={!newContactName} className="w-full bg-gradient-to-r from-blue-600 to-violet-600 text-white py-3 rounded-xl font-bold mt-6 hover:from-blue-500 hover:to-violet-500 transition disabled:opacity-50 shadow-lg shadow-blue-500/30">Guardar</button>
+            <button onClick={handleCreateContact} disabled={!newContactName.trim() || !newContactPhone.trim() || !newProjectName.trim()} className="w-full bg-gradient-to-r from-blue-600 to-violet-600 text-white py-3 rounded-xl font-bold mt-6 hover:from-blue-500 hover:to-violet-500 transition disabled:opacity-50 shadow-lg shadow-blue-500/30">Guardar</button>
           </div>
         </div>
       )}

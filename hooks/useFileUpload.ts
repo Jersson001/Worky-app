@@ -14,7 +14,7 @@ import { FileMetadata } from '../types';
 
 interface UseFileUploadOptions {
   contactId: string;
-  onSendMessage: (text: string, type?: string, metadata?: any) => void;
+  onSendMessage: (text: string, type?: any, metadata?: any, mediaUrl?: string, mediaType?: string) => void;
 }
 
 interface UseFileUploadReturn {
@@ -69,7 +69,10 @@ export const useFileUpload = ({
         downloadUrl: result.url,
       };
 
-      onSendMessage(file.name, 'file', fileMetadata);
+      const isImage = file.type.startsWith('image/');
+      const messageType = isImage ? 'image' : 'file';
+
+      onSendMessage(file.name, messageType, fileMetadata, result.url, file.type);
       setUploadProgress(100);
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Error desconocido';
@@ -89,25 +92,11 @@ export const useFileUpload = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const TWO_MB = 2 * 1024 * 1024;
-
-    if (file.type.startsWith('image/') && file.size < TWO_MB) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const imageUrl = event.target?.result as string;
-        onSendMessage('', 'image', { url: imageUrl });
-      };
-      reader.onerror = () => {
-        console.error('Error reading image file');
-        alert('Error al leer la imagen.');
-      };
-      reader.readAsDataURL(file);
-    } else {
-      uploadFile(file);
-    }
+    // Subir todas las imágenes a Supabase Storage
+    uploadFile(file);
 
     if (e.target) e.target.value = '';
-  }, [onSendMessage, uploadFile]);
+  }, [uploadFile]);
 
   /**
    * Handle document/general file selection.

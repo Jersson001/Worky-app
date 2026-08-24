@@ -236,6 +236,7 @@ export interface Project {
 export interface Contact {
   id: string;
   clientName: string;
+  alias?: string;
   avatar: string;
   phone: string;
   status: UserStatus;

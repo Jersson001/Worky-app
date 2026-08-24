@@ -300,6 +300,21 @@ export const savePaymentAccount = async (
   }
 };
 
+export const deletePaymentAccount = async (accountId: string): Promise<void> => {
+  try {
+    const userId = getCurrentUserId();
+    const { error } = await supabase
+      .from('payment_accounts')
+      .delete()
+      .eq('id', accountId)
+      .eq('user_id', userId);
+    if (error) throw error;
+  } catch (error) {
+    console.error('Error deleting payment account:', error);
+    throw error;
+  }
+};
+
 export const listenToPaymentAccounts = (
   callback: (accounts: PaymentAccountData[]) => void
 ): (() => void) => {

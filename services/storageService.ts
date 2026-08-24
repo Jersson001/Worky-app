@@ -48,18 +48,19 @@ export const uploadFileForChat = async (
   try {
     const userId = getCurrentUserId();
     const timestamp = Date.now();
-    const fileName = `${timestamp}_${file.name}`;
-    const filePath = `chats/${userId}/${contactId}/${fileName}`;
+    const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+    const fileName = `${timestamp}_${sanitizedFileName}`;
+    const filePath = `${userId}/${contactId}/${fileName}`;
 
-    // Subir archivo
+    // Subir archivo al bucket 'chat_media'
     const { error: uploadError } = await supabase.storage
-      .from('chats')
+      .from('chat_media')
       .upload(filePath, file);
 
     if (uploadError) throw uploadError;
 
     // Obtener URL pública
-    const { data } = supabase.storage.from('chats').getPublicUrl(filePath);
+    const { data } = supabase.storage.from('chat_media').getPublicUrl(filePath);
 
     return {
       url: data.publicUrl,
