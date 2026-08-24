@@ -3,7 +3,6 @@
  * Encapsulates upload state, validation, progress tracking, and error handling.
  */
 import React, { useState, useRef, useCallback } from 'react';
-import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
 import {
   uploadFileForChat,
   isFileTypeAllowed,
@@ -27,8 +26,8 @@ interface UseFileUploadReturn {
   handleImageUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleDocumentUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleQuoteImageUpload: (e: React.ChangeEvent<HTMLInputElement>, idx: number, onImagesLoaded: (idx: number, images: string[]) => void) => void;
-  triggerDocumentInput: () => Promise<void>;
-  triggerCameraCapture: () => Promise<void>;
+  triggerDocumentInput: () => void;
+  triggerCameraCapture: () => void;
 }
 
 export const useFileUpload = ({
@@ -146,49 +145,13 @@ export const useFileUpload = ({
     });
   }, []);
 
-  const triggerDocumentInput = useCallback(async () => {
-    try {
-      const photo = await Camera.getPhoto({
-        quality: 90,
-        allowEditing: false,
-        resultType: CameraResultType.Uri,
-        source: CameraSource.Photos,
-      });
+  const triggerDocumentInput = useCallback(() => {
+    documentInputRef.current?.click();
+  }, []);
 
-      if (photo.webPath) {
-        const blob = await fetch(photo.webPath).then(r => r.blob());
-        const file = new File([blob], photo.filename || 'document.jpg', { type: blob.type });
-        await uploadFile(file);
-      }
-    } catch (error: unknown) {
-      const msg = error instanceof Error ? error.message : 'Error seleccionando archivo';
-      if (msg !== 'User cancelled photos app') {
-        console.error('Error selecting document:', error);
-      }
-    }
-  }, [uploadFile]);
-
-  const triggerCameraCapture = useCallback(async () => {
-    try {
-      const photo = await Camera.getPhoto({
-        quality: 90,
-        allowEditing: false,
-        resultType: CameraResultType.Uri,
-        source: CameraSource.Camera,
-      });
-
-      if (photo.webPath) {
-        const blob = await fetch(photo.webPath).then(r => r.blob());
-        const file = new File([blob], photo.filename || `photo-${Date.now()}.jpg`, { type: blob.type });
-        await uploadFile(file);
-      }
-    } catch (error: unknown) {
-      const msg = error instanceof Error ? error.message : 'Error capturando foto';
-      if (msg !== 'User cancelled photos app') {
-        console.error('Error capturing photo:', error);
-      }
-    }
-  }, [uploadFile]);
+  const triggerCameraCapture = useCallback(() => {
+    cameraInputRef.current?.click();
+  }, []);
 
   return {
     isUploading,
