@@ -7,7 +7,7 @@ import React, { useState } from 'react';
 import { ModalWrapper } from './ModalWrapper';
 import ProFeatureGuard from '../../ProFeatureGuard';
 import { QuoteItem, Product, ContactRole, QuoteMode, CarpentrySection, CarpentryCategoryKey, CarpentryLineItem, CarpentryUnit } from '../../../types';
-import { formatCurrency, extractRawAmount } from '../../../utils/currency';
+import { formatCurrency, extractRawAmount, parseAmount } from '../../../utils/currency';
 import { calculateTax } from '../../../utils/taxCalculations';
 import { CARPENTRY_CATEGORIES, computeGrandTotal, computeSectionSubtotal, computeGroupSubtotal, computeLineSubtotal } from '../../../utils/carpentryCalculations';
 
@@ -113,8 +113,8 @@ const CarpentryItemRow: React.FC<{
                 value={widthInput}
                 onChange={e => setWidthInput(e.target.value)}
                 onBlur={() => {
-                  const normalized = widthInput.replace(',', '.');
-                  onUpdate('width', normalized === '' ? undefined : parseFloat(normalized));
+                  const value = widthInput === '' ? undefined : parseAmount(widthInput);
+                  onUpdate('width', value);
                 }}
                 className="w-full bg-slate-50 p-1.5 rounded-lg text-[11px] text-slate-900 outline-none border border-slate-200 focus:border-blue-500 focus:bg-white transition"
               />
@@ -126,8 +126,8 @@ const CarpentryItemRow: React.FC<{
                 value={heightInput}
                 onChange={e => setHeightInput(e.target.value)}
                 onBlur={() => {
-                  const normalized = heightInput.replace(',', '.');
-                  onUpdate('height', normalized === '' ? undefined : parseFloat(normalized));
+                  const value = heightInput === '' ? undefined : parseAmount(heightInput);
+                  onUpdate('height', value);
                 }}
                 className="w-full bg-slate-50 p-1.5 rounded-lg text-[11px] text-slate-900 outline-none border border-slate-200 focus:border-blue-500 focus:bg-white transition"
               />
@@ -148,8 +148,8 @@ const CarpentryItemRow: React.FC<{
               value={measureInput}
               onChange={e => setMeasureInput(e.target.value)}
               onBlur={() => {
-                const normalized = measureInput.replace(',', '.');
-                onUpdate('measure', normalized === '' ? undefined : parseFloat(normalized));
+                const value = measureInput === '' ? undefined : parseAmount(measureInput);
+                onUpdate('measure', value);
               }}
               className="w-full bg-slate-50 p-1.5 rounded-lg text-[11px] text-slate-900 outline-none border border-slate-200 focus:border-blue-500 focus:bg-white transition"
             />
