@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { QuoteData, InvoiceData, ReceiptData, CollectionAccountData, UserProfileData } from '../types';
 import { shareQuoteViaWhatsApp, shareInvoiceViaWhatsApp, openWhatsApp, generateDocumentId, saveSharedDocument, generateDocumentViewLink } from '../services/whatsappService';
+import { computeLineSubtotal, computeGroupSubtotal, computeSectionSubtotal } from '../utils/carpentryCalculations';
 
 interface DocumentViewerProps {
   type: 'quote' | 'invoice' | 'receipt' | 'collection_account' | 'expense_receipt';
@@ -40,7 +41,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({ type, data, onCl
       digitalSignature
     };
     saveSharedDocument(documentId, documentToShare);
-    const documentLink = generateDocumentViewLink(documentId);
+    const documentLink = generateDocumentViewLink(documentId, documentToShare);
 
     if (type === 'quote') {
       const quoteData = data as QuoteData;
@@ -52,7 +53,8 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({ type, data, onCl
           description: item.description,
           quantity: item.quantity,
           price: item.price
-        }))
+        })),
+        sections: quoteData.sections,
       }, documentLink);
     } else if (type === 'invoice') {
       const invoiceData = data as InvoiceData;
@@ -60,14 +62,14 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({ type, data, onCl
         invoiceNumber: invoiceData.number,
         clientName: invoiceData.clientName,
         total: invoiceData.total,
-        dueDate: invoiceData.date // Puedes agregar un campo dueDate si lo tienes
+        dueDate: invoiceData.date
       }, documentLink);
     } else {
       // Para otros tipos de documentos, enviar un mensaje genérico con link
       const documentName = type === 'receipt' ? 'Recibo' : 
                           type === 'collection_account' ? 'Cuenta de Cobro' : 
                           'Documento';
-      openWhatsApp(contactPhone, `📄 Te comparto el ${documentName} generado.\n\n📎 *Ver documento completo:*\n${documentLink}\n\n📱 *Descarga Worky App para gestionar tus proyectos:*\nhttps://worky.app/download`);
+      openWhatsApp(contactPhone, `📄 Te comparto el ${documentName} generado.\n\n📎 *Ver documento completo:*\n${documentLink}\n\n📲 *Descarga Worky App en Google Play:*\nhttps://play.google.com/store/apps/details?id=com.worky.app.v2&hl=es`);
     }
   };
 
@@ -239,6 +241,44 @@ END:VCARD`);
 
         {/* Items Table */}
         <div className="mb-10">
+            {data.sections && data.sections.length > 0 ? (
+                <div className="space-y-6">
+                    {data.sections.map((section) => (
+                        <div key={section.id}>
+                            <div className="bg-blue-600 text-white px-3 py-2 rounded-t-lg">
+                                <span className="text-sm font-bold uppercase tracking-wide">{section.name}</span>
+                            </div>
+                            <div className="border border-t-0 border-gray-200 rounded-b-lg overflow-hidden">
+                                {section.groups.map((group) => (
+                                    <div key={group.id}>
+                                        <div className="bg-gray-50 px-3 py-1.5 border-t border-gray-200">
+                                            <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">{group.label}</span>
+                                        </div>
+                                        <table className="w-full">
+                                            <tbody>
+                                                {group.items.filter(i => i.description).map((item) => (
+                                                    <tr key={item.id} className="border-t border-gray-100">
+                                                        <td className="py-2 px-3 text-sm text-gray-800">{item.description}</td>
+                                                        <td className="py-2 px-2 text-center text-xs text-gray-500 w-20">{item.quantity} {item.unit}{(item.unit === 'ML' || item.unit === 'M2') && item.measure ? ` × ${item.measure}` : ''}</td>
+                                                        <td className="py-2 px-3 text-right text-sm text-gray-700 w-28">${item.unitCost.toLocaleString()}</td>
+                                                        <td className="py-2 px-3 text-right text-sm font-bold text-gray-900 w-28">${computeLineSubtotal(item).toLocaleString()}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                        <div className="flex justify-end px-3 py-1.5 bg-gray-50 border-t border-gray-100">
+                                            <span className="text-xs font-semibold text-gray-600">Subtotal {group.label}: ${computeGroupSubtotal(group).toLocaleString()}</span>
+                                        </div>
+                                    </div>
+                                ))}
+                                <div className="flex justify-end px-3 py-2 bg-blue-50 border-t border-blue-100">
+                                    <span className="text-sm font-bold text-blue-700">Subtotal {section.name}: ${computeSectionSubtotal(section).toLocaleString()}</span>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            ) : (
             <table className="w-full">
                 <thead>
                     <tr className="bg-blue-600 text-white">
@@ -277,6 +317,7 @@ END:VCARD`);
                     ))}
                 </tbody>
             </table>
+            )}
         </div>
 
         {/* Total Section */}

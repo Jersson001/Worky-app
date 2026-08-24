@@ -31,29 +31,61 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = React.memo(({
 
   return (
     <ModalWrapper show={show} onClose={onClose} title="Registrar Gasto" icon="fa-circle-minus" iconColor="text-rose-500">
-      {(contact.role === 'supplier' || contact.projects.length > 0) && (
-        <div className="mb-3">
-          <label className="text-xs text-slate-700 font-bold uppercase block mb-1">Asignar a Proyecto</label>
-          <select value={targetProjectId} onChange={(e) => onTargetProjectChange(e.target.value)} className="w-full bg-slate-50 text-slate-700 rounded-lg p-3 border border-slate-200 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100">
-            {contact.role === 'supplier' ? (
-              <>
-                <option value="">-- Seleccionar --</option>
-                {allContacts.filter(c => c.role === 'client').map(c =>
-                  c.projects.map(p => <option key={p.id} value={p.id}>{c.clientName} - {p.name}</option>)
-                )}
-              </>
-            ) : (
-              contact.projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)
-            )}
-          </select>
+      <div className="space-y-3">
+        {(contact.role === 'supplier' || contact.projects.length > 0) && (
+          <div>
+            <label className="text-xs text-slate-700 font-bold uppercase mb-1.5 block tracking-wide">Asignar a Proyecto</label>
+            <select
+              value={targetProjectId}
+              onChange={(e) => onTargetProjectChange(e.target.value)}
+              className="w-full bg-slate-50 text-slate-900 font-semibold rounded-xl p-3 border border-slate-200 outline-none focus:border-rose-500 focus:bg-white transition text-sm"
+            >
+              {contact.role === 'supplier' ? (
+                <>
+                  <option value="" className="text-slate-900 bg-white">-- Seleccionar proyecto --</option>
+                  {allContacts.filter(c => c.role === 'client').map(c =>
+                    c.projects.map(p => <option key={p.id} value={p.id} className="text-slate-900 bg-white">{c.clientName} - {p.name}</option>)
+                  )}
+                </>
+              ) : (
+                contact.projects.map(p => <option key={p.id} value={p.id} className="text-slate-900 bg-white">{p.name}</option>)
+              )}
+            </select>
+          </div>
+        )}
+
+        <div>
+          <label className="text-xs text-slate-700 font-bold uppercase mb-1.5 block tracking-wide">Descripción</label>
+          <input
+            type="text"
+            placeholder="Descripción del gasto (ej. Compra de bisagras)"
+            value={description}
+            onChange={(e) => onDescriptionChange(e.target.value)}
+            className="w-full bg-slate-50 text-slate-900 font-semibold placeholder-slate-400 rounded-xl p-3 outline-none border border-slate-200 focus:border-rose-500 focus:bg-white transition text-sm"
+          />
         </div>
-      )}
-      <input type="text" placeholder="Descripción" value={description} onChange={(e) => onDescriptionChange(e.target.value)} className="w-full bg-slate-50 text-slate-700 rounded-lg p-3 mb-3 outline-none border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" />
-      <div className="relative mb-4">
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-700 font-semibold">$</span>
-        <input type="text" placeholder="Valor" value={amount ? Number(amount).toLocaleString('es-CO') : ''} onChange={handleAmountChange} className="w-full bg-slate-50 text-slate-700 rounded-lg p-3 pl-8 outline-none border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" />
+
+        <div>
+          <label className="text-xs text-slate-700 font-bold uppercase mb-1.5 block tracking-wide">Valor</label>
+          <div className="relative">
+            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-base font-bold">$</span>
+            <input
+              type="text"
+              placeholder="0"
+              value={amount ? Number(amount).toLocaleString('es-CO') : ''}
+              onChange={handleAmountChange}
+              className="w-full bg-slate-50 text-slate-900 font-bold placeholder-slate-400 rounded-xl p-3 pl-8 outline-none border border-slate-200 focus:border-rose-500 focus:bg-white transition text-base"
+            />
+          </div>
+        </div>
+
+        <button
+          onClick={onSave}
+          className="w-full bg-gradient-to-r from-rose-500 to-rose-600 text-white py-3 rounded-xl font-bold shadow-lg shadow-rose-500/25 hover:shadow-xl transition active:scale-[0.99] flex items-center justify-center gap-2 mt-2"
+        >
+          <i className="fa-solid fa-circle-minus"></i> Registrar Gasto
+        </button>
       </div>
-      <button onClick={onSave} className="w-full bg-rose-500 text-white py-3 rounded-lg font-bold shadow hover:bg-rose-600 transition">Registrar Gasto</button>
     </ModalWrapper>
   );
 });

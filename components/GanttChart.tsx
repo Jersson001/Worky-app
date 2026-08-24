@@ -350,36 +350,36 @@ export const GanttChart: React.FC<GanttChartProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-slate-900 rounded-2xl w-full max-w-7xl h-[90vh] flex flex-col shadow-2xl overflow-hidden border border-slate-700/50">
+    <div className="fixed inset-0 bg-slate-900/40 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl w-full max-w-7xl h-[90vh] flex flex-col shadow-xl overflow-hidden">
         {/* Header */}
-        <div className="bg-gradient-to-r from-blue-600 via-blue-700 to-violet-600 text-white p-4 flex items-center justify-between">
+        <div className="p-4 border-b border-slate-100 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="bg-white/20 p-3 rounded-xl backdrop-blur-sm">
-              <i className="fa-solid fa-chart-gantt text-xl"></i>
+            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center text-white shadow-md shadow-blue-500/30 flex-shrink-0">
+              <i className="fa-solid fa-chart-gantt text-lg"></i>
             </div>
             <div>
-              <h2 className="text-xl font-bold">Diagrama de Gantt</h2>
-              <p className="text-white/70 text-sm">Gestión visual de cronograma de proyectos</p>
+              <h2 className="text-xl font-bold text-slate-900">Diagrama de Gantt</h2>
+              <p className="text-slate-500 text-[13px]">Gestión visual de cronograma de proyectos</p>
             </div>
           </div>
-          <button 
+          <button
             onClick={onClose}
-            className="text-white/70 hover:text-white hover:bg-white/10 p-2 rounded-lg transition"
+            className="text-slate-400 hover:text-slate-700 transition bg-slate-100 hover:bg-slate-200 w-9 h-9 rounded-full flex items-center justify-center"
           >
-            <i className="fa-solid fa-times text-xl"></i>
+            <i className="fa-solid fa-xmark text-lg"></i>
           </button>
         </div>
 
         {/* Toolbar */}
-        <div className="bg-slate-800 border-b border-slate-700 p-3 flex flex-wrap gap-3 items-center justify-between">
+        <div className="bg-white border-b border-slate-100 p-3 flex flex-wrap gap-3 items-center justify-between">
           {/* Selector de proyecto */}
           <div className="flex items-center gap-3">
-            <label className="text-sm font-medium text-slate-400">Proyecto:</label>
+            <label className="text-sm font-medium text-slate-500">Proyecto:</label>
             <select
               value={selectedProject || ''}
               onChange={(e) => setSelectedProject(e.target.value)}
-              className="bg-slate-700 border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-w-[250px]"
+              className="bg-slate-50 border border-slate-200 text-slate-900 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500 min-w-[250px]"
             >
               {allProjects.map((project, index) => (
                 <option key={`${project.contactId}-${project.id}-${index}`} value={project.id}>
@@ -391,16 +391,16 @@ export const GanttChart: React.FC<GanttChartProps> = ({
 
           {/* Controles de vista */}
           <div className="flex items-center gap-2">
-            <span className="text-sm text-slate-400">Vista:</span>
-            <div className="bg-slate-700 border border-slate-600 rounded-lg p-1 flex">
+            <span className="text-sm text-slate-500">Vista:</span>
+            <div className="bg-slate-50 rounded-lg p-1 flex">
               {(['days', 'weeks', 'months'] as const).map((mode) => (
                 <button
                   key={mode}
                   onClick={() => setViewMode(mode)}
                   className={`px-3 py-1 rounded text-sm font-medium transition ${
-                    viewMode === mode 
-                      ? 'bg-blue-600 text-white' 
-                      : 'text-slate-300 hover:bg-slate-600'
+                    viewMode === mode
+                      ? 'bg-white text-blue-600 shadow-sm'
+                      : 'text-slate-500 hover:text-slate-700'
                   }`}
                 >
                   {mode === 'days' ? 'Días' : mode === 'weeks' ? 'Semanas' : 'Meses'}
@@ -415,9 +415,9 @@ export const GanttChart: React.FC<GanttChartProps> = ({
             <button
               onClick={() => setShowAlertsPanel(!showAlertsPanel)}
               className={`relative px-3 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 ${
-                activeAlerts.length > 0 
-                  ? 'bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white animate-pulse shadow-lg shadow-rose-500/30' 
-                  : 'bg-slate-700 hover:bg-slate-600 text-slate-300'
+                activeAlerts.length > 0
+                  ? 'bg-gradient-to-br from-rose-500 to-rose-600 text-white shadow-md shadow-rose-500/30 hover:shadow-lg'
+                  : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
               }`}
             >
               <i className="fa-solid fa-bell"></i>
@@ -430,14 +430,14 @@ export const GanttChart: React.FC<GanttChartProps> = ({
             </button>
             <button
               onClick={() => setShowTemplateSelector(true)}
-              className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white px-3 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 shadow-lg shadow-amber-500/30"
+              className="bg-gradient-to-br from-amber-500 to-orange-500 text-white px-3 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 shadow-md shadow-amber-500/30 hover:shadow-lg"
             >
               <i className="fa-solid fa-wand-magic-sparkles"></i>
               Usar Plantilla
             </button>
             <button
               onClick={addPhase}
-              className="bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-700 hover:to-violet-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 shadow-lg shadow-blue-500/30"
+              className="bg-gradient-to-br from-blue-600 to-blue-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 shadow-md shadow-blue-500/30 hover:shadow-lg"
             >
               <i className="fa-solid fa-plus"></i>
               Agregar Fase
@@ -447,7 +447,7 @@ export const GanttChart: React.FC<GanttChartProps> = ({
 
         {/* Alerts Panel */}
         {showAlertsPanel && (
-          <div className="bg-gradient-to-r from-slate-800 to-slate-800 border-b border-rose-500/30 p-4">
+          <div className="bg-rose-50 border-b border-rose-100 p-4">
             <div className="flex items-center justify-between mb-3">
               <h4 className="font-bold text-slate-800 flex items-center gap-2">
                 <i className="fa-solid fa-bell text-rose-500"></i>

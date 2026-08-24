@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { ChatList } from './components/ChatList';
 import { ChatWindow } from './components/ChatWindow';
 import { FinancialReport } from './components/FinancialReport';
@@ -21,8 +21,8 @@ import { Contact, Message, UserStatus, ProjectStage, Product, Expense, Story, Pa
 import { LoginScreen } from './components/LoginScreen';
 import { WelcomeOnboarding } from './components/WelcomeOnboarding';
 import { authService } from './services/authService';
-import { sendMessage as sendMessageToFirebase, listenToMessages, listenToContacts, addContact, deleteContact, saveUserProfile, getUserProfile, initializeUserId, setCurrentUserId, getCurrentUserId, searchUserByPhoneOrEmail, addContactFromSearch, deleteMessage, updateMessage } from './services/messagingService';
-import { saveProduct, deleteProduct, listenToProducts, saveCategory, deleteCategory, listenToCategories, saveProject, updateProject, addExpenseToProject, updateContactWithProjects, listenToPaymentAccounts, savePaymentAccount, deletePaymentAccount, PaymentAccountData } from './services/dataService';
+import { sendMessage as sendMessageToFirebase, listenToMessages, listenToContacts, addContact, deleteContact, saveUserProfile, getUserProfile, initializeUserId, setCurrentUserId, getCurrentUserId, searchUserByPhoneOrEmail, addContactFromSearch, deleteMessage, updateMessage, listenToGlobalIncomingMessages, markChatAsRead, markMessagesAsDelivered, markMessagesAsRead } from './services/messagingService';
+import { saveProduct, deleteProduct, listenToProducts, saveCategory, deleteCategory, listenToCategories, saveProject, updateProject, addExpenseToProject, updateContactWithProjects, listenToPaymentAccounts, savePaymentAccount, deletePaymentAccount, PaymentAccountData, fetchProjectsForContact, listenToProjects } from './services/dataService';
 import { supabase } from './services/supabaseConfig';
 
 // Mock Data (usado como fallback o inicial)
@@ -335,13 +335,34 @@ const App: React.FC = () => {
             [selectedContactId]: uniqueMessages
           };
         });
+
+        // Marcar mensajes como entregados cuando se carguen
+        markMessagesAsDelivered(selectedContactId);
+
+        // Marcar como leídos si la ventana está enfocada
+        if (document.visibilityState === 'visible') {
+          markMessagesAsRead(selectedContactId);
+        }
       }
     });
 
+    // Escuchar cambios de visibilidad para marcar como leídos cuando el usuario vuelve al chat
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        markMessagesAsRead(selectedContactId);
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
     return () => {
       unsubscribeMessages();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [selectedContactId, isAuthenticated]);
+
+
+
+
 
   // Manejar la finalización del onboarding
   const handleOnboardingComplete = async (userData: UserProfileData) => {
@@ -460,6 +481,180 @@ const App: React.FC = () => {
   const [messages, setMessages] = useState<Record<string, Message[]>>({});
   const [stories, setStories] = useState<Story[]>([]);
   const [savedAccounts, setSavedAccounts] = useState<ThirdPartyAccount[]>([]);
+
+  // Cálculo de mensajes no leídos globales para la barra de navegación
+  const hasUnreadMessages = useMemo(() => {
+    return contacts.some(c => (c.unreadCount || 0) > 0);
+  }, [contacts]);
+
+  // Notificación flotante (Toast) para mensajes recibidos
+  const [incomingToast, setIncomingToast] = useState<{ id: string; senderId: string; senderName: string; text: string; avatar?: string } | null>(null);
+
+  // Estado para notificaciones leídas/no leídas de la campana
+  const [notificationsRead, setNotificationsRead] = useState(false);
+
+  // Conteo dinámico de notificaciones pendientes (cotizaciones sin responder + facturas/cuentas de cobro pendientes de pago)
+  const unreadNotificationsCount = useMemo(() => {
+    let count = 0;
+    contacts.forEach(contact => {
+      const contactMsgs = messages[contact.id] || [];
+      contactMsgs.forEach(msg => {
+        if (msg.type === 'quote' && (!msg.metadata?.status || msg.metadata?.status === 'pending')) {
+          count++;
+        }
+        if ((msg.type === 'invoice' || msg.type === 'collection_account') && !msg.isPaid) {
+          count++;
+        }
+      });
+    });
+    return count;
+  }, [contacts, messages]);
+
+  const hasUnreadNotifications = !notificationsRead && unreadNotificationsCount > 0;
+
+  // Función para abrir panel de notificaciones y marcar como leídas
+  const handleOpenNotifications = useCallback(() => {
+    console.warn('⚠️ [Notificaciones] Marcando notificaciones como leídas en estado de React (Aún no existe una tabla "notifications" física estructurada en Supabase).');
+    setShowNotifications(true);
+    setSelectedContactId(null);
+    setSelectedGroupId(null);
+    setShowFinancials(false);
+    setShowStatus(false);
+    setNotificationsRead(true);
+  }, []);
+
+  // Suscripción a Supabase Realtime para notificaciones y actualización en vivo de mensajes no leídos
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const unsubscribeGlobalRealtime = listenToGlobalIncomingMessages((senderId, incomingMsg) => {
+      // 1. Actualización en tiempo real del estado local de mensajes en React
+      setMessages(prev => {
+        const currentList = prev[senderId] || [];
+        if (currentList.some(m => m.id === incomingMsg.id)) return prev;
+        return {
+          ...prev,
+          [senderId]: [...currentList, incomingMsg]
+        };
+      });
+
+      // 2. Verificar si el chat del remitente actual está ABIERTO/ACTIVO en pantalla
+      const isChatActive = selectedContactId === senderId && document.visibilityState === 'visible';
+
+      const isMedia = incomingMsg.type === 'image' || incomingMsg.type === 'file' || !!incomingMsg.mediaUrl;
+      const previewText = isMedia ? '📎 Archivo o imagen adjunta' : (incomingMsg.text || 'Nuevo mensaje');
+
+      // Resetear estado de notificaciones leídas si el mensaje entrante es una cotización o factura
+      if (['quote', 'invoice', 'collection_account'].includes(incomingMsg.type)) {
+        setNotificationsRead(false);
+      }
+
+      // 3. Actualizar la lista de contactos: incrementar unreadCount si NO está activo, y actualizar último mensaje
+      setContacts(prev => prev.map(c => {
+        if (c.id !== senderId) return c;
+        return {
+          ...c,
+          unreadCount: isChatActive ? 0 : (c.unreadCount || 0) + 1,
+          lastMessage: previewText,
+          lastMessageTime: incomingMsg.timestamp || new Date(),
+        };
+      }));
+
+      // 4. Si el chat NO está activo, mostrar Toast flotante y notificación nativa
+      if (!isChatActive) {
+        const contact = contacts.find(c => c.id === senderId);
+        const senderName = contact ? contact.clientName : 'Contacto';
+        const avatar = contact ? contact.avatar : undefined;
+
+        const toastId = Math.random().toString();
+        setIncomingToast({ id: toastId, senderId, senderName, text: previewText, avatar });
+
+        setTimeout(() => {
+          setIncomingToast(curr => (curr?.id === toastId ? null : curr));
+        }, 5000);
+
+        if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+          try {
+            new Notification('Nuevo mensaje recibido', {
+              body: `${senderName}: ${previewText}`,
+              icon: avatar || '/worky-logo 2.png',
+              tag: senderId,
+            });
+          } catch (err) {
+            console.warn('Error en notificación nativa:', err);
+          }
+        }
+      }
+    });
+
+    // 5. Limpieza (Cleanup) de la suscripción al desmontar
+    return () => {
+      unsubscribeGlobalRealtime();
+    };
+  }, [isAuthenticated, contacts, selectedContactId]);
+
+  // Sincronizar proyectos de Supabase (Doble Vía) cuando se selecciona un contacto, al recibir mensajes o por evento Realtime
+  useEffect(() => {
+    if (!selectedContactId || !isAuthenticated) return;
+
+    const syncProjects = async () => {
+      try {
+        const fetchedProjects = await fetchProjectsForContact(selectedContactId);
+        const chatMsgs = messages[selectedContactId] || [];
+        const acceptedQuoteMsgs = chatMsgs.filter(m => m.type === 'quote' && m.metadata?.status === 'accepted');
+
+        const localQuoteProjects: Project[] = [];
+        for (const msg of acceptedQuoteMsgs) {
+          const quoteCode = msg.metadata?.number || 'COT';
+          const existsInFetched = fetchedProjects.some(p => (p as any).metadata?.quoteCode === quoteCode);
+          if (!existsInFetched) {
+            const projectName = msg.metadata?.items && msg.metadata.items.length > 0
+              ? msg.metadata.items[0].description
+              : `Proyecto ${quoteCode}`;
+            localQuoteProjects.push({
+              id: `proj_${quoteCode}_${msg.id}`,
+              name: projectName,
+              value: msg.metadata?.total || 0,
+              stage: ProjectStage.InProgress,
+              expenses: [],
+              startDate: new Date(msg.timestamp || Date.now()),
+              metadata: { quoteCode: quoteCode }
+            } as any);
+          }
+        }
+
+        const allProjects = [...fetchedProjects, ...localQuoteProjects];
+
+        setContacts(prev => prev.map(c => {
+          if (c.id !== selectedContactId) return c;
+
+          const existing = c.projects || [];
+          const merged = [...existing];
+
+          for (const p of allProjects) {
+            const exists = merged.some(ep => ep.id === p.id || ((p as any).metadata?.quoteCode && (ep as any).metadata?.quoteCode === (p as any).metadata?.quoteCode));
+            if (!exists) {
+              merged.unshift(p);
+            }
+          }
+
+          return { ...c, projects: merged };
+        }));
+      } catch (err) {
+        console.error('Error sincronizando proyectos:', err);
+      }
+    };
+
+    void syncProjects();
+
+    const unsubscribeProjects = listenToProjects(() => {
+      void syncProjects();
+    });
+
+    return () => {
+      unsubscribeProjects();
+    };
+  }, [selectedContactId, isAuthenticated, messages[selectedContactId]]);
 
   // Cargar datos persistentes de localStorage al montar
   useEffect(() => {
@@ -771,11 +966,14 @@ const App: React.FC = () => {
             : c
         ));
 
-        // Save project to Firebase
+        // Guardar proyecto en Supabase asociando a contratista y cliente (doble vía)
         try {
-          await saveProject(selectedContactId, newProject);
+          const currentUserId = getCurrentUserId();
+          const contractorId = targetMessage.sender === 'me' ? currentUserId : selectedContactId;
+          const clientId = targetMessage.sender === 'me' ? selectedContactId : currentUserId;
+          await saveProject(selectedContactId, newProject, contractorId, clientId);
         } catch (error) {
-          console.error('Error guardando proyecto en Firebase:', error);
+          console.error('Error guardando proyecto en Supabase:', error);
         }
 
         setTimeout(() => {
@@ -1475,6 +1673,9 @@ const App: React.FC = () => {
     try {
       await deleteContact(contactId);
 
+      // Actualizar inmediatamente la UI local (React state)
+      setContacts(prev => prev.filter(c => c.id !== contactId));
+
       // Si el contacto eliminado estaba seleccionado, deseleccionarlo
       if (selectedContactId === contactId) {
         setSelectedContactId(null);
@@ -1486,11 +1687,9 @@ const App: React.FC = () => {
         delete newMessages[contactId];
         return newMessages;
       });
-
-      // El listener de Firebase actualizará automáticamente la lista de contactos
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error eliminando contacto:', error);
-      alert('Error al eliminar el contacto. Por favor intenta de nuevo.');
+      alert('No se pudo eliminar el contacto: ' + (error.message || 'Error de conexión con la base de datos.'));
     }
   };
 
@@ -1515,7 +1714,7 @@ const App: React.FC = () => {
     };
 
     const newContact: Contact = {
-      id: crypto.randomUUID(),
+      id: `lead_${crypto.randomUUID()}`,
       clientName: newContactName.trim(),
       alias: newContactAlias.trim() || undefined,
       avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(newContactName.trim())}&background=random`,
@@ -1529,15 +1728,22 @@ const App: React.FC = () => {
     };
 
     try {
-      // Guardar contacto y proyecto en Supabase (await)
-      await addContact(newContact);
-      await saveProject(newContact.id, newProject);
-      await updateContactWithProjects(newContact);
+      // Guardar contacto en Supabase (obligatorio)
+      const savedContact = await addContact(newContact);
+      const finalContact = savedContact || newContact;
+
+      // Guardar proyecto inicial (tolerante a errores de esquema o caché)
+      try {
+        await saveProject(finalContact.id, newProject);
+        await updateContactWithProjects(finalContact);
+      } catch (projErr) {
+        console.warn('Advertencia al asociar proyecto inicial:', projErr);
+      }
 
       // SOLO actualizar la UI local si Supabase guardó con éxito el contacto
-      setContacts(prev => [newContact, ...prev]);
-      setMessages(prev => ({ ...prev, [newContact.id]: [] }));
-      setSelectedContactId(newContact.id);
+      setContacts(prev => [finalContact, ...prev.filter(c => c.id !== finalContact.id && c.id !== newContact.id)]);
+      setMessages(prev => ({ ...prev, [finalContact.id]: prev[finalContact.id] || [] }));
+      setSelectedContactId(finalContact.id);
       setShowNewContactModal(false);
       if (pendingDocumentAction) { setChatAction(pendingDocumentAction); setPendingDocumentAction(null); }
 
@@ -1606,18 +1812,65 @@ const App: React.FC = () => {
   const showRightCol = isChatOpen ? 'flex' : (mobileTab === 'home' ? 'flex' : 'hidden md:flex');
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden relative font-sans text-slate-200" style={{ background: 'linear-gradient(135deg, #0f172a 0%, #020617 100%)' }}>
+    <div className="flex h-screen w-screen overflow-hidden relative font-sans text-slate-900 bg-slate-50">
+
+      {/* Alerta Visual (Toast) para Mensajes Recibidos en Tiempo Real */}
+      {incomingToast && (
+        <div 
+          onClick={() => {
+            if (incomingToast.senderId) {
+              const targetId = incomingToast.senderId;
+              setSelectedContactId(targetId);
+              setContacts(prev => prev.map(c => c.id === targetId ? { ...c, unreadCount: 0 } : c));
+              void markChatAsRead(targetId);
+              setIncomingToast(null);
+            }
+          }}
+          className="fixed top-5 right-5 z-50 flex items-center gap-3.5 bg-white text-slate-900 px-4 py-3 rounded-2xl shadow-xl border border-slate-200 cursor-pointer transition hover:scale-[1.02] max-w-sm animate-bounce-short"
+        >
+          {incomingToast.avatar ? (
+            <img src={incomingToast.avatar} alt="Avatar" className="w-10 h-10 rounded-full object-cover flex-shrink-0" />
+          ) : (
+            <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold flex-shrink-0">
+              💬
+            </div>
+          )}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between gap-1">
+              <h4 className="text-[11px] font-bold text-blue-600 uppercase tracking-wider">Nuevo mensaje recibido</h4>
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+            </div>
+            <p className="text-xs font-semibold text-slate-900 truncate mt-0.5">{incomingToast.senderName}</p>
+            <p className="text-xs font-normal text-slate-500 truncate">{incomingToast.text}</p>
+          </div>
+          <button
+            onClick={(e) => { e.stopPropagation(); setIncomingToast(null); }}
+            className="text-slate-400 hover:text-slate-900 p-1 ml-1"
+          >
+            <i className="fa-solid fa-xmark text-sm"></i>
+          </button>
+        </div>
+      )}
 
       {/* Left Column: Chat List */}
-      <div className={`w-full md:w-[30%] md:max-w-[400px] md:min-w-[300px] flex-col border-r border-slate-700/50 bg-slate-900 ${showLeftCol}`}>
+      <div className={`w-full md:w-[30%] md:max-w-[400px] md:min-w-[300px] flex-col border-r border-slate-200 bg-white ${showLeftCol}`}>
         <ChatList
           contacts={contacts}
           selectedContactId={selectedContactId}
-          onSelectContact={(id) => { setSelectedContactId(id); setSelectedGroupId(null); setShowFinancials(false); setShowStatus(false); setShowNotifications(false); }}
+          onSelectContact={(id) => {
+            setSelectedContactId(id);
+            setSelectedGroupId(null);
+            setShowFinancials(false);
+            setShowStatus(false);
+            setShowNotifications(false);
+            setContacts(prev => prev.map(c => c.id === id ? { ...c, unreadCount: 0 } : c));
+            void markChatAsRead(id);
+          }}
           onOpenFinancials={() => { setShowFinancials(true); setSelectedContactId(null); setSelectedGroupId(null); setShowStatus(false); setShowNotifications(false); }}
           onOpenStatus={() => { setShowStatus(true); setSelectedContactId(null); setSelectedGroupId(null); setShowFinancials(false); setShowNotifications(false); }}
           onOpenWallet={() => setShowWallet(true)}
-          onOpenNotifications={() => { setShowNotifications(true); setSelectedContactId(null); setSelectedGroupId(null); setShowFinancials(false); setShowStatus(false); }}
+          onOpenNotifications={handleOpenNotifications}
+          hasUnreadNotifications={hasUnreadNotifications}
           onOpenHome={() => { setSelectedContactId(null); setSelectedGroupId(null); setShowFinancials(false); setShowStatus(false); setShowNotifications(false); setMobileTab('home'); }}
           onDeleteContact={handleDeleteContact}
           onLogout={handleLogout}
@@ -1631,7 +1884,7 @@ const App: React.FC = () => {
       </div>
 
       {/* Right Column: Main Content */}
-      <div className={`flex-1 flex flex-col h-full ${showRightCol}`} style={{ background: 'linear-gradient(180deg, #0f172a 0%, #1e293b 100%)' }}>
+      <div className={`flex-1 flex flex-col h-full bg-slate-50 ${showRightCol}`}>
         {showStatus ? (
           <StatusView contacts={contacts} myStories={stories.filter(s => s.contactId === 'me')} contactStories={stories.filter(s => s.contactId !== 'me')} onClose={() => setShowStatus(false)} onAddStory={handleAddStory} startInCamera={startCamera} />
         ) : showNotifications ? (
@@ -1640,7 +1893,7 @@ const App: React.FC = () => {
           <FinancialReport contacts={contacts} onClose={() => setShowFinancials(false)} />
         ) : selectedContactId ? (
           <ChatWindow
-            contact={contacts.find(c => c.id === selectedContactId)!}
+            contact={contacts.find(c => c.id === selectedContactId) as Contact}
             allContacts={contacts}
             messages={messages[selectedContactId] || []}
             onSendMessage={handleSendMessage}
@@ -1663,55 +1916,46 @@ const App: React.FC = () => {
             }}
           />
         ) : (
-          /* DASHBOARD (Modern Dark) */
-          <div className="flex-1 flex flex-col items-center justify-center p-4 pb-24 md:pb-4 relative overflow-y-auto">
-            {/* Same Dashboard UI */}
-            <div className="w-full max-w-5xl flex flex-col items-center z-10">
-              {/* Hero Section */}
-              <div className="mb-6 text-center">
-                <img src="/worky-logo.png" alt="Worky" className="w-48 mx-auto mb-2 drop-shadow-2xl" />
-                <p className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-violet-400 text-lg font-bold uppercase tracking-wide">Gestiona tus proyectos</p>
+          /* DASHBOARD (Modern Minimal) */
+          <div className="flex-1 flex flex-col items-center p-4 pb-24 md:pb-4 relative overflow-y-auto">
+            <div className="w-full max-w-3xl flex flex-col z-10 pt-2">
+              {/* Header */}
+              <div className="mb-6 flex items-center gap-3">
+                <img src="/worky-logo 2.png" alt="Worky" className="w-11 h-11 object-contain" />
+                <div>
+                  <div className="text-xl font-bold text-slate-900">Inicio</div>
+                  <div className="text-[12.5px] text-slate-500">{userProfile?.businessName || 'Tu negocio'}</div>
+                </div>
               </div>
 
-              {/* Main Grid - Unified */}
-              <div className="w-full max-w-5xl px-3 space-y-6">
-                {/* Primary Actions - Featured */}
-                <div className="bg-slate-800/50 backdrop-blur-lg rounded-2xl p-4 border border-slate-700/50">
-                  <h3 className="text-slate-300 text-xs font-bold uppercase tracking-wide mb-3 flex items-center gap-2">
-                    <i className="fa-solid fa-star text-blue-400"></i> Acciones Rápidas
-                  </h3>
-                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                    <button onClick={() => handleDocumentClick('quote')} className="bg-slate-700/50 hover:bg-slate-600/50 p-3 rounded-xl transition-all group border border-slate-600/50 hover:border-blue-500/50 hover:shadow-lg hover:shadow-blue-500/10 active:scale-95">
-                      <div className="flex flex-col items-center gap-2">
-                        <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center text-white shadow-lg shadow-teal-500/30">
-                          <i className="fa-solid fa-file-contract text-lg"></i>
-                        </div>
-                        <span className="text-slate-200 text-xs font-bold">Cotización</span>
+              <div className="w-full space-y-7">
+                {/* Primary Actions */}
+                <div>
+                  <h3 className="text-slate-400 text-[11px] font-bold uppercase tracking-wider mb-3">Acciones rápidas</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-2.5">
+                    <button onClick={() => handleDocumentClick('quote')} className="bg-white p-3.5 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2.5">
+                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white shadow-md shadow-blue-500/30">
+                        <i className="fa-solid fa-file-invoice-dollar text-xl"></i>
                       </div>
+                      <span className="text-slate-700 text-[12.5px] font-semibold">Cotización</span>
                     </button>
-                    <button onClick={() => handleDocumentClick('invoice')} className="bg-slate-700/50 hover:bg-slate-600/50 p-3 rounded-xl transition-all group border border-slate-600/50 hover:border-blue-500/50 hover:shadow-lg hover:shadow-blue-500/10 active:scale-95">
-                      <div className="flex flex-col items-center gap-2">
-                        <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/30">
-                          <i className="fa-solid fa-file-invoice-dollar text-lg"></i>
-                        </div>
-                        <span className="text-slate-200 text-xs font-bold">Factura</span>
+                    <button onClick={() => handleDocumentClick('invoice')} className="bg-white p-3.5 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2.5">
+                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-indigo-500/30">
+                        <i className="fa-solid fa-file-invoice text-xl"></i>
                       </div>
+                      <span className="text-slate-700 text-[12.5px] font-semibold">Factura</span>
                     </button>
-                    <button onClick={() => handleDocumentClick('collection_account')} className="bg-slate-700/50 hover:bg-slate-600/50 p-3 rounded-xl transition-all group border border-slate-600/50 hover:border-blue-500/50 hover:shadow-lg hover:shadow-blue-500/10 active:scale-95">
-                      <div className="flex flex-col items-center gap-2">
-                        <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center text-white shadow-lg shadow-orange-500/30">
-                          <i className="fa-solid fa-file-invoice text-lg"></i>
-                        </div>
-                        <span className="text-slate-200 text-xs font-bold">Cuenta Cobro</span>
+                    <button onClick={() => handleDocumentClick('collection_account')} className="bg-white p-3.5 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2.5">
+                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center text-white shadow-md shadow-emerald-500/30">
+                        <i className="fa-solid fa-hand-holding-dollar text-xl"></i>
                       </div>
+                      <span className="text-slate-700 text-[12.5px] font-semibold">Cuenta Cobro</span>
                     </button>
-                    <button onClick={() => handleDocumentClick('expense')} className="bg-slate-700/50 hover:bg-slate-600/50 p-3 rounded-xl transition-all group border border-slate-600/50 hover:border-blue-500/50 hover:shadow-lg hover:shadow-blue-500/10 active:scale-95">
-                      <div className="flex flex-col items-center gap-2">
-                        <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-rose-500 to-red-600 flex items-center justify-center text-white shadow-lg shadow-rose-500/30">
-                          <i className="fa-solid fa-circle-minus text-lg"></i>
-                        </div>
-                        <span className="text-slate-200 text-xs font-bold">Reg. Gasto</span>
+                    <button onClick={() => handleDocumentClick('expense')} className="bg-white p-3.5 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2.5">
+                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-rose-500 to-rose-600 flex items-center justify-center text-white shadow-md shadow-rose-500/30">
+                        <i className="fa-solid fa-money-bill-transfer text-xl"></i>
                       </div>
+                      <span className="text-slate-700 text-[12.5px] font-semibold">Reg. Gasto</span>
                     </button>
                     <ProFeatureGuard isPro={userProfile?.isPro} trialEndsAt={userProfile?.trialEndsAt}>
                       <ContractGenerator
@@ -1730,63 +1974,49 @@ const App: React.FC = () => {
 
                 {/* Tools Grid */}
                 <div>
-                  <h3 className="text-slate-500 text-xs font-bold uppercase tracking-wide mb-3 px-1">Herramientas</h3>
-                  <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
-                    <button onClick={() => setShowFinancials(true)} className="bg-slate-800/50 hover:bg-slate-700/50 p-4 rounded-xl transition-all group border border-slate-700/50 hover:border-emerald-500/50 hover:shadow-lg hover:shadow-emerald-500/10 active:scale-95 backdrop-blur-sm">
-                      <div className="flex flex-col items-center gap-2">
-                        <div className="w-10 h-10 rounded-lg bg-emerald-500/20 flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform">
-                          <i className="fa-solid fa-chart-pie text-lg"></i>
-                        </div>
-                        <span className="text-slate-300 text-xs font-semibold">Finanzas</span>
+                  <h3 className="text-slate-400 text-[11px] font-bold uppercase tracking-wider mb-3">Herramientas</h3>
+                  <div className="grid grid-cols-3 md:grid-cols-6 gap-2.5">
+                    <button onClick={() => setShowFinancials(true)} className="bg-white p-3 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2">
+                      <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center text-white shadow-sm shadow-teal-500/30">
+                        <i className="fa-solid fa-chart-pie text-lg"></i>
                       </div>
+                      <span className="text-slate-700 text-[11.5px] font-semibold">Finanzas</span>
                     </button>
-                    <button onClick={() => setShowCatalogManager(true)} className="bg-slate-800/50 hover:bg-slate-700/50 p-4 rounded-xl transition-all group border border-slate-700/50 hover:border-purple-500/50 hover:shadow-lg hover:shadow-purple-500/10 active:scale-95 backdrop-blur-sm">
-                      <div className="flex flex-col items-center gap-2">
-                        <div className="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center text-purple-400 group-hover:scale-110 transition-transform">
-                          <i className="fa-solid fa-box-open text-lg"></i>
-                        </div>
-                        <span className="text-slate-300 text-xs font-semibold">Catálogo</span>
+                    <button onClick={() => setShowCatalogManager(true)} className="bg-white p-3 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2">
+                      <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-fuchsia-500 to-fuchsia-600 flex items-center justify-center text-white shadow-sm shadow-fuchsia-500/30">
+                        <i className="fa-solid fa-box-open text-lg"></i>
                       </div>
+                      <span className="text-slate-700 text-[11.5px] font-semibold">Catálogo</span>
                     </button>
-                    <button onClick={() => setShowWallet(true)} className="bg-slate-800/50 hover:bg-slate-700/50 p-4 rounded-xl transition-all group border border-slate-700/50 hover:border-blue-500/50 hover:shadow-lg hover:shadow-blue-500/10 active:scale-95 backdrop-blur-sm">
-                      <div className="flex flex-col items-center gap-2">
-                        <div className="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center text-blue-400 group-hover:scale-110 transition-transform">
-                          <i className="fa-solid fa-wallet text-lg"></i>
-                        </div>
-                        <span className="text-slate-300 text-xs font-semibold">Billetera</span>
+                    <button onClick={() => setShowWallet(true)} className="bg-white p-3 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2">
+                      <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-sky-500 to-sky-600 flex items-center justify-center text-white shadow-sm shadow-sky-500/30">
+                        <i className="fa-solid fa-wallet text-lg"></i>
                       </div>
+                      <span className="text-slate-700 text-[11.5px] font-semibold">Billetera</span>
                     </button>
-                    <button onClick={() => { setShowStatus(true); setStartCamera(false); }} className="bg-slate-800/50 hover:bg-slate-700/50 p-4 rounded-xl transition-all group border border-slate-700/50 hover:border-pink-500/50 hover:shadow-lg hover:shadow-pink-500/10 active:scale-95 backdrop-blur-sm">
-                      <div className="flex flex-col items-center gap-2">
-                        <div className="w-10 h-10 rounded-lg bg-pink-500/20 flex items-center justify-center text-pink-400 group-hover:scale-110 transition-transform">
-                          <i className="fa-solid fa-circle-notch text-lg"></i>
-                        </div>
-                        <span className="text-slate-300 text-xs font-semibold">Historias</span>
+                    <button onClick={() => { setShowStatus(true); setStartCamera(false); }} className="bg-white p-3 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2">
+                      <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-pink-500 to-pink-600 flex items-center justify-center text-white shadow-sm shadow-pink-500/30">
+                        <i className="fa-solid fa-images text-lg"></i>
                       </div>
+                      <span className="text-slate-700 text-[11.5px] font-semibold">Historias</span>
                     </button>
-                    <button onClick={() => { setShowStatus(true); setStartCamera(true); }} className="bg-slate-800/50 hover:bg-slate-700/50 p-4 rounded-xl transition-all group border border-slate-700/50 hover:border-violet-500/50 hover:shadow-lg hover:shadow-violet-500/10 active:scale-95 backdrop-blur-sm">
-                      <div className="flex flex-col items-center gap-2">
-                        <div className="w-10 h-10 rounded-lg bg-violet-500/20 flex items-center justify-center text-violet-400 group-hover:scale-110 transition-transform">
-                          <i className="fa-solid fa-camera text-lg"></i>
-                        </div>
-                        <span className="text-slate-300 text-xs font-semibold">Cámara</span>
+                    <button onClick={() => { setShowStatus(true); setStartCamera(true); }} className="bg-white p-3 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2">
+                      <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center text-white shadow-sm shadow-orange-500/30">
+                        <i className="fa-solid fa-camera text-lg"></i>
                       </div>
+                      <span className="text-slate-700 text-[11.5px] font-semibold">Cámara</span>
                     </button>
-                    <button onClick={() => setShowGanttChart(true)} className="bg-slate-800/50 hover:bg-slate-700/50 p-4 rounded-xl transition-all group border border-slate-700/50 hover:border-cyan-500/50 hover:shadow-lg hover:shadow-cyan-500/10 active:scale-95 backdrop-blur-sm">
-                      <div className="flex flex-col items-center gap-2">
-                        <div className="w-10 h-10 rounded-lg bg-cyan-500/20 flex items-center justify-center text-cyan-400 group-hover:scale-110 transition-transform">
-                          <i className="fa-solid fa-chart-gantt text-lg"></i>
-                        </div>
-                        <span className="text-slate-300 text-xs font-semibold">Gantt</span>
+                    <button onClick={() => setShowGanttChart(true)} className="bg-white p-3 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2">
+                      <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center text-white shadow-sm shadow-purple-500/30">
+                        <i className="fa-solid fa-bars-progress text-lg"></i>
                       </div>
+                      <span className="text-slate-700 text-[11.5px] font-semibold">Gantt</span>
                     </button>
-                    <button onClick={() => setShowGroupsManager(true)} className="bg-slate-800/50 hover:bg-slate-700/50 p-4 rounded-xl transition-all group border border-slate-700/50 hover:border-teal-500/50 hover:shadow-lg hover:shadow-teal-500/10 active:scale-95 backdrop-blur-sm">
-                      <div className="flex flex-col items-center gap-2">
-                        <div className="w-10 h-10 rounded-lg bg-teal-500/20 flex items-center justify-center text-teal-400 group-hover:scale-110 transition-transform">
-                          <i className="fa-solid fa-users-rectangle text-lg"></i>
-                        </div>
-                        <span className="text-slate-300 text-xs font-semibold">Grupos</span>
+                    <button onClick={() => setShowGroupsManager(true)} className="bg-white p-3 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2">
+                      <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-cyan-500 to-cyan-600 flex items-center justify-center text-white shadow-sm shadow-cyan-500/30">
+                        <i className="fa-solid fa-users-rectangle text-lg"></i>
                       </div>
+                      <span className="text-slate-700 text-[11.5px] font-semibold">Grupos</span>
                     </button>
                     <button onClick={() => {
                       // Limpiar campos antes de abrir el modal
@@ -1796,29 +2026,25 @@ const App: React.FC = () => {
                       setNewContactPhone('');
                       setNewContactRole('client');
                       setShowNewContactModal(true);
-                    }} className="bg-gradient-to-br from-blue-600 to-violet-600 hover:from-blue-500 hover:to-violet-500 p-4 rounded-xl transition-all group border border-blue-500/50 hover:shadow-lg shadow-blue-500/30 active:scale-95">
-                      <div className="flex flex-col items-center gap-2">
-                        <div className="w-10 h-10 rounded-lg bg-white/20 flex items-center justify-center text-white group-hover:scale-110 transition-transform">
-                          <i className="fa-solid fa-user-plus text-lg"></i>
-                        </div>
-                        <span className="text-white text-xs font-bold">Contacto</span>
+                    }} className="bg-gradient-to-br from-blue-600 to-blue-700 p-3 rounded-xl transition shadow-md shadow-blue-500/30 hover:shadow-lg flex flex-col items-center gap-2">
+                      <div className="w-11 h-11 rounded-xl bg-white/15 flex items-center justify-center text-white">
+                        <i className="fa-solid fa-user-plus text-lg"></i>
                       </div>
+                      <span className="text-white text-[11.5px] font-semibold">Contacto</span>
                     </button>
                     {userProfile?.isAdmin && (
-                      <button onClick={() => setShowAdminPanel(true)} className="bg-slate-800/50 hover:bg-slate-700/50 p-4 rounded-xl transition-all group border border-amber-500/30 hover:border-amber-500/60 hover:shadow-lg hover:shadow-amber-500/10 active:scale-95 backdrop-blur-sm">
-                        <div className="flex flex-col items-center gap-2">
-                          <div className="w-10 h-10 rounded-lg bg-amber-500/20 flex items-center justify-center text-amber-400 group-hover:scale-110 transition-transform">
-                            <i className="fa-solid fa-user-shield text-lg"></i>
-                          </div>
-                          <span className="text-slate-300 text-xs font-semibold">Admin</span>
+                      <button onClick={() => setShowAdminPanel(true)} className="bg-white p-3 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2">
+                        <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center text-white shadow-sm shadow-amber-500/30">
+                          <i className="fa-solid fa-user-shield text-lg"></i>
                         </div>
+                        <span className="text-slate-700 text-[11.5px] font-semibold">Admin</span>
                       </button>
                     )}
                   </div>
                 </div>
               </div>
 
-              <div className="mt-8 text-slate-500 text-xs flex items-center gap-2">
+              <div className="mt-8 mb-2 text-slate-400 text-xs flex items-center gap-2">
                 <i className="fa-solid fa-lock text-[10px]"></i> Conexión segura cifrada.
               </div>
             </div>
@@ -1826,55 +2052,82 @@ const App: React.FC = () => {
         )}
       </div>
 
-      {/* MOBILE NAV (Dark) */}
+      {/* MOBILE NAV (Modern Minimal) */}
       {!isChatOpen && (
-        <div className="md:hidden fixed bottom-0 left-0 w-full h-16 border-t border-slate-700/50 flex justify-around items-center z-50 backdrop-blur-xl" style={{ background: 'linear-gradient(180deg, rgba(30,41,59,0.95) 0%, rgba(15,23,42,0.98) 100%)' }}>
-          <button onClick={() => setMobileTab('home')} className={`flex flex-col items-center gap-1 ${mobileTab === 'home' ? 'text-blue-400' : 'text-slate-500'}`}>
-            <i className="fa-solid fa-house text-xl"></i>
-            <span className="text-[10px] font-bold">Inicio</span>
+        <div className="md:hidden fixed bottom-0 left-0 w-full h-16 border-t border-slate-200 flex justify-around items-center z-50 bg-white">
+          <button onClick={() => setMobileTab('home')} className={`flex flex-col items-center gap-1 ${mobileTab === 'home' ? 'text-blue-600' : 'text-slate-400'}`}>
+            <i className="fa-solid fa-house text-lg"></i>
+            <span className="text-[10px] font-semibold">Inicio</span>
           </button>
-          <button onClick={() => setShowDocuments(true)} className="flex flex-col items-center gap-1 text-slate-500 hover:text-slate-300 transition">
-            <i className="fa-solid fa-folder-open text-xl"></i>
-            <span className="text-[10px] font-bold">Documentos</span>
+          <button onClick={() => setShowDocuments(true)} className="flex flex-col items-center gap-1 text-slate-400 hover:text-slate-600 transition">
+            <i className="fa-solid fa-folder-open text-lg"></i>
+            <span className="text-[10px] font-semibold">Documentos</span>
           </button>
-          <button onClick={() => { setShowNotifications(true); setSelectedContactId(null); setShowFinancials(false); setShowStatus(false); }} className="flex flex-col items-center gap-1 text-slate-500 relative hover:text-slate-300 transition">
-            <i className="fa-solid fa-bell text-xl"></i>
-            <span className="absolute top-0 right-3 w-2 h-2 bg-gradient-to-r from-rose-500 to-pink-500 rounded-full border border-slate-900 animate-pulse"></span>
-            <span className="text-[10px] font-bold">Alertas</span>
+          <button onClick={handleOpenNotifications} className="flex flex-col items-center gap-1 text-slate-400 relative hover:text-slate-600 transition">
+            <i className="fa-solid fa-bell text-lg"></i>
+            {hasUnreadNotifications && (
+              <span className="absolute top-0 right-3 w-1.5 h-1.5 bg-blue-600 rounded-full"></span>
+            )}
+            <span className="text-[10px] font-semibold">Alertas</span>
           </button>
-          <button onClick={() => setMobileTab('chats')} className={`flex flex-col items-center gap-1 ${mobileTab === 'chats' ? 'text-blue-400' : 'text-slate-500'}`}>
-            <i className="fa-solid fa-comment-dots text-xl"></i>
-            <span className="text-[10px] font-bold">Chats</span>
+          <button onClick={() => setMobileTab('chats')} className={`flex flex-col items-center gap-1 relative ${mobileTab === 'chats' ? 'text-blue-600' : 'text-slate-400'}`}>
+            <div className="relative">
+              <i className="fa-solid fa-comment-dots text-lg"></i>
+              {hasUnreadMessages && (
+                <span className="absolute -top-0.5 -right-2 w-2 h-2 bg-blue-600 rounded-full border border-white"></span>
+              )}
+            </div>
+            <span className="text-[10px] font-semibold">Chats</span>
           </button>
         </div>
       )}
 
-      {/* MODALS (Client Selection, New Contact, etc) - Modern Dark */}
+      {/* MODALS (Client Selection, New Contact, etc) - Modern Light */}
       {showClientSelectionModal && (
-        <div className="absolute inset-0 bg-slate-950/80 z-[100] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
-          <div className="bg-slate-800 w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden border border-slate-700/50">
-            <div className="p-4 border-b border-slate-700/50 flex justify-between items-center" style={{ background: 'linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%)' }}>
-              <h3 className="text-white font-bold">Seleccionar Cliente</h3>
-              <button onClick={() => { setShowClientSelectionModal(false); }} className="text-slate-400 hover:text-white transition"><i className="fa-solid fa-xmark"></i></button>
-            </div>
-            <div className="p-4">
-              <button onClick={() => {
-                setShowClientSelectionModal(false);
-                // Limpiar campos antes de abrir el modal
-                setNewContactName('');
-                setNewProjectName('');
-                setNewContactPhone('');
-                setNewContactRole('client');
-                setShowNewContactModal(true);
-              }} className="w-full bg-gradient-to-r from-blue-600 to-violet-600 text-white py-3 rounded-xl font-bold mb-4 hover:from-blue-500 hover:to-violet-500 transition shadow-lg shadow-blue-500/30">
-                <i className="fa-solid fa-user-plus mr-2"></i> Nuevo contacto
+        <div className="absolute inset-0 bg-slate-900/50 z-[100] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden border border-slate-100">
+            <div className="p-5 pb-3 border-b border-slate-100 flex justify-between items-center bg-white">
+              <h3 className="text-slate-900 font-bold text-lg flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0">
+                  <i className="fa-solid fa-users text-sm"></i>
+                </div>
+                <span>Seleccionar Contacto</span>
+              </h3>
+              <button
+                onClick={() => { setShowClientSelectionModal(false); }}
+                className="text-slate-400 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 w-8 h-8 rounded-full flex items-center justify-center transition"
+              >
+                <i className="fa-solid fa-xmark text-sm"></i>
               </button>
-              <div className="text-slate-500 text-xs font-bold uppercase mb-2">Recientes</div>
-              <div className="max-h-60 overflow-y-auto custom-scrollbar space-y-2">
+            </div>
+            <div className="p-5">
+              <button
+                onClick={() => {
+                  setShowClientSelectionModal(false);
+                  setNewContactName('');
+                  setNewProjectName('');
+                  setNewContactPhone('');
+                  setNewContactRole('client');
+                  setShowNewContactModal(true);
+                }}
+                className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 rounded-xl font-bold mb-4 hover:shadow-lg transition shadow-md shadow-blue-500/25 flex items-center justify-center gap-2 active:scale-[0.99]"
+              >
+                <i className="fa-solid fa-user-plus"></i> Nuevo Contacto
+              </button>
+              <div className="text-xs text-slate-700 font-bold uppercase mb-2 tracking-wide">Recientes</div>
+              <div className="max-h-60 overflow-y-auto custom-scrollbar space-y-1.5">
                 {contacts.map(c => (
-                  <div key={c.id} onClick={() => handleSelectContactForDocument(c.id)} className="p-3 hover:bg-slate-700/50 rounded-lg cursor-pointer flex items-center gap-3 transition border border-transparent hover:border-slate-600/50">
-                    <img src={c.avatar} className="w-8 h-8 rounded-full shadow-lg border border-slate-600" />
-                    <div className="text-sm font-bold text-slate-200">{c.clientName}</div>
+                  <div
+                    key={c.id}
+                    onClick={() => handleSelectContactForDocument(c.id)}
+                    className="p-2.5 hover:bg-slate-50 rounded-xl cursor-pointer flex items-center gap-3 transition border border-slate-100 hover:border-blue-200 group"
+                  >
+                    <img src={c.avatar} className="w-9 h-9 rounded-full object-cover border border-slate-200" />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-bold text-slate-800 truncate group-hover:text-blue-600 transition">{c.clientName}</div>
+                      <div className="text-[10px] text-slate-400 capitalize">{c.role === 'client' ? 'Cliente' : c.role === 'supplier' ? 'Proveedor' : 'Colaborador'}</div>
+                    </div>
+                    <i className="fa-solid fa-chevron-right text-xs text-slate-300 group-hover:text-blue-500 group-hover:translate-x-0.5 transition"></i>
                   </div>
                 ))}
               </div>
@@ -1884,32 +2137,91 @@ const App: React.FC = () => {
       )}
 
       {showNewContactModal && (
-        <div className="absolute inset-0 bg-slate-950/80 z-[110] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
-          <div className="bg-slate-800 w-full max-w-sm rounded-2xl shadow-2xl p-6 relative border border-slate-700/50">
-            <button onClick={() => {
-              setShowNewContactModal(false);
-              // Limpiar campos al cerrar
-              setNewContactName('');
-              setNewContactAlias('');
-              setNewProjectName('');
-              setNewContactPhone('');
-              setNewContactRole('client');
-            }} className="absolute top-4 right-4 text-slate-400 hover:text-white transition"><i className="fa-solid fa-xmark"></i></button>
-            <h3 className="text-white font-bold text-xl mb-6">Nuevo Contacto</h3>
-            <div className="space-y-4">
-              <div className="flex bg-slate-900/50 p-1 rounded-xl border border-slate-700/50">
+        <div className="absolute inset-0 bg-slate-900/50 z-[110] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl p-6 relative border border-slate-100">
+            <button
+              onClick={() => {
+                setShowNewContactModal(false);
+                setNewContactName('');
+                setNewContactAlias('');
+                setNewProjectName('');
+                setNewContactPhone('');
+                setNewContactRole('client');
+              }}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 w-8 h-8 rounded-full flex items-center justify-center transition"
+            >
+              <i className="fa-solid fa-xmark text-sm"></i>
+            </button>
+            <h3 className="text-slate-900 font-bold text-lg mb-4 flex items-center gap-2.5 pr-8">
+              <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0">
+                <i className="fa-solid fa-user-plus text-sm"></i>
+              </div>
+              <span>Nuevo Contacto</span>
+            </h3>
+            <div className="space-y-3">
+              <div className="flex bg-slate-100 p-1 rounded-xl">
                 {['client', 'supplier', 'collaborator'].map(role => (
-                  <button key={role} onClick={() => setNewContactRole(role as any)} className={`flex-1 py-2 text-xs font-bold rounded-lg capitalize transition ${newContactRole === role ? 'bg-gradient-to-r from-blue-600 to-violet-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}>
+                  <button
+                    key={role}
+                    onClick={() => setNewContactRole(role as any)}
+                    className={`flex-1 py-2 text-xs font-bold rounded-lg capitalize transition ${
+                      newContactRole === role
+                        ? 'bg-white text-blue-600 shadow-sm'
+                        : 'text-slate-500 hover:text-slate-700'
+                    }`}
+                  >
                     {role === 'client' ? 'Cliente' : role === 'supplier' ? 'Proveedor' : 'Colaborador'}
                   </button>
                 ))}
               </div>
-              <input type="text" placeholder="Nombre completo *" value={newContactName} onChange={e => setNewContactName(e.target.value)} className="w-full bg-slate-700/50 text-white p-3 rounded-xl outline-none border border-slate-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 placeholder-slate-500" />
-              <input type="text" placeholder="Alias (Opcional - solo visible para ti)" value={newContactAlias} onChange={e => setNewContactAlias(e.target.value)} className="w-full bg-slate-700/50 text-white p-3 rounded-xl outline-none border border-slate-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 placeholder-slate-500" />
-              <input type="text" placeholder="Primer Proyecto / Empresa *" value={newProjectName} onChange={e => setNewProjectName(e.target.value)} className="w-full bg-slate-700/50 text-white p-3 rounded-xl outline-none border border-slate-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 placeholder-slate-500" />
-              <input type="tel" placeholder="Teléfono (Obligatorio - Ancla de vinculación) *" value={newContactPhone} onChange={e => setNewContactPhone(e.target.value)} className="w-full bg-slate-700/50 text-white p-3 rounded-xl outline-none border border-slate-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 placeholder-slate-500" />
+              <div>
+                <label className="text-xs text-slate-700 font-bold uppercase mb-1 block tracking-wide">Nombre Completo *</label>
+                <input
+                  type="text"
+                  placeholder="Ej. Juan Pérez"
+                  value={newContactName}
+                  onChange={e => setNewContactName(e.target.value)}
+                  className="w-full bg-slate-50 text-slate-900 font-semibold p-3 rounded-xl outline-none border border-slate-200 focus:border-blue-500 focus:bg-white transition text-sm placeholder-slate-400"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-slate-700 font-bold uppercase mb-1 block tracking-wide">Alias (Opcional)</label>
+                <input
+                  type="text"
+                  placeholder="Solo visible para ti"
+                  value={newContactAlias}
+                  onChange={e => setNewContactAlias(e.target.value)}
+                  className="w-full bg-slate-50 text-slate-900 font-semibold p-3 rounded-xl outline-none border border-slate-200 focus:border-blue-500 focus:bg-white transition text-sm placeholder-slate-400"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-slate-700 font-bold uppercase mb-1 block tracking-wide">Primer Proyecto / Empresa *</label>
+                <input
+                  type="text"
+                  placeholder="Ej. Remodelación Cocina"
+                  value={newProjectName}
+                  onChange={e => setNewProjectName(e.target.value)}
+                  className="w-full bg-slate-50 text-slate-900 font-semibold p-3 rounded-xl outline-none border border-slate-200 focus:border-blue-500 focus:bg-white transition text-sm placeholder-slate-400"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-slate-700 font-bold uppercase mb-1 block tracking-wide">Teléfono (Obligatorio) *</label>
+                <input
+                  type="tel"
+                  placeholder="Ej. 3142036659"
+                  value={newContactPhone}
+                  onChange={e => setNewContactPhone(e.target.value)}
+                  className="w-full bg-slate-50 text-slate-900 font-semibold p-3 rounded-xl outline-none border border-slate-200 focus:border-blue-500 focus:bg-white transition text-sm placeholder-slate-400"
+                />
+              </div>
+              <button
+                onClick={handleCreateContact}
+                disabled={!newContactName.trim() || !newContactPhone.trim() || !newProjectName.trim()}
+                className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 rounded-xl font-bold mt-2 hover:shadow-lg transition shadow-md shadow-blue-500/25 disabled:opacity-50 disabled:shadow-none disabled:cursor-not-allowed active:scale-[0.99]"
+              >
+                Guardar Contacto
+              </button>
             </div>
-            <button onClick={handleCreateContact} disabled={!newContactName.trim() || !newContactPhone.trim() || !newProjectName.trim()} className="w-full bg-gradient-to-r from-blue-600 to-violet-600 text-white py-3 rounded-xl font-bold mt-6 hover:from-blue-500 hover:to-violet-500 transition disabled:opacity-50 shadow-lg shadow-blue-500/30">Guardar</button>
           </div>
         </div>
       )}
@@ -2614,16 +2926,16 @@ const App: React.FC = () => {
       {/* Documents Manager Modal */}
       {showDocuments && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
-          <div className="bg-white w-full max-w-3xl rounded-2xl shadow-2xl max-h-[90vh] overflow-hidden flex flex-col animate-scale-in">
-            <div className="bg-gradient-to-r from-blue-500 to-indigo-600 p-6 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
-                  <i className="fa-solid fa-folder-open text-white text-xl"></i>
+          <div className="bg-white w-full max-w-3xl rounded-2xl shadow-xl max-h-[90vh] overflow-hidden flex flex-col animate-scale-in">
+            <div className="p-6 flex items-center justify-between border-b border-slate-100">
+              <div className="flex items-center gap-4">
+                <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center text-white shadow-md shadow-blue-500/30">
+                  <i className="fa-solid fa-folder-open"></i>
                 </div>
-                <h2 className="text-white text-xl font-bold">Mis Documentos</h2>
+                <h2 className="text-slate-900 text-xl font-bold">Mis Documentos</h2>
               </div>
-              <button onClick={() => setShowDocuments(false)} className="text-white/80 hover:text-white text-2xl">
-                <i className="fa-solid fa-times"></i>
+              <button onClick={() => setShowDocuments(false)} className="text-slate-400 hover:text-slate-700 transition bg-slate-100 hover:bg-slate-200 w-9 h-9 rounded-full flex items-center justify-center">
+                <i className="fa-solid fa-xmark"></i>
               </button>
             </div>
 

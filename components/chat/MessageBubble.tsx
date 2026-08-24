@@ -268,7 +268,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
       )}
 
       {isSystem ? (
-        <div className="bg-amber-500/10 text-amber-400 text-xs px-4 py-2 rounded-full shadow-lg border border-amber-500/20 my-2 font-medium tracking-wide flex items-center gap-2 backdrop-blur-sm">
+        <div className="bg-amber-50 text-amber-700 text-xs px-4 py-2 rounded-full border border-amber-200 my-2 font-medium tracking-wide flex items-center gap-2">
           {msg.text.includes('Gasto') ? <i className="fa-solid fa-money-bill-wave"></i> : <i className="fa-solid fa-check-circle"></i>}
           {msg.text}
         </div>
@@ -296,31 +296,31 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
             <div
               className={`absolute z-50 -top-12 ${
                 msg.sender === 'me' ? 'right-0' : 'left-0'
-              } bg-slate-900/95 border border-slate-700/80 shadow-2xl backdrop-blur-xl rounded-2xl p-1 flex items-center gap-1 animate-in fade-in zoom-in-95 duration-150`}
+              } bg-white border border-slate-200 shadow-lg rounded-2xl p-1 flex items-center gap-1 animate-in fade-in zoom-in-95 duration-150`}
             >
               {/* Botón Copiar (Hojas superpuestas) */}
               <button
                 type="button"
                 onClick={handleCopy}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium text-slate-200 hover:text-white hover:bg-slate-800 transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-100 transition-colors"
                 title={isFileOrImage() ? 'Copiar enlace del archivo' : 'Copiar texto'}
               >
-                <svg className="w-3.5 h-3.5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" />
                 </svg>
                 <span>Copiar</span>
               </button>
 
-              <div className="w-px h-4 bg-slate-700/60" />
+              <div className="w-px h-4 bg-slate-200" />
 
               {/* Botón Compartir (Nodo de compartir) */}
               <button
                 type="button"
                 onClick={handleShare}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium text-slate-200 hover:text-white hover:bg-slate-800 transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-100 transition-colors"
                 title={isFileOrImage() ? 'Compartir archivo' : 'Compartir mensaje'}
               >
-                <svg className="w-3.5 h-3.5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-3.5 h-3.5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 100-5.367 3 3 0 000 5.367zm0 8.975a3 3 0 100-5.367 3 3 0 000 5.367z" />
                 </svg>
                 <span>Compartir</span>
@@ -329,14 +329,14 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
               {/* Botón Borrar */}
               {onDeleteMessage && (
                 <>
-                  <div className="w-px h-4 bg-slate-700/60" />
+                  <div className="w-px h-4 bg-slate-200" />
                   <button
                     type="button"
                     onClick={handleDelete}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium text-red-600 hover:text-red-700 hover:bg-red-50 transition-colors"
                     title="Borrar mensaje"
                   >
-                    <svg className="w-3.5 h-3.5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-3.5 h-3.5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                     </svg>
                     <span>Borrar</span>
@@ -362,10 +362,10 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
               transform: `translateX(${dragX}px)`,
               transition: isDragging ? 'none' : 'transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)',
             }}
-            className={`w-fit px-4 py-3 rounded-2xl text-sm shadow-lg relative select-none cursor-grab active:cursor-grabbing ${
+            className={`w-fit px-4 py-2.5 rounded-2xl text-sm relative select-none cursor-grab active:cursor-grabbing ${
               msg.sender === 'me'
-                ? 'bg-gradient-to-r from-blue-600 to-violet-600 text-white rounded-br-none shadow-blue-500/20'
-                : 'bg-slate-800/80 backdrop-blur-sm text-slate-200 rounded-bl-none border border-slate-700/50'
+                ? 'bg-blue-50 text-slate-900 rounded-br-md'
+                : 'bg-white text-slate-800 rounded-bl-md border border-slate-200'
             }`}
           >
             <div className="flex flex-col">
@@ -376,6 +376,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
                   contactRole={contactRole}
                   onView={() => onViewDocument('invoice', msg.metadata)}
                   onMarkPayment={() => onMarkPayment(msg)}
+                  onUpdateMessage={onUpdateMessage}
                 />
               )}
 
@@ -396,6 +397,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
                   onMarkPayment={() => onMarkPayment(msg)}
                   onCopyPaymentInfo={onCopyPaymentInfo}
                   onShowQR={onShowQR}
+                  onUpdateMessage={onUpdateMessage}
                 />
               )}
 
@@ -409,6 +411,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
                   onMarkPayment={() => onMarkPayment(msg)}
                   onCopyPaymentInfo={onCopyPaymentInfo}
                   onShowQR={onShowQR}
+                  onUpdateMessage={onUpdateMessage}
                 />
               )}
 
@@ -430,9 +433,19 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
               )}
 
               {/* Timestamp */}
-              <div className={`text-[10px] self-end mt-1.5 ml-2 flex items-center gap-1 opacity-70 ${msg.sender === 'me' ? 'text-indigo-100' : 'text-slate-400'}`}>
+              <div className={`text-[10.5px] self-end mt-1.5 ml-2 flex items-center gap-1 ${msg.sender === 'me' ? (msg.status === 'read' ? 'text-blue-500' : 'text-slate-500') : 'text-slate-400'}`}>
                 {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                {msg.sender === 'me' && <i className="fa-solid fa-check-double"></i>}
+                {msg.sender === 'me' && (
+                  <>
+                    {msg.status === 'read' ? (
+                      <i className="fa-solid fa-check-double text-blue-500"></i>
+                    ) : msg.status === 'delivered' ? (
+                      <i className="fa-solid fa-check-double"></i>
+                    ) : (
+                      <i className="fa-solid fa-check"></i>
+                    )}
+                  </>
+                )}
               </div>
             </div>
           </div>

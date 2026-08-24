@@ -18,40 +18,40 @@ export const InvoiceBubble: React.FC<InvoiceBubbleProps> = React.memo(({ msg, co
   if (!meta) return null;
 
   return (
-    <div className="bg-slate-700/50 backdrop-blur-sm text-slate-200 p-3 rounded-xl mb-1 overflow-hidden w-64 shadow-lg border border-slate-600/50 relative">
+    <div className="bg-white text-slate-800 p-3 rounded-xl mb-1 overflow-hidden w-64 border border-slate-200 relative">
       {/* Status Badge */}
       <div className="absolute top-2 right-2 z-10">
         {msg.isPaid ? (
           meta.paymentConfirmed === true ? (
-            <span className="bg-emerald-500 text-white text-[9px] font-bold uppercase px-2 py-1 rounded-full shadow-lg">
+            <span className="bg-emerald-500 text-white text-[9px] font-bold uppercase px-2 py-1 rounded-full">
               Pagada
             </span>
           ) : (
             msg.sender === 'me' ? (
-              <span className="bg-amber-500 text-amber-950 text-[9px] font-bold uppercase px-2 py-1 rounded-full shadow-lg animate-pulse">
+              <span className="bg-amber-400 text-amber-900 text-[9px] font-bold uppercase px-2 py-1 rounded-full animate-pulse">
                 Por Confirmar
               </span>
             ) : (
-              <span className="bg-emerald-500 text-white text-[9px] font-bold uppercase px-2 py-1 rounded-full shadow-lg">
+              <span className="bg-emerald-500 text-white text-[9px] font-bold uppercase px-2 py-1 rounded-full">
                 Pagada
               </span>
             )
           )
         ) : (
-          <span className="bg-amber-500 text-amber-950 text-[9px] font-bold uppercase px-2 py-1 rounded-full shadow-lg">
+          <span className="bg-amber-400 text-amber-900 text-[9px] font-bold uppercase px-2 py-1 rounded-full">
             Pendiente
           </span>
         )}
       </div>
 
-      <div className="flex justify-between items-center border-b border-slate-100 pb-2 mb-2 border-dashed">
+      <div className="flex justify-between items-center border-b border-slate-100 pb-2 mb-2">
         <div className="pr-16">
-          <span className="font-bold text-indigo-600 text-[10px] tracking-widest block uppercase">Factura</span>
-          <span className="text-[10px] text-slate-400 font-mono">{meta.number}</span>
+          <span className="font-bold text-blue-600 text-[10px] tracking-widest block uppercase">Factura</span>
+          <span className="text-[10px] text-slate-400">{meta.number}</span>
           {meta.projectName && <div className="text-xs text-slate-700 font-semibold mt-1">{meta.projectName}</div>}
         </div>
-        <div className="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600">
-          <i className="fa-solid fa-file-invoice-dollar"></i>
+        <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white shadow-sm shadow-blue-500/30">
+          <i className="fa-solid fa-file-invoice-dollar text-sm"></i>
         </div>
       </div>
 
@@ -92,7 +92,7 @@ export const InvoiceBubble: React.FC<InvoiceBubbleProps> = React.memo(({ msg, co
       </div>
 
       <div className="flex gap-2">
-        <button onClick={onView} className="flex-1 bg-indigo-600 text-white py-2.5 rounded-lg text-xs font-bold hover:bg-indigo-700 transition flex items-center justify-center gap-2">
+        <button onClick={onView} className="flex-1 bg-blue-600 text-white py-2.5 rounded-lg text-xs font-bold hover:bg-blue-700 transition flex items-center justify-center gap-2">
           <i className="fa-solid fa-eye"></i> Ver
         </button>
         {!msg.isPaid ? (() => {

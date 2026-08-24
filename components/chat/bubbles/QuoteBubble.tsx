@@ -16,19 +16,22 @@ export const QuoteBubble: React.FC<QuoteBubbleProps> = React.memo(({ msg, onView
   if (!meta) return null;
 
   return (
-    <div className={`bg-white text-slate-800 p-3 rounded-xl mb-1 w-64 shadow-sm border-2 ${meta.status === 'accepted' ? 'border-emerald-400' : 'border-slate-100'}`}>
-      <div className="flex justify-between items-center border-b border-teal-100 pb-2 mb-2">
+    <div className={`bg-white text-slate-800 p-3.5 rounded-xl mb-1 w-64 border ${meta.status === 'accepted' ? 'border-emerald-300' : 'border-slate-200'}`}>
+      <div className="flex justify-between items-center border-b border-slate-100 pb-2.5 mb-2.5">
         <div className="flex-1">
-          <span className="font-bold text-teal-600 text-[10px] uppercase block">
-            Cotización
+          <span className="font-bold text-slate-900 text-[13px] block">
+            Cotización {meta.number ? `#${meta.number}` : ''}
           </span>
-          <div className="text-[10px] text-slate-400">{meta.number}</div>
-          {meta.items?.[0]?.description && (
-            <div className="text-xs text-slate-700 font-semibold mt-1">{meta.items[0].description}</div>
+          {meta.mode === 'personalizada' && meta.sections?.length ? (
+            <div className="text-xs text-slate-500 mt-0.5 truncate">
+              Cotización personalizada · {meta.sections.length} {meta.sections.length === 1 ? 'sección' : 'secciones'}
+            </div>
+          ) : meta.items?.[0]?.description && (
+            <div className="text-xs text-slate-500 mt-0.5 truncate">{meta.items[0].description}</div>
           )}
         </div>
-        <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${meta.status === 'accepted' ? 'bg-emerald-100 text-emerald-600' : 'bg-teal-50 text-teal-600'}`}>
-          {meta.status === 'accepted' ? <i className="fa-solid fa-check"></i> : <i className="fa-solid fa-file-contract"></i>}
+        <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ml-2 text-white shadow-sm ${meta.status === 'accepted' ? 'bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-emerald-500/30' : 'bg-gradient-to-br from-blue-500 to-blue-600 shadow-blue-500/30'}`}>
+          {meta.status === 'accepted' ? <i className="fa-solid fa-check text-sm"></i> : <i className="fa-solid fa-file-invoice-dollar text-sm"></i>}
         </div>
       </div>
 

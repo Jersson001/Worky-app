@@ -1,5 +1,5 @@
 import { supabase, uniqueTopic } from './supabaseConfig';
-import { Product, ProductCategory, Project, Expense, Contact } from '../types';
+import { Product, ProductCategory, Project, Expense, Contact, ProjectStage } from '../types';
 import { getCurrentUserId } from './messagingService';
 
 // ============ PRODUCTOS ============
@@ -182,10 +182,17 @@ const loadCategories = async (
 
 export const saveProject = async (
   contactId: string,
-  project: Project
+  project: Project,
+  contractorId?: string,
+  clientId?: string
 ): Promise<void> => {
   try {
-    const { error } = await supabase.from('projects').upsert({
+    const currentUserId = getCurrentUserId();
+    const finalContractorId = contractorId || currentUserId;
+    const isLeadContact = contactId.startsWith('lead_');
+    const finalClientId = clientId || (contactId !== currentUserId && !isLeadContact ? contactId : null);
+
+    const projectPayload: any = {
       id: project.id,
       contact_id: contactId,
       name: project.name,
@@ -193,20 +200,125 @@ export const saveProject = async (
       stage: project.stage,
       description: project.description,
       priority: project.priority,
-      start_date: project.startDate,
-      end_date: project.endDate,
-    });
+      start_date: project.startDate ? new Date(project.startDate).toISOString() : new Date().toISOString(),
+      end_date: project.endDate ? new Date(project.endDate).toISOString() : null,
+      quote_code: (project as any).metadata?.quoteCode || null,
+    };
 
-    if (error) throw error;
+    if (finalContractorId && !finalContractorId.startsWith('lead_')) {
+      projectPayload.contractor_id = finalContractorId;
+    }
+    if (finalClientId && !finalClientId.startsWith('lead_')) {
+      projectPayload.client_id = finalClientId;
+    }
+
+    let { error } = await supabase.from('projects').upsert(projectPayload);
+
+    // Fallback si client_id / contractor_id aún no está en el schema cache de Supabase
+    if (error && (error.message?.includes('client_id') || error.message?.includes('contractor_id') || error.code === 'PGRST204' || error.code === '42703')) {
+      console.warn('[saveProject] Columna no sincronizada en caché de Supabase, reintentando inserción básica:', error.message);
+      delete projectPayload.client_id;
+      delete projectPayload.contractor_id;
+      const fallbackRes = await supabase.from('projects').upsert(projectPayload);
+      error = fallbackRes.error;
+    }
+
+    if (error) {
+      console.error('Error guardando proyecto en Supabase:', error);
+      // No lanzar excepción fatal para evitar alertas molestas si el contacto ya se creó
+      return;
+    }
 
     // Guardar gastos del proyecto
-    for (const expense of project.expenses) {
-      await saveExpense(contactId, project.id, expense);
+    if (project.expenses) {
+      for (const expense of project.expenses) {
+        await saveExpense(contactId, project.id, expense);
+      }
     }
   } catch (error) {
     console.error('Error saving project:', error);
-    throw error;
   }
+};
+
+export const fetchProjectsForContact = async (
+  contactId: string
+): Promise<Project[]> => {
+  try {
+    const currentUserId = getCurrentUserId();
+
+    let data: any[] | null = null;
+    let error: any = null;
+
+    if (currentUserId) {
+      const res = await supabase
+        .from('projects')
+        .select('*')
+        .or(`client_id.eq.${currentUserId},contractor_id.eq.${currentUserId},contact_id.eq.${contactId},contact_id.eq.${currentUserId}`);
+      data = res.data;
+      error = res.error;
+    } else {
+      const res = await supabase
+        .from('projects')
+        .select('*')
+        .eq('contact_id', contactId);
+      data = res.data;
+      error = res.error;
+    }
+
+    // Fallback si la columna client_id o contractor_id no existe aún en el esquema o caché
+    if (error && (error.message?.includes('client_id') || error.message?.includes('contractor_id') || error.code === 'PGRST204' || error.code === '42703')) {
+      console.warn('[fetchProjectsForContact] Schema cache desactualizado. Consultando por contact_id:', error.message);
+      const fallbackRes = await supabase
+        .from('projects')
+        .select('*')
+        .eq('contact_id', contactId);
+      data = fallbackRes.data;
+      error = fallbackRes.error;
+    }
+
+    if (error) {
+      console.error('Error cargando proyectos del contacto:', error);
+      return [];
+    }
+
+    return (data || []).map((row: any) => ({
+      id: row.id,
+      name: row.name,
+      value: Number(row.value) || 0,
+      stage: row.stage as ProjectStage,
+      description: row.description || '',
+      priority: row.priority || 'medium',
+      startDate: row.start_date ? new Date(row.start_date) : new Date(),
+      endDate: row.end_date ? new Date(row.end_date) : undefined,
+      expenses: [],
+      metadata: row.quote_code ? { quoteCode: row.quote_code } : undefined
+    }));
+  } catch (err) {
+    console.error('Error en fetchProjectsForContact:', err);
+    return [];
+  }
+};
+
+export const listenToProjects = (
+  callback: () => void
+): (() => void) => {
+  const currentUserId = getCurrentUserId();
+  if (!currentUserId) return () => {};
+
+  const channel = supabase
+    .channel(uniqueTopic(`projects:${currentUserId}`))
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'projects' },
+      () => {
+        callback();
+      }
+    )
+    .subscribe();
+
+  return () => {
+    void supabase.removeChannel(channel);
+  };
 };
 
 export const updateProject = async (

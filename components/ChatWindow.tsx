@@ -9,6 +9,7 @@ import { Contact, Message, ProjectStage, Product, PaymentAccount, UserProfileDat
 import { DocumentViewer } from './QuoteDocument';
 import { formatCurrency } from '../utils/currency';
 import { calculateTax } from '../utils/taxCalculations';
+import { flattenSectionsToQuoteItems, computeGrandTotal } from '../utils/carpentryCalculations';
 import { useChatFormState } from '../hooks/useChatFormState';
 import { useFileUpload } from '../hooks/useFileUpload';
 
@@ -53,7 +54,21 @@ interface ChatWindowProps {
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-export const ChatWindow: React.FC<ChatWindowProps> = ({
+export const ChatWindow: React.FC<ChatWindowProps> = (props) => {
+  if (!props.contact) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center bg-slate-50 text-slate-400 p-6">
+        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white shadow-md shadow-blue-500/30 mb-3">
+          <i className="fa-solid fa-comments text-2xl"></i>
+        </div>
+        <p className="text-sm font-medium text-slate-500">Cargando contacto...</p>
+      </div>
+    );
+  }
+  return <ChatWindowContent {...props} contact={props.contact} />;
+};
+
+const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
   contact, allContacts, messages, onSendMessage, onUpdateStage, onAddExpense,
   onUpdateProjectInfo, products, paymentAccounts, onBack, activeAction, onClearAction,
   onUpdateMessage, businessLogo, digitalSignature, userProfile, onOpenGantt, onDeleteMessage,
@@ -80,14 +95,18 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
 
   // ── Derived data ──
   const approvedProjects = useMemo(() => {
-    const approved = contact.projects.filter(p => (p as any).metadata?.quoteCode);
+    const approved = (contact.projects || []).filter(p => p && p.name);
     return approved.filter((project, index, self) =>
       index === self.findIndex(pp => pp.name === project.name)
     );
   }, [contact.projects]);
 
   const approvedProjectsCount = approvedProjects.length;
-  const displayProjectName = approvedProjects.length > 0 ? approvedProjects[0].name : 'Sin proyectos';
+  const displayProjectName = approvedProjectsCount === 0
+    ? 'Sin proyectos'
+    : approvedProjectsCount === 1
+      ? '1 proyecto'
+      : `${approvedProjectsCount} proyectos`;
   const hasMultipleProjects = approvedProjectsCount > 1;
 
   const totalGlobalValue = contact.projects.reduce((sum, p) => sum + p.value, 0);
@@ -185,11 +204,13 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   }, [forms.invoice, contact, onSendMessage]);
 
   const handleSendQuote = useCallback(() => {
-    const { items, taxType, taxPercentage, aiuAdmin, aiuImprevistos, aiuUtilidad, aiuIva, clientAddress, clientPhone, validDays } = forms.quote;
-    const validItems = items.filter(i => i.description && i.price > 0);
+    const { items, taxType, taxPercentage, aiuAdmin, aiuImprevistos, aiuUtilidad, aiuIva, clientAddress, clientPhone, validDays, mode, sections } = forms.quote;
+
+    const isPersonalizada = mode === 'personalizada';
+    const validItems = isPersonalizada ? flattenSectionsToQuoteItems(sections) : items.filter(i => i.description && i.price > 0);
     if (validItems.length === 0) return;
 
-    const subtotal = validItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+    const subtotal = isPersonalizada ? computeGrandTotal(sections) : validItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
     const result = calculateTax(subtotal, taxType, {
       percentage: parseFloat(taxPercentage) || 19,
       aiu: { adminPercent: parseFloat(aiuAdmin) || 5, imprevistosPercent: parseFloat(aiuImprevistos) || 5, utilidadPercent: parseFloat(aiuUtilidad) || 5, ivaPercent: parseFloat(aiuIva) || 19 },
@@ -205,6 +226,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
       clientAddress: clientAddress.trim() || undefined,
       clientPhone: clientPhone.trim() || undefined,
       items: validItems, subtotal, total: result.total,
+      mode, sections: isPersonalizada ? sections : undefined,
       taxType, taxPercentage: taxType === 'percentage' ? parseFloat(taxPercentage) : undefined,
       taxAmount: (taxType !== 'none') ? result.taxAmount : undefined,
       aiuAdmin: taxType === 'aiu' ? parseFloat(aiuAdmin) : undefined,
@@ -350,7 +372,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
       )}
 
       {/* Main Chat Column */}
-      <div className="flex-1 flex flex-col h-full relative min-w-0" style={{ background: 'linear-gradient(180deg, #0f172a 0%, #1e293b 100%)' }}>
+      <div className="flex-1 flex flex-col h-full relative min-w-0 bg-slate-50">
         <ChatHeader
           contact={contact}
           approvedProjectsCount={approvedProjectsCount}
@@ -365,22 +387,22 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
 
         {/* Financial Bar */}
         {showFinancials && contact.role === 'client' && (
-          <div className="bg-slate-800/80 backdrop-blur-lg border-b border-slate-700/50 px-4 py-3 flex justify-between items-center text-xs z-10 animate-slide-in-top">
+          <div className="bg-white border-b border-slate-100 shadow-sm px-4 py-3 flex justify-between items-center text-xs z-10 animate-slide-in-top">
             <div className="flex gap-6 flex-1">
               <div className="flex flex-col">
-                <span className="text-slate-500 text-[10px] uppercase tracking-wider font-bold">Venta Total</span>
-                <span className="text-white font-bold text-sm">{formatCurrency(totalGlobalValue)}</span>
+                <span className="text-slate-400 text-[10px] uppercase tracking-wider font-bold">Venta Total</span>
+                <span className="text-slate-900 font-bold text-sm">{formatCurrency(totalGlobalValue)}</span>
               </div>
               <div className="flex flex-col">
-                <span className="text-slate-500 text-[10px] uppercase tracking-wider font-bold">Total Gastos</span>
-                <span className="text-rose-400 font-bold text-sm">{formatCurrency(totalGlobalExpenses)}</span>
+                <span className="text-slate-400 text-[10px] uppercase tracking-wider font-bold">Total Gastos</span>
+                <span className="text-rose-600 font-bold text-sm">{formatCurrency(totalGlobalExpenses)}</span>
               </div>
               <div className="flex flex-col">
-                <span className="text-slate-500 text-[10px] uppercase tracking-wider font-bold">Ganancia</span>
-                <span className={`font-black text-sm ${globalProfit > 0 ? 'text-emerald-400' : 'text-rose-400'}`}>{formatCurrency(globalProfit)}</span>
+                <span className="text-slate-400 text-[10px] uppercase tracking-wider font-bold">Ganancia</span>
+                <span className={`font-black text-sm ${globalProfit > 0 ? 'text-emerald-600' : 'text-rose-600'}`}>{formatCurrency(globalProfit)}</span>
               </div>
             </div>
-            <button onClick={() => forms.openModal('expense')} className="bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 px-3 py-2 rounded-lg text-xs flex items-center gap-2 border border-rose-500/30 transition font-bold">
+            <button onClick={() => forms.openModal('expense')} className="bg-rose-50 hover:bg-rose-100 text-rose-600 px-3 py-2 rounded-lg text-xs flex items-center gap-2 transition font-bold">
               <i className="fa-solid fa-circle-minus"></i> Registrar Gasto
             </button>
           </div>
@@ -444,6 +466,10 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
           onSetAIUAdmin={(v) => forms.setQuoteField('aiuAdmin', v)} onSetAIUImprevistos={(v) => forms.setQuoteField('aiuImprevistos', v)} onSetAIUUtilidad={(v) => forms.setQuoteField('aiuUtilidad', v)} onSetAIUIva={(v) => forms.setQuoteField('aiuIva', v)}
           onSetClientAddress={(v) => forms.setQuoteField('clientAddress', v)} onSetClientPhone={(v) => forms.setQuoteField('clientPhone', v)}
           onSend={handleSendQuote}
+          isPro={userProfile?.isPro} trialEndsAt={userProfile?.trialEndsAt}
+          mode={forms.quote.mode} sections={forms.quote.sections}
+          onSetMode={forms.setQuoteMode} onAddSection={forms.addCarpentrySection} onRemoveSection={forms.removeCarpentrySection}
+          onAddCarpentryItem={forms.addCarpentryItem} onUpdateCarpentryItem={forms.updateCarpentryItem} onRemoveCarpentryItem={forms.removeCarpentryItem}
         />
         <CollectionModal
           show={forms.modals.collection} onClose={() => forms.closeModal('collection')}
@@ -493,7 +519,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
 
       {/* Upload Progress */}
       {fileUpload.isUploading && (
-        <div className="fixed bottom-20 left-1/2 transform -translate-x-1/2 bg-indigo-600 text-white px-6 py-3 rounded-lg shadow-lg z-50 flex items-center gap-3">
+        <div className="fixed bottom-20 left-1/2 transform -translate-x-1/2 bg-gradient-to-br from-blue-600 to-blue-700 text-white px-6 py-3 rounded-xl shadow-lg shadow-blue-500/30 z-50 flex items-center gap-3">
           <i className="fa-solid fa-spinner fa-spin"></i>
           <span>Subiendo archivo... {fileUpload.uploadProgress > 0 ? `${fileUpload.uploadProgress}%` : ''}</span>
         </div>

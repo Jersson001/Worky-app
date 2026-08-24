@@ -39,8 +39,8 @@ export const ReceiptBubble: React.FC<ReceiptBubbleProps> = React.memo(({
           </span>
           <div className="text-[10px] text-slate-400">{meta.number}</div>
         </div>
-        <div className="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600">
-          <i className="fa-solid fa-money-bills"></i>
+        <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center text-white shadow-sm shadow-emerald-500/30">
+          <i className="fa-solid fa-money-bills text-sm"></i>
         </div>
       </div>
 

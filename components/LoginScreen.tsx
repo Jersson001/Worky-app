@@ -7,6 +7,12 @@ interface LoginScreenProps {
   onRegister: (email: string, phone: string, fullName: string) => void;
 }
 
+// Si el registro quedó pendiente de confirmar por correo (signUp sin sesión),
+// guardamos los datos aquí para poder forzar el onboarding cuando vuelva a
+// entrar ya confirmado — de lo contrario needsOnboarding nunca se activaría
+// porque el trigger de Supabase ya creó una fila mínima en user_profiles.
+const PENDING_REGISTRATION_KEY = 'worky_pendingRegistration';
+
 type AuthMode = 'login' | 'register';
 
 // Traduce el error de Supabase a un mensaje accionable.
@@ -62,6 +68,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister })
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [authMode, setAuthMode] = useState<AuthMode>('login');
+  // Se acaba de registrar pero Supabase exige confirmar el correo antes de
+  // dar sesión (signUp devuelve session: null). No se puede hacer nada más
+  // hasta que haga clic en el enlace del email.
+  const [pendingEmailConfirmation, setPendingEmailConfirmation] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,7 +88,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister })
         }
 
         const fullName = `${firstName} ${lastName}`;
-        const fullPhone = `${countryCode} ${phone}`;
+        // E.164 estricto (sin espacios): Supabase rechaza el envío de SMS si el
+        // número no matchea ese formato exacto.
+        const fullPhone = `${countryCode}${phone.replace(/\s+/g, '')}`;
         const normalizedEmail = email.trim().toLowerCase();
 
         // ── Supabase Auth: Create user with email/password ──
@@ -97,6 +109,18 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister })
         if (!data.user) throw new Error('No user returned from signup');
 
         const user = data.user;
+
+        if (!data.session) {
+          // "Confirm email" está activo: no hay sesión todavía, así que
+          // CUALQUIER escritura aquí (user_profiles, user_index, public_info)
+          // chocaría con RLS porque auth.uid() es NULL sin sesión. El trigger
+          // en auth.users (SECURITY DEFINER) ya creó la fila mínima; el resto
+          // se completa cuando confirme el correo y vuelva a iniciar sesión.
+          localStorage.setItem(PENDING_REGISTRATION_KEY, JSON.stringify({ email: normalizedEmail, phone: fullPhone, fullName }));
+          setPendingEmailConfirmation(normalizedEmail);
+          setLoading(false);
+          return;
+        }
 
         // El trigger ya creó la fila; esto solo la enriquece con los datos
         // que Auth no conoce. upsert, no insert: con el trigger por delante
@@ -154,7 +178,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister })
         // ── Set current user ID ──
         setCurrentUserId(user.id, email);
 
-        // ── Notify App.tsx ──
+        // ── Notify App.tsx ── (email ya confirmado al instante: sin "Confirm email" activo, signUp da sesión de una)
         onRegister(email, fullPhone, fullName);
 
       } else {
@@ -178,6 +202,21 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister })
         // Set current user ID
         setCurrentUserId(user.id, user.email || email);
 
+        // Si este login viene justo después de confirmar el correo de un
+        // registro nuevo, forzamos el onboarding (si no, needsOnboarding
+        // quedaría en false porque el trigger ya creó una fila mínima).
+        const pendingRaw = localStorage.getItem(PENDING_REGISTRATION_KEY);
+        if (pendingRaw) {
+          localStorage.removeItem(PENDING_REGISTRATION_KEY);
+          try {
+            const pending = JSON.parse(pendingRaw);
+            if (pending.email?.toLowerCase() === (user.email || email).toLowerCase()) {
+              onRegister(pending.email, pending.phone, pending.fullName);
+              return;
+            }
+          } catch (_) { /* JSON corrupto, ignorar y seguir como login normal */ }
+        }
+
         // Notify App.tsx
         onLogin();
       }
@@ -191,45 +230,90 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister })
     }
   };
 
+  if (pendingEmailConfirmation) {
+    return (
+      <div className="flex w-screen min-h-screen font-sans items-center justify-center p-6 bg-slate-50 relative overflow-hidden">
+        {/* Subtle geometric background */}
+        <div className="absolute inset-0 bg-[radial-gradient(#cbd5e1_1px,transparent_1px)] [background-size:24px_24px] opacity-40 pointer-events-none"></div>
+        <div className="w-full max-w-md relative z-10">
+          <div className="bg-white rounded-3xl p-8 border border-slate-200/90 shadow-2xl shadow-slate-200/60 text-center">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center mb-5 mx-auto shadow-lg shadow-blue-500/25">
+              <i className="fa-solid fa-envelope-circle-check text-white text-2xl"></i>
+            </div>
+            <h2 className="text-slate-900 text-xl font-bold mb-2">Revisa tu correo</h2>
+            <p className="text-slate-600 text-sm mb-6 leading-relaxed">
+              Te enviamos un enlace de confirmación a <span className="text-blue-600 font-bold">{pendingEmailConfirmation}</span>.
+              Haz clic ahí y luego vuelve a iniciar sesión.
+            </p>
+            <button
+              onClick={() => { setPendingEmailConfirmation(null); setAuthMode('login'); setError(''); }}
+              className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3.5 rounded-xl font-bold hover:shadow-xl transition-all shadow-lg shadow-blue-500/25 active:scale-[0.99]"
+            >
+              Ya confirmé, iniciar sesión
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex w-screen min-h-screen font-sans" style={{ background: 'linear-gradient(135deg, #0f172a 0%, #020617 100%)' }}>
+    <div className="flex w-screen min-h-screen font-sans bg-slate-50 relative overflow-hidden">
+      {/* Elementos geométricos decorativos de fondo */}
+      <div className="absolute inset-0 bg-[radial-gradient(#cbd5e1_1px,transparent_1px)] [background-size:28px_28px] opacity-50 pointer-events-none"></div>
+      
+      {/* Formas geométricas sutiles flotantes */}
+      <div className="absolute -top-24 -left-24 w-96 h-96 bg-blue-500/5 rounded-full blur-3xl pointer-events-none"></div>
+      <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-indigo-500/5 rounded-full blur-3xl pointer-events-none"></div>
+      
+      {/* Acentos geométricos vectoriales sutiles */}
+      <div className="absolute top-12 left-12 w-24 h-24 border border-blue-200/50 rounded-3xl rotate-12 pointer-events-none hidden lg:block"></div>
+      <div className="absolute bottom-16 left-1/3 w-16 h-16 border border-indigo-200/40 rounded-2xl -rotate-6 pointer-events-none hidden lg:block"></div>
+      <div className="absolute top-1/4 right-12 w-20 h-20 border border-slate-200 rounded-full pointer-events-none hidden lg:block"></div>
+
       {/* Panel izquierdo - Hero */}
-      <div className="hidden md:flex w-1/2 flex-col justify-center items-center relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-600/20 via-violet-600/10 to-transparent z-0"></div>
-        <div className="absolute top-20 left-20 w-72 h-72 bg-blue-500/20 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-20 right-20 w-96 h-96 bg-violet-500/20 rounded-full blur-3xl"></div>
-        <div className="z-10 flex flex-col items-center">
-          <img src="/worky-logo.png" alt="Worky" className="w-72 mb-4 drop-shadow-2xl" />
-          <p className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-violet-400 text-3xl font-bold uppercase tracking-wide">Gestiona tus proyectos</p>
-          <p className="text-slate-500 mt-4 text-center max-w-sm">La plataforma inteligente para emprendedores que quieren crecer</p>
+      <div className="hidden md:flex w-1/2 flex-col justify-center items-center relative z-10 p-12">
+        <div className="flex flex-col items-center text-center max-w-lg">
+          <img src="/worky-logo.png" alt="Worky" className="w-72 mb-6 drop-shadow-md" />
+          <h1 className="text-slate-900 text-3xl lg:text-4xl font-extrabold uppercase tracking-tight leading-tight">
+            Gestiona tus <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">proyectos</span>
+          </h1>
+          <p className="text-slate-600 mt-4 text-base font-medium leading-relaxed">
+            La plataforma inteligente para emprendedores que quieren crecer y simplificar su gestión
+          </p>
         </div>
       </div>
 
       {/* Panel derecho - Formulario */}
-      <div className="w-full md:w-1/2 flex items-center justify-center min-h-screen overflow-y-auto p-6" style={{ WebkitOverflowScrolling: 'touch' }}>
+      <div className="w-full md:w-1/2 flex items-center justify-center min-h-screen overflow-y-auto p-6 relative z-10" style={{ WebkitOverflowScrolling: 'touch' }}>
         <div className="w-full max-w-md">
           {/* Logo visible en móvil */}
-          <div className="md:hidden flex flex-col items-center mb-8">
-            <img src="/worky-logo.png" alt="Worky" className="w-48 mb-2" />
-            <p className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-violet-400 text-xl font-bold uppercase">Gestiona tus proyectos</p>
+          <div className="md:hidden flex flex-col items-center mb-8 text-center">
+            <img src="/worky-logo.png" alt="Worky" className="w-44 mb-3 drop-shadow-sm" />
+            <h1 className="text-slate-900 text-xl font-extrabold uppercase tracking-tight">
+              Gestiona tus <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">proyectos</span>
+            </h1>
+            <p className="text-slate-600 text-xs font-medium mt-1">
+              La plataforma inteligente para emprendedores
+            </p>
           </div>
 
           {/* Card de formulario */}
-          <div className="bg-slate-800/50 backdrop-blur-xl rounded-2xl p-8 border border-slate-700/50 shadow-2xl">
-            <div className="mb-6 flex justify-center gap-2">
+          <div className="bg-white rounded-3xl p-7 sm:p-8 border border-slate-200/90 shadow-2xl shadow-slate-200/60">
+            <div className="mb-6 flex bg-slate-100 p-1 rounded-2xl">
               <button
-                className={`px-5 py-2.5 rounded-xl font-bold text-sm transition-all ${authMode === 'login'
-                  ? 'bg-gradient-to-r from-blue-600 to-violet-600 text-white shadow-lg shadow-blue-500/30'
-                  : 'bg-slate-700/50 text-slate-400 hover:text-white'}`}
+                className={`flex-1 py-2.5 rounded-xl font-bold text-sm transition-all ${authMode === 'login'
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-700'}`}
                 onClick={() => { setAuthMode('login'); setError(''); }}
                 disabled={authMode === 'login'}
               >
                 Iniciar sesión
               </button>
               <button
-                className={`px-5 py-2.5 rounded-xl font-bold text-sm transition-all ${authMode === 'register'
-                  ? 'bg-gradient-to-r from-blue-600 to-violet-600 text-white shadow-lg shadow-blue-500/30'
-                  : 'bg-slate-700/50 text-slate-400 hover:text-white'}`}
+                className={`flex-1 py-2.5 rounded-xl font-bold text-sm transition-all ${authMode === 'register'
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-700'}`}
                 onClick={() => { setAuthMode('register'); setError(''); }}
                 disabled={authMode === 'register'}
               >
@@ -237,36 +321,36 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister })
               </button>
             </div>
 
-            <form className="space-y-5" onSubmit={handleSubmit}>
+            <form className="space-y-4" onSubmit={handleSubmit}>
               {authMode === 'register' && (
                 <>
                   <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-2">Nombre *</label>
+                    <label className="text-xs text-slate-700 font-bold uppercase mb-1.5 block tracking-wide">Nombre *</label>
                     <input
                       type="text"
-                      className="w-full p-4 bg-slate-700/50 border border-slate-600 text-white rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition placeholder-slate-500"
-                      placeholder="Jersson"
+                      className="w-full p-3.5 bg-slate-50 border border-slate-200 text-slate-900 font-semibold rounded-xl outline-none focus:border-blue-600 focus:bg-white transition placeholder-slate-400 text-sm"
+                      placeholder="Ej. Jersson"
                       value={firstName}
                       onChange={e => setFirstName(e.target.value)}
                       required
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-2">Apellidos *</label>
+                    <label className="text-xs text-slate-700 font-bold uppercase mb-1.5 block tracking-wide">Apellidos *</label>
                     <input
                       type="text"
-                      className="w-full p-4 bg-slate-700/50 border border-slate-600 text-white rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition placeholder-slate-500"
-                      placeholder="Escobar"
+                      className="w-full p-3.5 bg-slate-50 border border-slate-200 text-slate-900 font-semibold rounded-xl outline-none focus:border-blue-600 focus:bg-white transition placeholder-slate-400 text-sm"
+                      placeholder="Ej. Escobar"
                       value={lastName}
                       onChange={e => setLastName(e.target.value)}
                       required
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-2">Correo electrónico *</label>
+                    <label className="text-xs text-slate-700 font-bold uppercase mb-1.5 block tracking-wide">Correo electrónico *</label>
                     <input
                       type="email"
-                      className="w-full p-4 bg-slate-700/50 border border-slate-600 text-white rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition placeholder-slate-500"
+                      className="w-full p-3.5 bg-slate-50 border border-slate-200 text-slate-900 font-semibold rounded-xl outline-none focus:border-blue-600 focus:bg-white transition placeholder-slate-400 text-sm"
                       placeholder="tu@email.com"
                       value={email}
                       onChange={e => setEmail(e.target.value)}
@@ -275,9 +359,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister })
                   </div>
                   <div className="flex gap-2">
                     <div className="w-1/3">
-                      <label className="block text-sm font-medium text-slate-300 mb-2">País</label>
+                      <label className="text-xs text-slate-700 font-bold uppercase mb-1.5 block tracking-wide">País</label>
                       <select
-                        className="w-full p-4 bg-slate-700/50 border border-slate-600 text-white rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition"
+                        className="w-full p-3.5 bg-slate-50 border border-slate-200 text-slate-900 font-semibold rounded-xl outline-none focus:border-blue-600 focus:bg-white transition text-sm"
                         value={countryCode}
                         onChange={e => setCountryCode(e.target.value)}
                         required
@@ -289,10 +373,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister })
                       </select>
                     </div>
                     <div className="w-2/3">
-                      <label className="block text-sm font-medium text-slate-300 mb-2">Celular *</label>
+                      <label className="text-xs text-slate-700 font-bold uppercase mb-1.5 block tracking-wide">Celular *</label>
                       <input
                         type="tel"
-                        className="w-full p-4 bg-slate-700/50 border border-slate-600 text-white rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition placeholder-slate-500"
+                        className="w-full p-3.5 bg-slate-50 border border-slate-200 text-slate-900 font-semibold rounded-xl outline-none focus:border-blue-600 focus:bg-white transition placeholder-slate-400 text-sm"
                         placeholder="3142036659"
                         value={phone}
                         onChange={e => setPhone(e.target.value)}
@@ -301,11 +385,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister })
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-2">Contraseña *</label>
+                    <label className="text-xs text-slate-700 font-bold uppercase mb-1.5 block tracking-wide">Contraseña *</label>
                     <input
                       type="password"
-                      className="w-full p-4 bg-slate-700/50 border border-slate-600 text-white rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition placeholder-slate-500"
-                      placeholder="Tu contraseña (mín. 6 caracteres)"
+                      className="w-full p-3.5 bg-slate-50 border border-slate-200 text-slate-900 font-semibold rounded-xl outline-none focus:border-blue-600 focus:bg-white transition placeholder-slate-400 text-sm"
+                      placeholder="Mínimo 6 caracteres"
                       value={password}
                       onChange={e => setPassword(e.target.value)}
                       minLength={6}
@@ -317,10 +401,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister })
               {authMode === 'login' && (
                 <>
                   <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-2">Correo electrónico</label>
+                    <label className="text-xs text-slate-700 font-bold uppercase mb-1.5 block tracking-wide">Correo electrónico</label>
                     <input
                       type="email"
-                      className="w-full p-4 bg-slate-700/50 border border-slate-600 text-white rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition placeholder-slate-500"
+                      className="w-full p-3.5 bg-slate-50 border border-slate-200 text-slate-900 font-semibold rounded-xl outline-none focus:border-blue-600 focus:bg-white transition placeholder-slate-400 text-sm"
                       placeholder="tu@email.com"
                       value={email}
                       onChange={e => setEmail(e.target.value)}
@@ -328,10 +412,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister })
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-2">Contraseña</label>
+                    <label className="text-xs text-slate-700 font-bold uppercase mb-1.5 block tracking-wide">Contraseña</label>
                     <input
                       type="password"
-                      className="w-full p-4 bg-slate-700/50 border border-slate-600 text-white rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition placeholder-slate-500"
+                      className="w-full p-3.5 bg-slate-50 border border-slate-200 text-slate-900 font-semibold rounded-xl outline-none focus:border-blue-600 focus:bg-white transition placeholder-slate-400 text-sm"
                       placeholder="Tu contraseña"
                       value={password}
                       onChange={e => setPassword(e.target.value)}
@@ -340,10 +424,15 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister })
                   </div>
                 </>
               )}
-              {error && <p className="text-red-400 text-sm font-medium bg-red-500/10 p-3 rounded-lg border border-red-500/20">{error}</p>}
+              {error && (
+                <div className="text-red-600 text-xs font-semibold bg-red-50 p-3 rounded-xl border border-red-200 flex items-center gap-2">
+                  <i className="fa-solid fa-circle-exclamation text-sm"></i>
+                  <span>{error}</span>
+                </div>
+              )}
               <button
                 type="submit"
-                className="w-full bg-gradient-to-r from-blue-600 to-violet-600 text-white py-4 rounded-xl font-bold text-lg hover:from-blue-500 hover:to-violet-500 transition-all shadow-lg shadow-blue-500/30 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3.5 rounded-xl font-bold text-base hover:shadow-xl transition-all shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.99] mt-2"
                 disabled={loading}
               >
                 {loading ? (
@@ -359,12 +448,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister })
             </form>
 
             {/* Footer */}
-            <div className="mt-6 text-center">
-              <p className="text-slate-500 text-sm">
+            <div className="mt-6 text-center pt-4 border-t border-slate-100">
+              <p className="text-slate-500 text-xs font-medium">
                 {authMode === 'login' ? '¿No tienes cuenta?' : '¿Ya tienes cuenta?'}{' '}
                 <button
                   onClick={() => { setAuthMode(authMode === 'login' ? 'register' : 'login'); setError(''); }}
-                  className="text-blue-400 hover:text-blue-300 font-medium transition"
+                  className="text-blue-600 hover:text-blue-700 font-bold transition ml-1"
                 >
                   {authMode === 'login' ? 'Regístrate aquí' : 'Inicia sesión'}
                 </button>

@@ -483,41 +483,41 @@ export const FinancialReport: React.FC<FinancialReportProps> = ({ contacts, onCl
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-950/80 z-[100] flex justify-center items-start pt-10 px-4 animate-fade-in backdrop-blur-sm overflow-y-auto">
-      <div className="bg-slate-800 w-full max-w-4xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden border border-slate-700/50">
+    <div className="fixed inset-0 bg-slate-900/40 z-[100] flex justify-center items-start pt-10 px-4 animate-fade-in overflow-y-auto">
+      <div className="bg-white w-full max-w-4xl rounded-2xl shadow-xl flex flex-col max-h-[90vh] overflow-hidden">
         {/* Header */}
-        <div className="p-6 border-b border-slate-700/50 flex justify-between items-center" style={{ background: 'linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%)' }}>
-          <div>
-             <h2 className="text-2xl font-bold text-white flex items-center gap-3">
-               <div className="w-10 h-10 rounded-lg bg-emerald-500/20 flex items-center justify-center text-emerald-400">
-                  <i className="fa-solid fa-chart-pie"></i>
-               </div>
-               Estados Financieros
-             </h2>
-             <p className="text-slate-400 text-sm mt-1 ml-14">Control detallado de rentabilidad</p>
+        <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+          <div className="flex items-center gap-4">
+             <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center text-white shadow-md shadow-blue-500/30 flex-shrink-0">
+                <i className="fa-solid fa-chart-pie"></i>
+             </div>
+             <div>
+               <h2 className="text-xl font-bold text-slate-900">Estados Financieros</h2>
+               <p className="text-slate-500 text-[13px]">Control detallado de rentabilidad</p>
+             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <button 
-              onClick={handlePrint} 
-              className="bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-500 hover:to-violet-500 text-white px-4 py-2 rounded-xl font-semibold transition flex items-center gap-2 shadow-lg shadow-blue-500/30"
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handlePrint}
+              className="bg-gradient-to-br from-blue-600 to-blue-700 hover:shadow-lg text-white px-4 py-2 rounded-xl font-semibold transition flex items-center gap-2 shadow-md shadow-blue-500/30"
               title="Imprimir o guardar como PDF"
             >
               <i className="fa-solid fa-print"></i>
               Imprimir / PDF
             </button>
-            <button onClick={onClose} className="text-slate-400 hover:text-white transition bg-slate-700/50 w-10 h-10 rounded-full flex items-center justify-center">
-               <i className="fa-solid fa-xmark text-xl"></i>
+            <button onClick={onClose} className="text-slate-400 hover:text-slate-700 transition bg-slate-100 hover:bg-slate-200 w-9 h-9 rounded-full flex items-center justify-center">
+               <i className="fa-solid fa-xmark"></i>
             </button>
           </div>
         </div>
 
         {/* Tabs */}
-        <div className="flex bg-slate-900/50 p-1 border-b border-slate-700/50">
+        <div className="flex bg-slate-50 p-1 mx-6 mt-4 rounded-xl">
            {['monthly', 'yearly', 'ledger', 'custom'].map((v) => (
              <button
                key={v}
                onClick={() => setView(v as any)}
-               className={`flex-1 py-3 text-sm font-bold transition rounded-xl ${view === v ? 'bg-gradient-to-r from-blue-600 to-violet-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
+               className={`flex-1 py-2.5 text-sm font-bold transition rounded-lg ${view === v ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
              >
                {v === 'monthly' && 'Reporte Mensual'}
                {v === 'yearly' && 'Resumen Anual'}
@@ -528,7 +528,7 @@ export const FinancialReport: React.FC<FinancialReportProps> = ({ contacts, onCl
         </div>
 
         {/* Content */}
-        <div className="p-8 overflow-y-auto custom-scrollbar flex-1 bg-slate-800">
+        <div className="p-8 overflow-y-auto custom-scrollbar flex-1 bg-white">
           <div ref={printRef} className="print-content">
             {/* MONTHLY VIEW */}
             {view === 'monthly' && (

@@ -218,23 +218,23 @@ export const GroupsManager: React.FC<GroupsManagerProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-950/80 z-[100] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
-      <div className="bg-slate-800 w-full max-w-2xl rounded-2xl shadow-2xl border border-slate-700/50 overflow-hidden max-h-[90vh] flex flex-col">
-        
+    <div className="fixed inset-0 bg-slate-900/40 z-[100] flex items-center justify-center p-4 animate-fade-in">
+      <div className="bg-white w-full max-w-2xl rounded-2xl shadow-xl overflow-hidden max-h-[90vh] flex flex-col">
+
         {/* Header */}
-        <div className="p-5 border-b border-slate-700/50 flex justify-between items-center" style={{ background: 'linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%)' }}>
+        <div className="p-5 border-b border-slate-100 flex justify-between items-center">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-r from-blue-600 to-violet-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/30">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center text-white shadow-md shadow-blue-500/30">
               <i className="fa-solid fa-users-rectangle text-lg"></i>
             </div>
             <div>
-              <h3 className="text-white font-bold text-lg">
+              <h3 className="text-slate-900 font-bold text-lg">
                 {view === 'list' && 'Grupos de Chat'}
                 {view === 'create' && 'Crear Grupo'}
                 {view === 'edit' && 'Editar Grupo'}
                 {view === 'subgroups' && selectedGroup?.name}
               </h3>
-              <p className="text-slate-400 text-xs">
+              <p className="text-slate-500 text-[13px]">
                 {view === 'list' && `${groups.length} grupos activos`}
                 {view === 'create' && 'Crea un grupo para tu equipo'}
                 {view === 'edit' && 'Modifica la configuración del grupo'}
@@ -244,29 +244,29 @@ export const GroupsManager: React.FC<GroupsManagerProps> = ({
           </div>
           <div className="flex items-center gap-2">
             {view !== 'list' && (
-              <button 
+              <button
                 onClick={() => { resetForm(); setView('list'); }}
-                className="text-slate-400 hover:text-white transition bg-slate-700/50 px-4 py-2 rounded-lg flex items-center gap-2 text-sm"
+                className="text-slate-500 hover:text-slate-700 transition bg-slate-100 hover:bg-slate-200 px-4 py-2 rounded-lg flex items-center gap-2 text-sm"
               >
                 <i className="fa-solid fa-arrow-left"></i> Volver
               </button>
             )}
-            <button onClick={onClose} className="text-slate-400 hover:text-white transition bg-slate-700/50 w-10 h-10 rounded-full flex items-center justify-center">
+            <button onClick={onClose} className="text-slate-400 hover:text-slate-700 transition bg-slate-100 hover:bg-slate-200 w-9 h-9 rounded-full flex items-center justify-center">
               <i className="fa-solid fa-xmark text-lg"></i>
             </button>
           </div>
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-5">
-          
+        <div className="flex-1 overflow-y-auto p-5 bg-white">
+
           {/* LIST VIEW */}
           {view === 'list' && (
             <div className="space-y-4">
               {/* Create button */}
               <button
                 onClick={() => setView('create')}
-                className="w-full bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-500 hover:to-violet-500 text-white py-4 rounded-xl font-bold text-sm flex items-center justify-center gap-3 shadow-lg shadow-blue-500/30 transition"
+                className="w-full bg-gradient-to-br from-blue-600 to-blue-700 text-white py-4 rounded-xl font-bold text-sm flex items-center justify-center gap-3 shadow-md shadow-blue-500/30 hover:shadow-lg transition"
               >
                 <i className="fa-solid fa-plus"></i>
                 Crear Nuevo Grupo
@@ -274,7 +274,7 @@ export const GroupsManager: React.FC<GroupsManagerProps> = ({
 
               {/* Groups list */}
               {groups.length === 0 ? (
-                <div className="text-center py-12 text-slate-500">
+                <div className="text-center py-12 text-slate-400">
                   <i className="fa-solid fa-users-slash text-4xl mb-4"></i>
                   <p className="font-medium">No tienes grupos aún</p>
                   <p className="text-sm mt-1">Crea tu primer grupo para colaborar con tu equipo</p>
@@ -282,27 +282,27 @@ export const GroupsManager: React.FC<GroupsManagerProps> = ({
               ) : (
                 <div className="space-y-3">
                   {groups.map(group => (
-                    <div key={group.id} className="bg-slate-700/30 rounded-xl border border-slate-600/50 overflow-hidden">
+                    <div key={group.id} className="bg-white rounded-xl shadow-sm hover:shadow-md transition overflow-hidden">
                       {/* Group header */}
-                      <div 
-                        className="p-4 flex items-center justify-between cursor-pointer hover:bg-slate-700/50 transition"
+                      <div
+                        className="p-4 flex items-center justify-between cursor-pointer transition"
                         onClick={() => setExpandedGroupId(expandedGroupId === group.id ? null : group.id)}
                       >
                         <div className="flex items-center gap-3">
-                          <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-white shadow-lg ${
-                            group.type === 'project' ? 'bg-gradient-to-br from-emerald-500 to-green-600' : 'bg-gradient-to-br from-blue-500 to-violet-600'
+                          <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-white shadow-md ${
+                            group.type === 'project' ? 'bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-emerald-500/30' : 'bg-gradient-to-br from-blue-600 to-blue-700 shadow-blue-500/30'
                           }`}>
                             <i className={`fa-solid ${group.type === 'project' ? 'fa-folder-tree' : 'fa-users'} text-xl`}></i>
                           </div>
                           <div>
-                            <h4 className="text-white font-bold">{group.name}</h4>
-                            <div className="flex items-center gap-3 text-xs text-slate-400">
+                            <h4 className="text-slate-900 font-bold">{group.name}</h4>
+                            <div className="flex items-center gap-3 text-xs text-slate-500">
                               <span><i className="fa-solid fa-user mr-1"></i>{getMemberCount(group)} miembros</span>
                               {getSubgroupCount(group) > 0 && (
                                 <span><i className="fa-solid fa-layer-group mr-1"></i>{getSubgroupCount(group)} subgrupos</span>
                               )}
                               {group.type === 'project' && (
-                                <span className="bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full">
+                                <span className="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">
                                   <i className="fa-solid fa-briefcase mr-1"></i>Proyecto
                                 </span>
                               )}
@@ -312,7 +312,7 @@ export const GroupsManager: React.FC<GroupsManagerProps> = ({
                         <div className="flex items-center gap-2">
                           <button
                             onClick={(e) => { e.stopPropagation(); onSelectGroup(group.id); onClose(); }}
-                            className="bg-gradient-to-r from-blue-600 to-violet-600 text-white px-4 py-2 rounded-lg text-xs font-bold hover:from-blue-500 hover:to-violet-500 transition"
+                            className="bg-gradient-to-br from-blue-600 to-blue-700 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-sm hover:shadow-md transition"
                           >
                             <i className="fa-solid fa-comment mr-1"></i> Chat
                           </button>
@@ -322,22 +322,22 @@ export const GroupsManager: React.FC<GroupsManagerProps> = ({
 
                       {/* Expanded content */}
                       {expandedGroupId === group.id && (
-                        <div className="px-4 pb-4 border-t border-slate-600/50 pt-3 space-y-3 animate-fade-in">
+                        <div className="px-4 pb-4 border-t border-slate-100 pt-3 space-y-3 animate-fade-in">
                           {/* Description */}
                           {group.description && (
-                            <p className="text-slate-400 text-sm">{group.description}</p>
+                            <p className="text-slate-500 text-sm">{group.description}</p>
                           )}
 
                           {/* Subgroups preview */}
                           {group.subGroups && group.subGroups.length > 0 && (
                             <div>
-                              <p className="text-xs text-slate-500 uppercase font-bold mb-2">Subgrupos</p>
+                              <p className="text-xs text-slate-400 uppercase font-bold mb-2">Subgrupos</p>
                               <div className="flex flex-wrap gap-2">
                                 {group.subGroups.map(sg => (
                                   <button
                                     key={sg.id}
                                     onClick={() => { onSelectGroup(group.id, sg.id); onClose(); }}
-                                    className="bg-slate-600/50 hover:bg-slate-600 px-3 py-1.5 rounded-lg text-xs font-medium text-white flex items-center gap-2 transition"
+                                    className="bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-700 flex items-center gap-2 transition"
                                     style={{ borderLeft: `3px solid ${sg.color}` }}
                                   >
                                     <i className={`fa-solid ${sg.icon}`} style={{ color: sg.color }}></i>
@@ -351,7 +351,7 @@ export const GroupsManager: React.FC<GroupsManagerProps> = ({
 
                           {/* Members preview */}
                           <div>
-                            <p className="text-xs text-slate-500 uppercase font-bold mb-2">Miembros</p>
+                            <p className="text-xs text-slate-400 uppercase font-bold mb-2">Miembros</p>
                             <div className="flex -space-x-2">
                               {group.members.slice(0, 6).map((member, idx) => {
                                 const contact = getContactById(member.contactId);
@@ -360,17 +360,17 @@ export const GroupsManager: React.FC<GroupsManagerProps> = ({
                                     key={member.id}
                                     src={contact.avatar}
                                     alt={contact.clientName}
-                                    className="w-8 h-8 rounded-full border-2 border-slate-700"
+                                    className="w-8 h-8 rounded-full border-2 border-white shadow-sm"
                                     title={contact.clientName}
                                   />
                                 ) : member.contactId === 'me' ? (
-                                  <div key={member.id} className="w-8 h-8 rounded-full border-2 border-slate-700 bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center text-white text-xs font-bold">
+                                  <div key={member.id} className="w-8 h-8 rounded-full border-2 border-white shadow-sm bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center text-white text-xs font-bold">
                                     Yo
                                   </div>
                                 ) : null;
                               })}
                               {group.members.length > 6 && (
-                                <div className="w-8 h-8 rounded-full border-2 border-slate-700 bg-slate-600 flex items-center justify-center text-white text-xs font-bold">
+                                <div className="w-8 h-8 rounded-full border-2 border-white shadow-sm bg-slate-200 flex items-center justify-center text-slate-600 text-xs font-bold">
                                   +{group.members.length - 6}
                                 </div>
                               )}
@@ -381,13 +381,13 @@ export const GroupsManager: React.FC<GroupsManagerProps> = ({
                           <div className="flex gap-2 pt-2">
                             <button
                               onClick={() => openSubgroupsView(group)}
-                              className="flex-1 bg-slate-600/50 hover:bg-slate-600 text-white py-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-2"
+                              className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 py-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-2"
                             >
                               <i className="fa-solid fa-layer-group"></i> Subgrupos
                             </button>
                             <button
                               onClick={() => openEditGroup(group)}
-                              className="flex-1 bg-slate-600/50 hover:bg-slate-600 text-white py-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-2"
+                              className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 py-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-2"
                             >
                               <i className="fa-solid fa-pen"></i> Editar
                             </button>
@@ -397,7 +397,7 @@ export const GroupsManager: React.FC<GroupsManagerProps> = ({
                                   onDeleteGroup(group.id);
                                 }
                               }}
-                              className="bg-rose-500/20 hover:bg-rose-500/40 text-rose-400 px-4 py-2 rounded-lg text-xs font-bold transition"
+                              className="bg-rose-50 hover:bg-rose-100 text-rose-600 px-4 py-2 rounded-lg text-xs font-bold transition"
                             >
                               <i className="fa-solid fa-trash"></i>
                             </button>
@@ -417,14 +417,14 @@ export const GroupsManager: React.FC<GroupsManagerProps> = ({
               {/* Group Type */}
               {view === 'create' && (
                 <div>
-                  <label className="text-xs text-slate-500 uppercase font-bold block mb-2">Tipo de Grupo</label>
+                  <label className="text-xs text-slate-400 uppercase font-bold block mb-2">Tipo de Grupo</label>
                   <div className="grid grid-cols-2 gap-3">
                     <button
                       onClick={() => setNewGroupType('general')}
-                      className={`p-4 rounded-xl border-2 transition flex flex-col items-center gap-2 ${
-                        newGroupType === 'general' 
-                          ? 'border-blue-500 bg-blue-500/10 text-blue-400' 
-                          : 'border-slate-600/50 text-slate-400 hover:border-slate-500'
+                      className={`p-4 rounded-xl transition flex flex-col items-center gap-2 ${
+                        newGroupType === 'general'
+                          ? 'bg-blue-50 text-blue-600 shadow-sm'
+                          : 'bg-slate-50 text-slate-400 hover:bg-slate-100'
                       }`}
                     >
                       <i className="fa-solid fa-users text-2xl"></i>
@@ -433,10 +433,10 @@ export const GroupsManager: React.FC<GroupsManagerProps> = ({
                     </button>
                     <button
                       onClick={() => setNewGroupType('project')}
-                      className={`p-4 rounded-xl border-2 transition flex flex-col items-center gap-2 ${
-                        newGroupType === 'project' 
-                          ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400' 
-                          : 'border-slate-600/50 text-slate-400 hover:border-slate-500'
+                      className={`p-4 rounded-xl transition flex flex-col items-center gap-2 ${
+                        newGroupType === 'project'
+                          ? 'bg-emerald-50 text-emerald-600 shadow-sm'
+                          : 'bg-slate-50 text-slate-400 hover:bg-slate-100'
                       }`}
                     >
                       <i className="fa-solid fa-folder-tree text-2xl"></i>
@@ -450,11 +450,11 @@ export const GroupsManager: React.FC<GroupsManagerProps> = ({
               {/* Project selector */}
               {newGroupType === 'project' && (
                 <div>
-                  <label className="text-xs text-slate-500 uppercase font-bold block mb-2">Proyecto Asociado</label>
+                  <label className="text-xs text-slate-400 uppercase font-bold block mb-2">Proyecto Asociado</label>
                   <select
                     value={selectedProjectId}
                     onChange={(e) => setSelectedProjectId(e.target.value)}
-                    className="w-full bg-slate-700/50 border border-slate-600 text-white p-3 rounded-xl outline-none focus:border-blue-500 transition"
+                    className="w-full bg-slate-50 border border-slate-200 text-slate-900 p-3 rounded-xl outline-none focus:border-blue-500 transition"
                   >
                     <option value="">-- Seleccionar proyecto --</option>
                     {allProjects.map(({ project, contact }) => (
@@ -464,7 +464,7 @@ export const GroupsManager: React.FC<GroupsManagerProps> = ({
                     ))}
                   </select>
                   {allProjects.length === 0 && (
-                    <p className="text-xs text-amber-400 mt-2">
+                    <p className="text-xs text-amber-600 mt-2">
                       <i className="fa-solid fa-triangle-exclamation mr-1"></i>
                       No hay proyectos disponibles. Crea un proyecto con un cliente primero.
                     </p>
@@ -474,38 +474,38 @@ export const GroupsManager: React.FC<GroupsManagerProps> = ({
 
               {/* Group Name */}
               <div>
-                <label className="text-xs text-slate-500 uppercase font-bold block mb-2">Nombre del Grupo *</label>
+                <label className="text-xs text-slate-400 uppercase font-bold block mb-2">Nombre del Grupo *</label>
                 <input
                   type="text"
                   value={newGroupName}
                   onChange={(e) => setNewGroupName(e.target.value)}
                   placeholder="Ej: Equipo Edificio Central"
-                  className="w-full bg-slate-700/50 border border-slate-600 text-white p-3 rounded-xl outline-none focus:border-blue-500 transition placeholder-slate-500"
+                  className="w-full bg-slate-50 border border-slate-200 text-slate-900 p-3 rounded-xl outline-none focus:border-blue-500 transition placeholder-slate-400"
                 />
               </div>
 
               {/* Description */}
               <div>
-                <label className="text-xs text-slate-500 uppercase font-bold block mb-2">Descripción (opcional)</label>
+                <label className="text-xs text-slate-400 uppercase font-bold block mb-2">Descripción (opcional)</label>
                 <textarea
                   value={newGroupDescription}
                   onChange={(e) => setNewGroupDescription(e.target.value)}
                   placeholder="Descripción breve del grupo..."
                   rows={2}
-                  className="w-full bg-slate-700/50 border border-slate-600 text-white p-3 rounded-xl outline-none focus:border-blue-500 transition placeholder-slate-500 resize-none"
+                  className="w-full bg-slate-50 border border-slate-200 text-slate-900 p-3 rounded-xl outline-none focus:border-blue-500 transition placeholder-slate-400 resize-none"
                 />
               </div>
 
               {/* Members */}
               <div>
-                <label className="text-xs text-slate-500 uppercase font-bold block mb-2">
+                <label className="text-xs text-slate-400 uppercase font-bold block mb-2">
                   Miembros ({selectedMembers.length} seleccionados)
                 </label>
-                <div className="bg-slate-700/30 rounded-xl border border-slate-600/50 max-h-48 overflow-y-auto">
+                <div className="bg-slate-50 rounded-xl max-h-48 overflow-y-auto">
                   {contacts.map(contact => (
                     <label
                       key={contact.id}
-                      className="flex items-center gap-3 p-3 hover:bg-slate-600/30 cursor-pointer transition"
+                      className="flex items-center gap-3 p-3 hover:bg-slate-100 cursor-pointer transition"
                     >
                       <input
                         type="checkbox"
@@ -517,11 +517,11 @@ export const GroupsManager: React.FC<GroupsManagerProps> = ({
                             setSelectedMembers(selectedMembers.filter(id => id !== contact.id));
                           }
                         }}
-                        className="w-4 h-4 accent-blue-500"
+                        className="w-4 h-4 accent-blue-600"
                       />
                       <img src={contact.avatar} alt="" className="w-8 h-8 rounded-full" />
                       <div className="flex-1">
-                        <p className="text-white text-sm font-medium">{contact.clientName}</p>
+                        <p className="text-slate-900 text-sm font-medium">{contact.clientName}</p>
                         <p className="text-slate-500 text-xs">{contact.role === 'client' ? 'Cliente' : contact.role === 'supplier' ? 'Proveedor' : 'Colaborador'}</p>
                       </div>
                     </label>
@@ -533,7 +533,7 @@ export const GroupsManager: React.FC<GroupsManagerProps> = ({
               <button
                 onClick={view === 'create' ? handleCreateGroup : handleUpdateGroup}
                 disabled={!newGroupName.trim()}
-                className="w-full bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-500 hover:to-violet-500 disabled:opacity-50 disabled:cursor-not-allowed text-white py-4 rounded-xl font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-blue-500/30 transition"
+                className="w-full bg-gradient-to-br from-blue-600 to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white py-4 rounded-xl font-bold text-sm flex items-center justify-center gap-2 shadow-md shadow-blue-500/30 hover:shadow-lg transition"
               >
                 <i className={`fa-solid ${view === 'create' ? 'fa-plus' : 'fa-check'}`}></i>
                 {view === 'create' ? 'Crear Grupo' : 'Guardar Cambios'}
@@ -547,7 +547,7 @@ export const GroupsManager: React.FC<GroupsManagerProps> = ({
               {/* Create subgroup button */}
               <button
                 onClick={() => setShowSubgroupModal(true)}
-                className="w-full bg-slate-700/50 hover:bg-slate-700 border-2 border-dashed border-slate-600 text-slate-400 hover:text-white py-4 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition"
+                className="w-full bg-slate-50 hover:bg-slate-100 border border-dashed border-slate-300 hover:border-blue-400 text-slate-500 hover:text-slate-700 py-4 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition"
               >
                 <i className="fa-solid fa-plus"></i>
                 Crear Subgrupo
@@ -555,43 +555,43 @@ export const GroupsManager: React.FC<GroupsManagerProps> = ({
 
               {/* Subgroups list */}
               {(!selectedGroup.subGroups || selectedGroup.subGroups.length === 0) ? (
-                <div className="text-center py-12 text-slate-500">
+                <div className="text-center py-12 text-slate-400">
                   <i className="fa-solid fa-layer-group text-4xl mb-4"></i>
                   <p className="font-medium">No hay subgrupos</p>
                   <p className="text-sm mt-1">Crea subgrupos para organizar equipos específicos</p>
-                  <p className="text-xs mt-3 text-slate-600">Ej: Carpinteros, Plomeros, Electricistas...</p>
+                  <p className="text-xs mt-3 text-slate-400">Ej: Carpinteros, Plomeros, Electricistas...</p>
                 </div>
               ) : (
                 <div className="space-y-3">
                   {selectedGroup.subGroups.map(subgroup => (
                     <div
                       key={subgroup.id}
-                      className="bg-slate-700/30 rounded-xl border border-slate-600/50 p-4"
+                      className="bg-white rounded-xl shadow-sm hover:shadow-md transition p-4"
                       style={{ borderLeftWidth: '4px', borderLeftColor: subgroup.color }}
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                          <div 
-                            className="w-10 h-10 rounded-lg flex items-center justify-center text-white"
-                            style={{ backgroundColor: subgroup.color + '30' }}
+                          <div
+                            className="w-10 h-10 rounded-lg flex items-center justify-center"
+                            style={{ backgroundColor: subgroup.color + '20' }}
                           >
                             <i className={`fa-solid ${subgroup.icon}`} style={{ color: subgroup.color }}></i>
                           </div>
                           <div>
-                            <h4 className="text-white font-bold">{subgroup.name}</h4>
+                            <h4 className="text-slate-900 font-bold">{subgroup.name}</h4>
                             <p className="text-slate-500 text-xs">{subgroup.members.length} miembros</p>
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
                           <button
                             onClick={() => { onSelectGroup(selectedGroup.id, subgroup.id); onClose(); }}
-                            className="bg-slate-600/50 hover:bg-slate-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition"
+                            className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-bold transition"
                           >
                             <i className="fa-solid fa-comment mr-1"></i> Chat
                           </button>
                           <button
                             onClick={() => handleDeleteSubgroup(subgroup.id)}
-                            className="text-rose-400 hover:bg-rose-500/20 p-2 rounded-lg transition"
+                            className="text-rose-500 hover:bg-rose-50 p-2 rounded-lg transition"
                           >
                             <i className="fa-solid fa-trash text-sm"></i>
                           </button>
@@ -608,13 +608,13 @@ export const GroupsManager: React.FC<GroupsManagerProps> = ({
                                 key={member.id}
                                 src={contact.avatar}
                                 alt={contact.clientName}
-                                className="w-7 h-7 rounded-full border-2 border-slate-700"
+                                className="w-7 h-7 rounded-full border-2 border-white shadow-sm"
                                 title={contact.clientName}
                               />
                             ) : null;
                           })}
                           {subgroup.members.length > 5 && (
-                            <div className="w-7 h-7 rounded-full border-2 border-slate-700 bg-slate-600 flex items-center justify-center text-white text-[10px] font-bold">
+                            <div className="w-7 h-7 rounded-full border-2 border-white shadow-sm bg-slate-200 flex items-center justify-center text-slate-600 text-[10px] font-bold">
                               +{subgroup.members.length - 5}
                             </div>
                           )}
@@ -630,38 +630,38 @@ export const GroupsManager: React.FC<GroupsManagerProps> = ({
 
         {/* Subgroup Creation Modal */}
         {showSubgroupModal && selectedGroup && (
-          <div className="absolute inset-0 bg-slate-950/80 z-10 flex items-center justify-center p-4 backdrop-blur-sm">
-            <div className="bg-slate-800 w-full max-w-md rounded-2xl shadow-2xl border border-slate-700/50 p-6">
-              <h3 className="text-white font-bold text-lg mb-4 flex items-center gap-2">
-                <i className="fa-solid fa-layer-group text-blue-400"></i>
+          <div className="absolute inset-0 bg-slate-900/40 z-10 flex items-center justify-center p-4">
+            <div className="bg-white w-full max-w-md rounded-2xl shadow-xl p-6">
+              <h3 className="text-slate-900 font-bold text-lg mb-4 flex items-center gap-2">
+                <i className="fa-solid fa-layer-group text-blue-600"></i>
                 Crear Subgrupo
               </h3>
 
               <div className="space-y-4">
                 {/* Subgroup Name */}
                 <div>
-                  <label className="text-xs text-slate-500 uppercase font-bold block mb-2">Nombre del Subgrupo</label>
+                  <label className="text-xs text-slate-400 uppercase font-bold block mb-2">Nombre del Subgrupo</label>
                   <input
                     type="text"
                     value={newSubgroupName}
                     onChange={(e) => setNewSubgroupName(e.target.value)}
                     placeholder="Ej: Carpinteros"
-                    className="w-full bg-slate-700/50 border border-slate-600 text-white p-3 rounded-xl outline-none focus:border-blue-500 transition placeholder-slate-500"
+                    className="w-full bg-slate-50 border border-slate-200 text-slate-900 p-3 rounded-xl outline-none focus:border-blue-500 transition placeholder-slate-400"
                   />
                 </div>
 
                 {/* Icon selector */}
                 <div>
-                  <label className="text-xs text-slate-500 uppercase font-bold block mb-2">Icono y Color</label>
+                  <label className="text-xs text-slate-400 uppercase font-bold block mb-2">Icono y Color</label>
                   <div className="grid grid-cols-6 gap-2">
                     {SUBGROUP_ICONS.map((item, idx) => (
                       <button
                         key={idx}
                         onClick={() => setNewSubgroupIcon(item)}
                         className={`p-3 rounded-lg transition flex items-center justify-center ${
-                          newSubgroupIcon.icon === item.icon 
-                            ? 'ring-2 ring-white bg-slate-600' 
-                            : 'bg-slate-700/50 hover:bg-slate-700'
+                          newSubgroupIcon.icon === item.icon
+                            ? 'ring-2 ring-blue-500 bg-blue-50'
+                            : 'bg-slate-50 hover:bg-slate-100'
                         }`}
                         title={item.name}
                       >
@@ -673,17 +673,17 @@ export const GroupsManager: React.FC<GroupsManagerProps> = ({
 
                 {/* Members from parent group */}
                 <div>
-                  <label className="text-xs text-slate-500 uppercase font-bold block mb-2">
+                  <label className="text-xs text-slate-400 uppercase font-bold block mb-2">
                     Miembros (del grupo principal)
                   </label>
-                  <div className="bg-slate-700/30 rounded-xl border border-slate-600/50 max-h-40 overflow-y-auto">
+                  <div className="bg-slate-50 rounded-xl max-h-40 overflow-y-auto">
                     {selectedGroup.members.filter(m => m.contactId !== 'me').map(member => {
                       const contact = getContactById(member.contactId);
                       if (!contact) return null;
                       return (
                         <label
                           key={member.id}
-                          className="flex items-center gap-3 p-3 hover:bg-slate-600/30 cursor-pointer transition"
+                          className="flex items-center gap-3 p-3 hover:bg-slate-100 cursor-pointer transition"
                         >
                           <input
                             type="checkbox"
@@ -695,10 +695,10 @@ export const GroupsManager: React.FC<GroupsManagerProps> = ({
                                 setSelectedSubgroupMembers(selectedSubgroupMembers.filter(id => id !== member.contactId));
                               }
                             }}
-                            className="w-4 h-4 accent-blue-500"
+                            className="w-4 h-4 accent-blue-600"
                           />
                           <img src={contact.avatar} alt="" className="w-7 h-7 rounded-full" />
-                          <span className="text-white text-sm">{contact.clientName}</span>
+                          <span className="text-slate-900 text-sm">{contact.clientName}</span>
                         </label>
                       );
                     })}
@@ -713,14 +713,14 @@ export const GroupsManager: React.FC<GroupsManagerProps> = ({
                       setNewSubgroupName('');
                       setSelectedSubgroupMembers([]);
                     }}
-                    className="flex-1 bg-slate-600/50 hover:bg-slate-600 text-white py-3 rounded-xl font-bold transition"
+                    className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 py-3 rounded-xl font-bold transition"
                   >
                     Cancelar
                   </button>
                   <button
                     onClick={handleCreateSubgroup}
                     disabled={!newSubgroupName.trim()}
-                    className="flex-1 bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-500 hover:to-violet-500 disabled:opacity-50 text-white py-3 rounded-xl font-bold transition"
+                    className="flex-1 bg-gradient-to-br from-blue-600 to-blue-700 disabled:opacity-50 text-white py-3 rounded-xl font-bold shadow-md shadow-blue-500/30 hover:shadow-lg transition"
                   >
                     <i className="fa-solid fa-plus mr-2"></i>
                     Crear

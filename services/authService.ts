@@ -32,28 +32,27 @@ export const authService = {
   },
 
   /**
-   * Enviar OTP al teléfono (WhatsApp)
+   * Enviar código SMS para verificar/adjuntar un celular a la sesión YA
+   * autenticada (signUp con email/password). updateUser({phone}), no
+   * signInWithOtp: este último crearía una cuenta nueva ligada al
+   * teléfono en vez de verificar el teléfono de la cuenta actual.
    */
   async sendPhoneVerification(phoneNumber: string): Promise<void> {
-    const { error } = await supabase.auth.signInWithOtp({
-      phone: phoneNumber,
-      options: {
-        channel: 'whatsapp', // Usar WhatsApp para enviar OTP
-      },
-    });
-
+    const { error } = await supabase.auth.updateUser({ phone: phoneNumber });
     if (error) throw error;
     localStorage.setItem('phoneForSignIn', phoneNumber);
   },
 
   /**
-   * Verificar el código del teléfono
+   * Confirmar el código SMS. type: 'phone_change' porque el teléfono se
+   * está adjuntando a una cuenta existente (ver sendPhoneVerification),
+   * no iniciando sesión con teléfono desde cero (eso sería type: 'sms').
    */
   async verifyPhoneCode(phoneNumber: string, token: string): Promise<any> {
     const { data, error } = await supabase.auth.verifyOtp({
       phone: phoneNumber,
       token,
-      type: 'sms',
+      type: 'phone_change',
     });
 
     if (error) throw error;

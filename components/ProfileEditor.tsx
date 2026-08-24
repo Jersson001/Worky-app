@@ -140,7 +140,7 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ userProfile, onSav
                 type="text"
                 value={ownerName}
                 onChange={(e) => setOwnerName(e.target.value)}
-                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition"
+                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition text-slate-900 font-medium placeholder-slate-400 disabled:bg-slate-100 disabled:text-slate-600 read-only:bg-slate-100 read-only:text-slate-600"
                 placeholder="Tu nombre completo"
               />
             </div>
@@ -151,7 +151,7 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ userProfile, onSav
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition"
+                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition text-slate-900 font-medium placeholder-slate-400 disabled:bg-slate-100 disabled:text-slate-600 read-only:bg-slate-100 read-only:text-slate-600"
                 placeholder="tu@email.com"
               />
             </div>
@@ -162,14 +162,14 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ userProfile, onSav
                 type="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition"
+                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition text-slate-900 font-medium placeholder-slate-400 disabled:bg-slate-100 disabled:text-slate-600 read-only:bg-slate-100 read-only:text-slate-600"
                 placeholder="+57 300 123 4567"
               />
             </div>
           </div>
 
           {/* Sección: Información del Negocio */}
-          <div className="space-y-4 pt-4 border-t">
+          <div className="space-y-4 pt-4 border-t border-slate-200">
             <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
               <i className="fa-solid fa-briefcase text-indigo-600"></i>
               Información del Negocio
@@ -220,7 +220,7 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ userProfile, onSav
                 type="text"
                 value={businessName}
                 onChange={(e) => setBusinessName(e.target.value)}
-                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition"
+                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition text-slate-900 font-medium placeholder-slate-400 disabled:bg-slate-100 disabled:text-slate-600 read-only:bg-slate-100 read-only:text-slate-600"
                 placeholder="Ej: Carpintería El Roble"
               />
             </div>
@@ -230,7 +230,7 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ userProfile, onSav
               <select
                 value={businessType}
                 onChange={(e) => setBusinessType(e.target.value)}
-                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition"
+                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition text-slate-900 font-medium placeholder-slate-400 disabled:bg-slate-100 disabled:text-slate-600 read-only:bg-slate-100 read-only:text-slate-600"
               >
                 <option value="">Selecciona una opción</option>
                 <option value="carpinteria">🪚 Carpintería</option>
@@ -251,14 +251,14 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ userProfile, onSav
                 type="text"
                 value={nit}
                 onChange={(e) => setNit(e.target.value)}
-                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition"
+                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition text-slate-900 font-medium placeholder-slate-400 disabled:bg-slate-100 disabled:text-slate-600 read-only:bg-slate-100 read-only:text-slate-600"
                 placeholder="900.123.456-7"
               />
             </div>
           </div>
 
           {/* Sección: Ubicación */}
-          <div className="space-y-4 pt-4 border-t">
+          <div className="space-y-4 pt-4 border-t border-slate-200">
             <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
               <i className="fa-solid fa-location-dot text-indigo-600"></i>
               Ubicación
@@ -270,7 +270,7 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ userProfile, onSav
                 type="text"
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
-                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition"
+                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition text-slate-900 font-medium placeholder-slate-400 disabled:bg-slate-100 disabled:text-slate-600 read-only:bg-slate-100 read-only:text-slate-600"
                 placeholder="Calle 123 # 45-67"
               />
             </div>
@@ -282,7 +282,7 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ userProfile, onSav
                   type="text"
                   value={city}
                   onChange={(e) => setCity(e.target.value)}
-                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition"
+                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition text-slate-900 font-medium placeholder-slate-400 disabled:bg-slate-100 disabled:text-slate-600 read-only:bg-slate-100 read-only:text-slate-600"
                   placeholder="Bogotá"
                 />
               </div>
@@ -292,7 +292,7 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ userProfile, onSav
                   type="text"
                   value={country}
                   onChange={(e) => setCountry(e.target.value)}
-                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition"
+                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition text-slate-900 font-medium placeholder-slate-400 disabled:bg-slate-100 disabled:text-slate-600 read-only:bg-slate-100 read-only:text-slate-600"
                   placeholder="Colombia"
                 />
               </div>

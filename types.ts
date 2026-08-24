@@ -134,6 +134,50 @@ export interface QuoteData {
   aiuUtilidad?: number;
   aiuIva?: number;
   validUntil: Date;
+  mode?: QuoteMode;
+  sections?: CarpentrySection[];
+}
+
+// ─── Cotización personalizada (carpintería) ─────────────────────────────────
+
+export type QuoteMode = 'basica' | 'personalizada';
+
+export type CarpentryUnit = 'ML' | 'M2' | 'UND' | 'GLOBAL';
+
+export type CarpentryCategoryKey =
+  | 'cocinas_integrales'
+  | 'closets'
+  | 'puertas'
+  | 'gabinetes_bano'
+  | 'centros_entretenimiento'
+  | 'muebles_especiales';
+
+export interface CarpentryLineItem {
+  id: string;
+  description: string;
+  unit: CarpentryUnit;
+  measure?: number; // ML o M2 (para M2 se deriva de width*height en la UI)
+  width?: number;   // solo unit === 'M2'
+  height?: number;  // solo unit === 'M2'
+  unitCost: number;
+  quantity: number;
+  /** true = costo es valor de ejemplo/plantilla; el usuario aún no lo ha editado */
+  isTemplate?: boolean;
+  images?: string[];
+  comments?: string;
+}
+
+export interface CarpentryItemGroup {
+  id: string;
+  label: string;
+  items: CarpentryLineItem[];
+}
+
+export interface CarpentrySection {
+  id: string;
+  category: CarpentryCategoryKey;
+  name: string;
+  groups: CarpentryItemGroup[];
 }
 
 export interface CollectionAccountData {
@@ -161,6 +205,7 @@ export interface Message {
   paidDate?: Date;
   mediaUrl?: string;
   mediaType?: string;
+  status?: 'sent' | 'delivered' | 'read'; // Estado del mensaje
 }
 
 export interface FileMetadata {

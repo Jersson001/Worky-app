@@ -6,7 +6,8 @@ import { ContactRole } from '../../types';
 
 interface AttachMenuItem {
   icon: string;
-  color: string;
+  bg: string;
+  shadow: string;
   label: string;
   action: () => void;
 }
@@ -50,56 +51,57 @@ export const ChatFooter: React.FC<ChatFooterProps> = React.memo(({
   const getMenuItems = (): AttachMenuItem[] => {
     if (contactRole === 'supplier') {
       return [
-        { icon: 'fa-file-contract', color: 'bg-gradient-to-r from-teal-500 to-emerald-500', label: 'Cotizar', action: onOpenQuote },
-        { icon: 'fa-money-bills', color: 'bg-gradient-to-r from-emerald-500 to-green-500', label: 'Recibo', action: onOpenReceipt },
-        { icon: 'fa-circle-minus', color: 'bg-gradient-to-r from-rose-500 to-red-500', label: 'Registrar Nuevo Gasto', action: onOpenExpense },
+        { icon: 'fa-file-invoice-dollar', bg: 'from-blue-500 to-blue-600', shadow: 'shadow-blue-500/30', label: 'Cotizar', action: onOpenQuote },
+        { icon: 'fa-receipt', bg: 'from-emerald-500 to-emerald-600', shadow: 'shadow-emerald-500/30', label: 'Recibo', action: onOpenReceipt },
+        { icon: 'fa-money-bill-transfer', bg: 'from-rose-500 to-rose-600', shadow: 'shadow-rose-500/30', label: 'Registrar gasto', action: onOpenExpense },
       ];
     }
     return [
-      { icon: 'fa-file-contract', color: 'bg-gradient-to-r from-teal-500 to-emerald-500', label: 'Cotización', action: onOpenQuote },
-      { icon: 'fa-file-invoice', color: 'bg-gradient-to-r from-orange-500 to-amber-500', label: 'Cuenta de Cobro', action: onOpenCollection },
-      { icon: 'fa-file-invoice-dollar', color: 'bg-gradient-to-r from-blue-500 to-violet-500', label: 'Factura', action: onOpenInvoice },
-      { icon: 'fa-money-bills', color: 'bg-gradient-to-r from-emerald-500 to-green-500', label: 'Recibo', action: onOpenReceipt },
-      { icon: 'fa-store', color: 'bg-gradient-to-r from-cyan-500 to-blue-500', label: 'Catálogo', action: onOpenProductPicker },
-      { icon: 'fa-circle-minus', color: 'bg-gradient-to-r from-rose-500 to-red-500', label: 'Registrar Nuevo Gasto', action: onOpenExpense },
-      { icon: 'fa-paperclip', color: 'bg-gradient-to-r from-purple-500 to-violet-500', label: 'Archivo', action: onTriggerDocumentInput },
+      { icon: 'fa-file-invoice-dollar', bg: 'from-blue-500 to-blue-600', shadow: 'shadow-blue-500/30', label: 'Cotización', action: onOpenQuote },
+      { icon: 'fa-hand-holding-dollar', bg: 'from-violet-500 to-violet-600', shadow: 'shadow-violet-500/30', label: 'Cuenta de Cobro', action: onOpenCollection },
+      { icon: 'fa-file-invoice', bg: 'from-indigo-500 to-indigo-600', shadow: 'shadow-indigo-500/30', label: 'Factura', action: onOpenInvoice },
+      { icon: 'fa-receipt', bg: 'from-emerald-500 to-emerald-600', shadow: 'shadow-emerald-500/30', label: 'Recibo', action: onOpenReceipt },
+      { icon: 'fa-store', bg: 'from-cyan-500 to-cyan-600', shadow: 'shadow-cyan-500/30', label: 'Catálogo', action: onOpenProductPicker },
+      { icon: 'fa-money-bill-transfer', bg: 'from-rose-500 to-rose-600', shadow: 'shadow-rose-500/30', label: 'Registrar gasto', action: onOpenExpense },
+      { icon: 'fa-paperclip', bg: 'from-slate-500 to-slate-600', shadow: 'shadow-slate-500/20', label: 'Archivo', action: onTriggerDocumentInput },
     ];
   };
 
   return (
-    <div
-      className="min-h-[68px] px-4 py-3 flex items-center gap-3 z-20 border-t border-slate-700/50 backdrop-blur-lg"
-      style={{ background: 'linear-gradient(135deg, rgba(30,58,95,0.95) 0%, rgba(15,23,42,0.98) 100%)' }}
-    >
-      <button className="text-slate-500 text-xl hover:text-blue-400 transition">
-        <i className="fa-regular fa-face-smile"></i>
-      </button>
-
+    <div className="min-h-[64px] px-3 py-2.5 flex items-center gap-2 z-20 border-t border-slate-200 bg-white">
       <div className="relative">
         <button
           onClick={() => setShowAttachMenu(!showAttachMenu)}
-          className={`text-xl transition w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-700/50 ${showAttachMenu ? 'text-blue-400 rotate-45 bg-blue-500/20' : 'text-slate-400'}`}
+          className={`transition w-9 h-9 flex items-center justify-center rounded-full border border-slate-200 ${showAttachMenu ? 'text-blue-600 rotate-45 bg-blue-50 border-blue-200' : 'text-slate-500 hover:bg-slate-100'}`}
         >
-          <i className="fa-solid fa-plus"></i>
+          <i className="fa-solid fa-plus text-sm"></i>
         </button>
 
         {showAttachMenu && (
-          <div className="absolute bottom-16 left-0 flex flex-col gap-3 animate-scale-in z-50 ml-1">
-            {getMenuItems().map((item, i) => (
-              <div
-                key={i}
-                className="flex items-center gap-3 group cursor-pointer"
-                onClick={() => { item.action(); setShowAttachMenu(false); }}
-              >
-                <div className={`w-12 h-12 rounded-full ${item.color} flex items-center justify-center shadow-lg hover:scale-110 transition text-white border-2 border-slate-700 ring-2 ring-slate-800`}>
-                  <i className={`fa-solid ${item.icon} text-lg`}></i>
-                </div>
-                <span className="bg-slate-800 text-white text-xs px-3 py-1.5 rounded-full shadow-lg border border-slate-700 font-bold hidden group-hover:block whitespace-nowrap animate-fade-in">
-                  {item.label}
-                </span>
+          <>
+            <div
+              className="fixed inset-0 bg-slate-900/30 z-40"
+              onClick={() => setShowAttachMenu(false)}
+            />
+            <div className="absolute bottom-14 left-0 bg-white border border-slate-200 rounded-2xl shadow-xl p-4 z-50 w-64 animate-scale-in origin-bottom-left">
+              <div className="text-[13px] font-bold text-slate-900 mb-3">¿Qué querés enviar?</div>
+              <div className="grid grid-cols-3 gap-3">
+                {getMenuItems().map((item, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    className="flex flex-col items-center gap-1.5"
+                    onClick={() => { item.action(); setShowAttachMenu(false); }}
+                  >
+                    <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${item.bg} text-white flex items-center justify-center shadow-md ${item.shadow}`}>
+                      <i className={`fa-solid ${item.icon} text-lg`}></i>
+                    </div>
+                    <span className="text-[10.5px] font-medium text-slate-600 text-center leading-tight">{item.label}</span>
+                  </button>
+                ))}
               </div>
-            ))}
-          </div>
+            </div>
+          </>
         )}
       </div>
 
@@ -108,29 +110,27 @@ export const ChatFooter: React.FC<ChatFooterProps> = React.memo(({
         value={inputText}
         onChange={(e) => setInputText(e.target.value)}
         onKeyDown={handleKeyDown}
-        placeholder="Escribe un mensaje..."
-        className="flex-1 bg-slate-800/50 text-white text-sm rounded-xl px-4 py-3 outline-none border border-slate-700/50 focus:bg-slate-800 focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition placeholder-slate-500"
+        placeholder="Escribe un mensaje"
+        className="flex-1 bg-slate-100 text-slate-900 text-sm rounded-full px-4 py-2.5 outline-none border border-transparent focus:bg-white focus:border-blue-500 transition placeholder-slate-400"
       />
 
       {/* Camera button */}
-      <div className="relative">
-        <button onClick={onCameraCapture} className="text-slate-400 text-xl hover:text-blue-400 transition" title="Cámara">
-          <i className="fa-solid fa-camera"></i>
-        </button>
-      </div>
+      <button onClick={onCameraCapture} className="text-slate-500 hover:text-slate-900 transition w-9 h-9 flex items-center justify-center" title="Cámara">
+        <i className="fa-solid fa-camera text-base"></i>
+      </button>
 
       {/* Clip/Attach button */}
-      <button onClick={onTriggerDocumentInput} className="text-slate-400 text-xl hover:text-blue-400 transition" title="Adjuntar archivo" type="button">
-        <i className="fa-solid fa-paperclip"></i>
+      <button onClick={onTriggerDocumentInput} className="text-slate-500 hover:text-slate-900 transition w-9 h-9 flex items-center justify-center hidden sm:flex" title="Adjuntar archivo" type="button">
+        <i className="fa-solid fa-paperclip text-base"></i>
       </button>
 
       {inputText ? (
-        <button onClick={handleSend} className="text-white bg-gradient-to-r from-blue-600 to-violet-600 w-10 h-10 rounded-full flex items-center justify-center hover:from-blue-500 hover:to-violet-500 transition shadow-lg shadow-blue-500/30">
+        <button onClick={handleSend} className="text-white bg-blue-600 w-9 h-9 rounded-full flex items-center justify-center hover:bg-blue-700 transition flex-shrink-0">
           <i className="fa-solid fa-paper-plane text-sm"></i>
         </button>
       ) : (
-        <button className="text-slate-400 text-xl hover:text-blue-400 transition">
-          <i className="fa-solid fa-microphone"></i>
+        <button className="text-slate-500 hover:text-slate-900 transition w-9 h-9 flex items-center justify-center flex-shrink-0">
+          <i className="fa-solid fa-microphone text-base"></i>
         </button>
       )}
     </div>

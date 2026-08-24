@@ -37,10 +37,7 @@ export const MessageList: React.FC<MessageListProps> = React.memo(({
   }, [filteredMessages, showSystemMessages]);
 
   return (
-    <div
-      className="flex-1 overflow-y-auto p-4 relative"
-      style={{ background: 'linear-gradient(180deg, rgba(15,23,42,0.9) 0%, rgba(30,41,59,0.95) 100%)' }}
-    >
+    <div className="flex-1 overflow-y-auto p-4 relative bg-slate-100">
       {filteredMessages.map((msg) => (
         <MessageBubble
           key={msg.id}

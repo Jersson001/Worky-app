@@ -117,7 +117,7 @@ export const UserSearchModal: React.FC<UserSearchModalProps> = ({
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onKeyPress={handleKeyPress}
                   placeholder="+57 300 123 4567 o usuario@email.com"
-                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition"
+                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition text-slate-900 font-medium placeholder-slate-400 disabled:bg-slate-100 disabled:text-slate-600"
                   disabled={isSearching || isAdding}
                 />
                 {searchQuery && (

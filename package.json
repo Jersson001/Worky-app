@@ -13,7 +13,7 @@
     "prepare:playstore": "npm run bundle:release"
   },
   "dependencies": {
-    "@capacitor/android": "^8.0.0",
+    "@capacitor/android": "^8.5.0",
     "@capacitor/cli": "^8.0.0",
     "@capacitor/core": "^8.0.0",
     "@google/genai": "^1.30.0",

@@ -15,6 +15,7 @@ interface ChatListProps {
   onLogout: () => void;
   onSearchUsers?: () => void;
   onEditProfile?: () => void;
+  hasUnreadNotifications?: boolean;
   // Group props
   groups?: ChatGroup[];
   selectedGroupId?: string | null;
@@ -22,208 +23,177 @@ interface ChatListProps {
   onOpenGroupsManager?: () => void;
 }
 
-export const ChatList: React.FC<ChatListProps> = ({ contacts, selectedContactId, onSelectContact, onOpenFinancials, onOpenStatus, onOpenWallet, onOpenNotifications, onOpenHome, onDeleteContact, onLogout, onSearchUsers, onEditProfile, groups = [], selectedGroupId, onSelectGroup, onOpenGroupsManager }) => {
+const STATUS_TAG_STYLE: Record<string, string> = {
+  [UserStatus.Lead]: 'bg-violet-50 text-violet-600',
+  [UserStatus.Client]: 'bg-blue-50 text-blue-600',
+  [UserStatus.Completed]: 'bg-slate-100 text-slate-500',
+  [UserStatus.Archived]: 'bg-slate-100 text-slate-500',
+};
+
+const FILTERS: { key: string; label: string; status?: UserStatus }[] = [
+  { key: 'all', label: 'Todos' },
+  { key: 'lead', label: 'Leads', status: UserStatus.Lead },
+  { key: 'client', label: 'Clientes activos', status: UserStatus.Client },
+  { key: 'done', label: 'Finalizados', status: UserStatus.Completed },
+];
+
+export const ChatList: React.FC<ChatListProps> = ({ contacts, selectedContactId, onSelectContact, onOpenFinancials, onOpenStatus, onOpenWallet, onOpenNotifications, onOpenHome, onDeleteContact, onLogout, onSearchUsers, onEditProfile, hasUnreadNotifications = false, groups = [], selectedGroupId, onSelectGroup, onOpenGroupsManager }) => {
   const [filter, setFilter] = useState<string>('all');
   const [showMenu, setShowMenu] = useState(false);
   const [hoveredContactId, setHoveredContactId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'contacts' | 'groups'>('contacts');
+  const [searchTerm, setSearchTerm] = useState('');
 
-  const filteredContacts = contacts.filter(c => {
-    if (filter === 'all') return true;
-    if (filter === 'client') return c.status === UserStatus.Client;
-    return true;
-  });
+  const activeFilter = FILTERS.find(f => f.key === filter) ?? FILTERS[0];
+  const filteredContacts = contacts
+    .filter(c => !activeFilter.status || c.status === activeFilter.status)
+    .filter(c => !searchTerm.trim() || c.clientName.toLowerCase().includes(searchTerm.trim().toLowerCase()));
+
+  const initials = (name: string) => name.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase();
 
   return (
-    <div className="flex flex-col h-full bg-slate-900 border-r border-slate-700/50 text-slate-200">
+    <div className="flex flex-col h-full bg-white border-r border-slate-200 text-slate-900">
       {/* Header - Brand Area */}
-      <div className="h-16 px-4 flex justify-between items-center flex-shrink-0 border-b border-slate-700/50 relative z-20" style={{ background: 'linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%)' }}>
-        <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-violet-600 p-0.5 cursor-pointer relative group shadow-lg shadow-blue-500/20">
-                <div className="bg-white rounded-lg w-full h-full flex items-center justify-center">
-                  <img src="/worky-logo.png" alt="Worky" className="w-8 h-8 object-contain" />
-                </div>
-            </div>
-            <span className="font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-violet-400 tracking-tight text-lg">Worky</span>
+      <div className="px-4 pt-4 pb-2 flex justify-between items-start flex-shrink-0 relative z-20">
+        <div>
+          <div className="flex items-center gap-2.5">
+            <img src="/worky-logo 2.png" alt="Worky" className="w-11 h-11 object-contain" />
+            <span className="font-bold text-slate-900 text-lg tracking-tight">Worky</span>
+          </div>
         </div>
-        
-        <div className="flex gap-1 text-slate-400">
-          {onOpenHome && (
-            <button 
-              onClick={onOpenHome}
-              title="Inicio" 
-              className="hover:text-white hover:bg-slate-700/50 w-9 h-9 rounded-lg flex items-center justify-center transition"
+
+        <div className="flex gap-1 text-slate-500 items-start pt-1">
+          {onSearchUsers && (
+            <button
+              onClick={onSearchUsers}
+              title="Buscar usuarios nuevos"
+              className="hover:text-slate-900 hover:bg-slate-100 w-8 h-8 rounded-lg flex items-center justify-center transition"
             >
-              <i className="fa-solid fa-house"></i>
+              <i className="fa-solid fa-user-plus text-sm"></i>
             </button>
           )}
-          <button 
+          <button
             type="button"
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
               onOpenNotifications();
             }}
-            title="Notificaciones" 
-            className="hover:text-white hover:bg-slate-700/50 w-9 h-9 rounded-lg flex items-center justify-center transition relative cursor-pointer z-10"
+            title="Notificaciones"
+            className="hover:text-slate-900 hover:bg-slate-100 w-8 h-8 rounded-lg flex items-center justify-center transition relative cursor-pointer z-10"
           >
-            <i className="fa-solid fa-bell"></i>
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-gradient-to-r from-rose-500 to-pink-500 rounded-full border border-slate-900 animate-pulse"></span>
+            <i className="fa-solid fa-bell text-sm"></i>
+            {hasUnreadNotifications && (
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-blue-600 rounded-full border border-white"></span>
+            )}
           </button>
 
-          <button 
-            onClick={onOpenWallet}
-            title="Billetera & Llaves" 
-            className="hidden md:flex hover:text-white hover:bg-slate-700/50 w-9 h-9 rounded-lg items-center justify-center transition"
-          >
-            <i className="fa-solid fa-wallet"></i>
-          </button>
-
-          <button 
-            onClick={onOpenFinancials}
-            title="Estados Financieros" 
-            className="hidden md:flex hover:text-white hover:bg-slate-700/50 w-9 h-9 rounded-lg items-center justify-center transition"
-          >
-            <i className="fa-solid fa-chart-pie"></i>
-          </button>
-
-          <button 
-            onClick={onOpenStatus}
-            title="Estados" 
-            className="hidden md:flex hover:text-white hover:bg-slate-700/50 w-9 h-9 rounded-lg items-center justify-center transition relative"
-          >
-            <i className="fa-solid fa-circle-notch"></i>
-            <span className="absolute top-2 right-2 w-2 h-2 bg-gradient-to-r from-violet-500 to-purple-500 rounded-full border border-slate-900"></span>
-          </button>
-          
           <div className="relative">
-            <button 
-              title="Menú" 
-              className={`hover:text-white transition w-9 h-9 rounded-lg flex items-center justify-center ${showMenu ? 'bg-slate-700 text-white' : ''}`}
+            <button
+              title="Menú"
+              className={`hover:text-slate-900 transition w-8 h-8 rounded-lg flex items-center justify-center ${showMenu ? 'bg-slate-100 text-slate-900' : ''}`}
               onClick={() => setShowMenu(!showMenu)}
             >
-              <i className="fa-solid fa-ellipsis-vertical"></i>
+              <i className="fa-solid fa-ellipsis-vertical text-sm"></i>
             </button>
-            
+
             {/* Dropdown Menu */}
             {showMenu && (
-              <div className="absolute right-0 top-10 bg-slate-800 shadow-xl py-2 w-48 rounded-xl z-50 border border-slate-700/50 animate-scale-in origin-top-right backdrop-blur-xl">
-                 {onOpenHome && (
-                   <button 
-                      onClick={() => { onOpenHome(); setShowMenu(false); }} 
-                      className="w-full text-left px-4 py-2 text-slate-300 hover:bg-slate-700/50 hover:text-white text-sm transition"
-                   >
-                      <i className="fa-solid fa-house mr-2 text-blue-400"></i> Inicio
-                   </button>
-                 )}
-                 <button 
-                    onClick={() => { onOpenNotifications(); setShowMenu(false); }} 
-                    className="w-full text-left px-4 py-2 text-slate-300 hover:bg-slate-700/50 hover:text-white text-sm md:hidden transition"
-                 >
-                    <i className="fa-solid fa-bell mr-2 text-amber-400"></i> Notificaciones
-                 </button>
-                 <button 
-                    onClick={() => { onOpenWallet(); setShowMenu(false); }} 
-                    className="w-full text-left px-4 py-2 text-slate-300 hover:bg-slate-700/50 hover:text-white text-sm transition"
-                 >
-                    <i className="fa-solid fa-wallet mr-2 text-emerald-400"></i> Billetera
-                 </button>
-                 <button 
-                    onClick={() => { onOpenFinancials(); setShowMenu(false); }} 
-                    className="w-full text-left px-4 py-2 text-slate-300 hover:bg-slate-700/50 hover:text-white text-sm transition"
-                 >
-                    <i className="fa-solid fa-chart-line mr-2 text-violet-400"></i> Financiero
-                 </button>
-                 <button 
-                    onClick={() => { onOpenStatus(); setShowMenu(false); }} 
-                    className="w-full text-left px-4 py-2 text-slate-300 hover:bg-slate-700/50 hover:text-white text-sm md:hidden transition"
-                 >
-                    <i className="fa-solid fa-circle-notch mr-2 text-pink-400"></i> Estados
-                 </button>
-                 <div className="h-px bg-slate-700/50 my-1"></div>
-                 {onEditProfile && (
-                   <button 
-                      onClick={() => { onEditProfile(); setShowMenu(false); }}
-                      className="w-full text-left px-4 py-2 text-slate-300 hover:bg-slate-700/50 hover:text-white text-sm transition"
-                   >
-                      <i className="fa-solid fa-user-pen mr-2 text-cyan-400"></i> Editar Perfil
-                   </button>
-                 )}
-                 <button 
-                    onClick={() => { onLogout(); setShowMenu(false); }}
-                    className="w-full text-left px-4 py-2 text-rose-400 hover:bg-rose-500/10 text-sm font-medium transition"
-                 >
-                    <i className="fa-solid fa-right-from-bracket mr-2"></i> Cerrar sesión
-                 </button>
+              <div className="absolute right-0 top-10 bg-white shadow-lg py-2 w-52 rounded-xl z-50 border border-slate-200 animate-scale-in origin-top-right">
+                {onOpenHome && (
+                  <button
+                    onClick={() => { onOpenHome(); setShowMenu(false); }}
+                    className="w-full text-left px-4 py-2 text-slate-700 hover:bg-slate-50 text-sm transition flex items-center gap-2"
+                  >
+                    <i className="fa-solid fa-house text-blue-600 w-4"></i> Inicio
+                  </button>
+                )}
+                <button
+                  onClick={() => { onOpenWallet(); setShowMenu(false); }}
+                  className="w-full text-left px-4 py-2 text-slate-700 hover:bg-slate-50 text-sm transition flex items-center gap-2"
+                >
+                  <i className="fa-solid fa-wallet text-emerald-600 w-4"></i> Billetera
+                </button>
+                <button
+                  onClick={() => { onOpenFinancials(); setShowMenu(false); }}
+                  className="w-full text-left px-4 py-2 text-slate-700 hover:bg-slate-50 text-sm transition flex items-center gap-2"
+                >
+                  <i className="fa-solid fa-chart-line text-violet-600 w-4"></i> Financiero
+                </button>
+                <button
+                  onClick={() => { onOpenStatus(); setShowMenu(false); }}
+                  className="w-full text-left px-4 py-2 text-slate-700 hover:bg-slate-50 text-sm transition flex items-center gap-2"
+                >
+                  <i className="fa-solid fa-circle-notch text-pink-600 w-4"></i> Estados
+                </button>
+                <div className="h-px bg-slate-100 my-1"></div>
+                {onEditProfile && (
+                  <button
+                    onClick={() => { onEditProfile(); setShowMenu(false); }}
+                    className="w-full text-left px-4 py-2 text-slate-700 hover:bg-slate-50 text-sm transition flex items-center gap-2"
+                  >
+                    <i className="fa-solid fa-user-pen text-cyan-600 w-4"></i> Editar Perfil
+                  </button>
+                )}
+                <button
+                  onClick={() => { onLogout(); setShowMenu(false); }}
+                  className="w-full text-left px-4 py-2 text-rose-600 hover:bg-rose-50 text-sm font-medium transition flex items-center gap-2"
+                >
+                  <i className="fa-solid fa-right-from-bracket w-4"></i> Cerrar sesión
+                </button>
               </div>
             )}
           </div>
-
         </div>
       </div>
 
       {/* Search and Filter */}
-      <div className="flex flex-col border-b border-slate-700/50 bg-slate-900">
-        <div className="p-3 flex gap-2">
-          <div className="bg-slate-800/50 rounded-xl px-3 py-2 flex items-center flex-1 transition border border-slate-700/50 focus-within:border-blue-500/50 focus-within:ring-2 focus-within:ring-blue-500/20">
-            <button className="text-slate-500 px-2 mr-1">
-                 <i className="fa-solid fa-search text-sm"></i>
-            </button>
-            <input 
-              type="text" 
-              placeholder="Buscar contactos..." 
-              className="bg-transparent border-none outline-none text-slate-200 w-full text-sm placeholder-slate-500"
+      <div className="flex flex-col border-b border-slate-200 bg-white">
+        <div className="px-4 pb-3">
+          <div className="bg-slate-100 rounded-lg px-3 py-2 flex items-center flex-1 transition">
+            <i className="fa-solid fa-magnifying-glass text-slate-400 text-sm mr-2"></i>
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Buscar contactos..."
+              className="bg-transparent border-none outline-none text-slate-900 w-full text-sm placeholder-slate-400"
             />
           </div>
-          {onSearchUsers && (
+        </div>
+
+        {/* Filter Chips */}
+        <div className="flex gap-2 px-4 pb-3 overflow-x-auto no-scrollbar">
+          {FILTERS.map(f => (
             <button
-              onClick={onSearchUsers}
-              title="Buscar usuarios nuevos"
-              className="bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-500 hover:to-violet-500 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition shadow-lg shadow-blue-500/20"
+              key={f.key}
+              onClick={() => setFilter(f.key)}
+              className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition whitespace-nowrap ${filter === f.key ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
             >
-              <i className="fa-solid fa-user-plus text-sm"></i>
-              <span className="text-sm font-medium hidden sm:inline">Buscar</span>
+              {f.label}
             </button>
-          )}
+          ))}
         </div>
-        
-        {/* Simple Filter Chips */}
-        <div className="flex gap-2 px-3 pb-3 overflow-x-auto no-scrollbar">
-            <button 
-              onClick={() => setFilter('all')}
-              className={`px-3 py-1.5 rounded-full text-xs font-semibold transition ${filter === 'all' ? 'bg-gradient-to-r from-blue-600 to-violet-600 text-white shadow-lg shadow-blue-500/20' : 'bg-slate-800/50 text-slate-400 hover:bg-slate-700/50 border border-slate-700/50'}`}
-            >
-              Todos
-            </button>
-            <button 
-              onClick={() => setFilter('client')}
-              className={`px-3 py-1.5 rounded-full text-xs font-semibold transition ${filter === 'client' ? 'bg-gradient-to-r from-blue-600 to-violet-600 text-white shadow-lg shadow-blue-500/20' : 'bg-slate-800/50 text-slate-400 hover:bg-slate-700/50 border border-slate-700/50'}`}
-            >
-              Proyectos
-            </button>
-        </div>
-        
+
         {/* View Mode Toggle - Contacts/Groups */}
         {groups && groups.length > 0 && (
-          <div className="px-3 pb-3 flex gap-1 bg-slate-800/30 border-t border-slate-700/30 pt-2">
+          <div className="px-4 pb-3 flex gap-1 border-t border-slate-100 pt-2.5">
             <button
               onClick={() => setViewMode('contacts')}
-              className={`flex-1 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition ${
-                viewMode === 'contacts' 
-                  ? 'bg-gradient-to-r from-blue-600 to-violet-600 text-white shadow-lg' 
-                  : 'bg-slate-700/30 text-slate-400 hover:text-white hover:bg-slate-700/50'
-              }`}
+              className={`flex-1 py-1.5 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition ${viewMode === 'contacts'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                }`}
             >
               <i className="fa-solid fa-user"></i>
               Contactos ({contacts.length})
             </button>
             <button
               onClick={() => setViewMode('groups')}
-              className={`flex-1 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition ${
-                viewMode === 'groups' 
-                  ? 'bg-gradient-to-r from-teal-600 to-cyan-600 text-white shadow-lg' 
-                  : 'bg-slate-700/30 text-slate-400 hover:text-white hover:bg-slate-700/50'
-              }`}
+              className={`flex-1 py-1.5 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition ${viewMode === 'groups'
+                  ? 'bg-teal-600 text-white'
+                  : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                }`}
             >
               <i className="fa-solid fa-users-rectangle"></i>
               Grupos ({groups.length})
@@ -233,15 +203,15 @@ export const ChatList: React.FC<ChatListProps> = ({ contacts, selectedContactId,
       </div>
 
       {/* List */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar pb-20 md:pb-0 bg-slate-900">
-        
+      <div className="flex-1 overflow-y-auto custom-scrollbar pb-20 md:pb-0 bg-white">
+
         {/* Contacts View */}
         {viewMode === 'contacts' && filteredContacts.map(contact => (
-          <div 
+          <div
             key={contact.id}
             onMouseEnter={() => setHoveredContactId(contact.id)}
             onMouseLeave={() => setHoveredContactId(null)}
-            className={`flex px-3 py-3 cursor-pointer hover:bg-slate-800/50 transition relative group border-l-4 ${selectedContactId === contact.id ? 'bg-slate-800/70 border-blue-500' : 'border-transparent'}`}
+            className={`flex px-4 py-3 cursor-pointer hover:bg-slate-50 transition relative group border-l-2 ${selectedContactId === contact.id ? 'bg-slate-50 border-blue-600' : 'border-transparent'}`}
           >
             {/* Botón de eliminar - visible en hover */}
             {hoveredContactId === contact.id && onDeleteContact && (
@@ -252,152 +222,132 @@ export const ChatList: React.FC<ChatListProps> = ({ contacts, selectedContactId,
                     onDeleteContact(contact.id);
                   }
                 }}
-                className="absolute right-2 top-1/2 transform -translate-y-1/2 z-10 w-8 h-8 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white rounded-lg flex items-center justify-center transition opacity-90 hover:opacity-100 shadow-lg"
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 z-10 w-7 h-7 bg-rose-600 hover:bg-rose-700 text-white rounded-lg flex items-center justify-center transition"
                 title="Eliminar chat"
               >
                 <i className="fa-solid fa-trash text-xs"></i>
               </button>
             )}
-            
-            <div 
+
+            <div
               onClick={() => onSelectContact(contact.id)}
-              className="flex flex-1"
+              className="flex flex-1 items-center gap-3 min-w-0"
             >
-              <div className="relative">
-                  <img src={contact.avatar} alt={contact.clientName} className="w-12 h-12 rounded-full mr-3 object-cover flex-shrink-0 border-2 border-slate-700" />
-                  {contact.unreadCount > 0 && (
-                      <div className="absolute -top-1 -right-1 w-4 h-4 bg-gradient-to-r from-blue-500 to-violet-500 rounded-full border-2 border-slate-900"></div>
-                  )}
+              <div className="relative flex-shrink-0">
+                {contact.avatar ? (
+                  <img src={contact.avatar} alt={contact.clientName} className="w-11 h-11 rounded-full object-cover" />
+                ) : (
+                  <div className="w-11 h-11 rounded-full bg-slate-100 text-blue-600 flex items-center justify-center font-bold text-sm">
+                    {initials(contact.clientName)}
+                  </div>
+                )}
               </div>
-              <div className="flex-1 min-w-0 flex flex-col justify-center border-b border-slate-800/50 pb-3 group-hover:border-transparent">
-                <div className="flex justify-between items-baseline mb-0.5">
-                  <h3 className={`text-[15px] font-medium truncate ${selectedContactId === contact.id ? 'text-white' : 'text-slate-200'}`}>{contact.clientName}</h3>
-                  <span className={`text-[11px] ${contact.unreadCount > 0 ? 'text-blue-400 font-bold' : 'text-slate-500'}`}>
+              <div className="flex-1 min-w-0 flex flex-col gap-1">
+                <div className="flex items-center gap-1.5">
+                  <h3 className="text-[14.5px] font-semibold truncate text-slate-900">{contact.clientName}</h3>
+                  <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded flex-shrink-0 ${STATUS_TAG_STYLE[contact.status] || 'bg-slate-100 text-slate-500'}`}>{contact.status}</span>
+                </div>
+                <div className="flex justify-between items-center gap-2">
+                  <p className={`text-[13px] truncate flex items-center gap-1 ${contact.unreadCount > 0 ? 'text-slate-800 font-medium' : 'text-slate-500'}`}>
+                    {contact.lastMessage.includes('Gasto') && <i className="fa-solid fa-money-bill-wave text-rose-500"></i>}
+                    {contact.lastMessage.includes('Documento') && <i className="fa-solid fa-file-lines text-blue-600"></i>}
+                    {contact.lastMessage}
+                  </p>
+                  <span className="text-[11px] text-slate-400 flex-shrink-0">
                     {contact.lastMessageTime instanceof Date
-                      ? contact.lastMessageTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+                      ? contact.lastMessageTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                       : typeof contact.lastMessageTime === 'number'
-                        ? new Date(contact.lastMessageTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+                        ? new Date(contact.lastMessageTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                         : ''}
                   </span>
                 </div>
-                <div className="flex justify-between items-center">
-                  <div className="flex-1 min-w-0 pr-2">
-                      {/* Project Tag */}
-                      {(() => {
-                          // Count only approved projects (those created from approved quotes)
-                          const approvedProjects = contact.projects.filter((p: any) => p.metadata?.quoteCode);
-                          // Remove duplicates by name (keep first occurrence)
-                          const uniqueApprovedProjects = approvedProjects.filter((project: any, index: number, self: any[]) => 
-                            index === self.findIndex((p: any) => p.name === project.name)
-                          );
-                          const approvedCount = uniqueApprovedProjects.length;
-                          
-                          if (approvedCount > 0) {
-                              return (
-                                  <div className="text-[10px] font-bold uppercase tracking-wide mb-0.5 truncate text-blue-400 flex items-center gap-1">
-                                       <i className="fa-solid fa-folder"></i> 
-                                       {approvedCount > 1 ? `${approvedCount} Proyectos Activos` : uniqueApprovedProjects[0].name}
-                                  </div>
-                              );
-                          } else {
-                              return (
-                                  <div className="text-[10px] font-bold uppercase tracking-wide mb-0.5 truncate text-slate-500 flex items-center gap-1">
-                                       <i className="fa-solid fa-user-tag"></i> Sin Proyecto
-                                  </div>
-                              );
-                          }
-                      })()}
-                      <p className="text-sm text-slate-400 truncate flex items-center font-light">
-                          {contact.lastMessage.includes('Gasto') && <i className="fa-solid fa-money-bill-wave text-rose-400 mr-1"></i>}
-                          {contact.lastMessage.includes('Documento') && <i className="fa-solid fa-file-lines text-blue-400 mr-1"></i>}
-                          {contact.lastMessage}
-                      </p>
-                  </div>
-                  <div className="flex gap-2 items-center flex-shrink-0">
-                    {contact.unreadCount > 0 && (
-                      <span className="bg-gradient-to-r from-blue-600 to-violet-600 text-white text-[11px] font-bold rounded-full min-w-[1.25rem] h-5 flex items-center justify-center px-1 shadow-lg shadow-blue-500/20">
-                        {contact.unreadCount}
-                      </span>
-                    )}
-                  </div>
-                </div>
               </div>
+              {contact.unreadCount > 0 && (
+                <span className="bg-blue-600 text-white text-[11px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1.5 flex-shrink-0">
+                  {contact.unreadCount}
+                </span>
+              )}
             </div>
           </div>
         ))}
-        
+
+        {filteredContacts.length === 0 && viewMode === 'contacts' && (
+          <div className="p-8 text-center text-slate-400">
+            <i className="fa-solid fa-comment-slash text-2xl mb-3"></i>
+            <p className="text-sm font-medium text-slate-500">Sin conversaciones</p>
+          </div>
+        )}
+
         {/* Groups View */}
         {viewMode === 'groups' && (
-          <div className="space-y-1">
+          <div>
             {/* Add Group Button */}
             {onOpenGroupsManager && (
               <button
                 onClick={onOpenGroupsManager}
-                className="w-full px-4 py-3 flex items-center gap-3 text-slate-400 hover:text-white hover:bg-slate-800/50 transition border-b border-slate-700/30"
+                className="w-full px-4 py-3 flex items-center gap-3 text-slate-500 hover:text-slate-900 hover:bg-slate-50 transition border-b border-slate-100"
               >
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-r from-teal-600 to-cyan-600 flex items-center justify-center text-white">
-                  <i className="fa-solid fa-plus"></i>
+                <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center text-white shadow-md shadow-teal-500/30">
+                  <i className="fa-solid fa-plus text-lg"></i>
                 </div>
                 <span className="font-medium text-sm">Crear o administrar grupos</span>
               </button>
             )}
-            
+
             {/* Groups List */}
             {groups.map(group => (
               <div
                 key={group.id}
                 onClick={() => onSelectGroup && onSelectGroup(group.id)}
-                className={`px-3 py-3 cursor-pointer hover:bg-slate-800/50 transition border-l-4 ${
-                  selectedGroupId === group.id ? 'bg-slate-800/70 border-teal-500' : 'border-transparent'
-                }`}
+                className={`px-4 py-3 cursor-pointer hover:bg-slate-50 transition border-l-2 ${selectedGroupId === group.id ? 'bg-slate-50 border-teal-600' : 'border-transparent'
+                  }`}
               >
                 <div className="flex items-center gap-3">
-                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-white shadow-lg ${
-                    group.type === 'project' 
-                      ? 'bg-gradient-to-br from-emerald-500 to-green-600' 
-                      : 'bg-gradient-to-br from-teal-500 to-cyan-600'
-                  }`}>
-                    <i className={`fa-solid ${group.type === 'project' ? 'fa-folder-tree' : 'fa-users'} text-lg`}></i>
+                  <div className={`w-11 h-11 rounded-full flex items-center justify-center text-white flex-shrink-0 ${group.type === 'project'
+                      ? 'bg-emerald-500'
+                      : 'bg-teal-500'
+                    }`}>
+                    <i className={`fa-solid ${group.type === 'project' ? 'fa-folder-tree' : 'fa-users'} text-base`}></i>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex justify-between items-baseline mb-0.5">
-                      <h3 className="text-[15px] font-medium text-white truncate">{group.name}</h3>
+                    <div className="flex justify-between items-baseline gap-2">
+                      <h3 className="text-[14.5px] font-semibold text-slate-900 truncate">{group.name}</h3>
                       {group.lastMessage && (
-                        <span className="text-[11px] text-slate-500">
-                          {new Date(group.lastMessage.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                        <span className="text-[11px] text-slate-400 flex-shrink-0">
+                          {new Date(group.lastMessage.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </span>
                       )}
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-bold uppercase tracking-wide text-teal-400">
+                      <span className="text-[11px] font-medium text-teal-600">
                         <i className="fa-solid fa-users mr-1"></i>
                         {group.members.length} miembros
                         {group.subGroups && group.subGroups.length > 0 && (
-                          <span className="ml-2 text-cyan-400">
-                            • {group.subGroups.length} subgrupos
+                          <span className="ml-2 text-cyan-600">
+                            · {group.subGroups.length} subgrupos
                           </span>
                         )}
                       </span>
                     </div>
                     {group.lastMessage && (
-                      <p className="text-sm text-slate-400 truncate font-light mt-0.5">
+                      <p className="text-[13px] text-slate-500 truncate mt-0.5">
                         {group.lastMessage.text}
                       </p>
                     )}
                   </div>
                   {group.unreadCount > 0 && (
-                    <span className="bg-gradient-to-r from-teal-600 to-cyan-600 text-white text-[11px] font-bold rounded-full min-w-[1.25rem] h-5 flex items-center justify-center px-1 shadow-lg">
+                    <span className="bg-teal-600 text-white text-[11px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 flex-shrink-0">
                       {group.unreadCount}
                     </span>
                   )}
                 </div>
               </div>
             ))}
-            
+
             {groups.length === 0 && (
-              <div className="p-8 text-center text-slate-500">
-                <i className="fa-solid fa-users-slash text-3xl mb-3"></i>
-                <p className="font-medium">No tienes grupos</p>
+              <div className="p-8 text-center text-slate-400">
+                <i className="fa-solid fa-users-slash text-2xl mb-3"></i>
+                <p className="font-medium text-slate-500 text-sm">No tienes grupos</p>
                 <p className="text-xs mt-1">Crea uno para colaborar con tu equipo</p>
               </div>
             )}

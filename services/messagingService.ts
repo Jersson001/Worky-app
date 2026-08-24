@@ -1,5 +1,5 @@
 import { supabase, uniqueTopic } from './supabaseConfig';
-import { Message, Contact } from '../types';
+import { Message, Contact, UserStatus } from '../types';
 
 // ============ IDENTIDAD ============
 
@@ -78,6 +78,7 @@ const rowToMessage = (row: any, myUid: string): Message => {
     paidDate: row.paid_date ? new Date(row.paid_date) : undefined,
     mediaUrl: row.media_url ?? undefined,
     mediaType: row.media_type ?? undefined,
+    status: row.status ?? 'sent',
   };
 };
 
@@ -102,6 +103,7 @@ export const sendMessage = async (
       timestamp: new Date().toISOString(),
       media_url: message.mediaUrl ?? null,
       media_type: message.mediaType ?? null,
+      status: 'sent',
     })
     .select('id')
     .single();
@@ -133,6 +135,59 @@ export const sendMessage = async (
   if (rpcError) console.warn('No se pudo actualizar no-leídos del destinatario:', rpcError.message);
 
   return data.id;
+};
+
+/**
+ * Actualiza el estado de un mensaje (sent, delivered, read)
+ */
+export const updateMessageStatus = async (
+  messageId: string,
+  status: 'sent' | 'delivered' | 'read'
+): Promise<void> => {
+  const { error } = await supabase
+    .from('messages')
+    .update({ status })
+    .eq('id', messageId);
+
+  if (error) {
+    console.error('Error actualizando estado del mensaje:', error);
+  }
+};
+
+/**
+ * Marca todos los mensajes de una conversación como entregados
+ */
+export const markMessagesAsDelivered = async (contactId: string): Promise<void> => {
+  const userId = getCurrentUserId();
+  const chatId = getChatId(userId, contactId);
+
+  const { error } = await supabase
+    .from('messages')
+    .update({ status: 'delivered' })
+    .eq('chat_id', chatId)
+    .eq('status', 'sent');
+
+  if (error) {
+    console.error('Error marcando mensajes como entregados:', error);
+  }
+};
+
+/**
+ * Marca todos los mensajes de una conversación como leídos
+ */
+export const markMessagesAsRead = async (contactId: string): Promise<void> => {
+  const userId = getCurrentUserId();
+  const chatId = getChatId(userId, contactId);
+
+  const { error } = await supabase
+    .from('messages')
+    .update({ status: 'read' })
+    .eq('chat_id', chatId)
+    .in('status', ['sent', 'delivered']);
+
+  if (error) {
+    console.error('Error marcando mensajes como leídos:', error);
+  }
 };
 
 export const listenToMessages = (
@@ -269,6 +324,46 @@ export const listenToMessages = (
   };
 };
 
+export const listenToGlobalIncomingMessages = (
+  callback: (senderId: string, message: Message, rawPayload: any) => void
+): (() => void) => {
+  let userId: string | null = null;
+  try {
+    userId = getCurrentUserId();
+  } catch {
+    return () => {};
+  }
+  if (!userId) return () => {};
+
+  const topicName = uniqueTopic(`global_incoming:${userId}`);
+  const channel = supabase
+    .channel(topicName)
+    .on(
+      'postgres_changes',
+      {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'messages',
+        filter: `recipient_id=eq.${userId}`,
+      },
+      (payload) => {
+        const raw = payload.new;
+        const senderId = raw.sender_id || raw.user_id;
+
+        // Filtro Lógico: recipient_id coincide con el usuario autenticado y sender_id no es él mismo
+        if (raw.recipient_id === userId && senderId && senderId !== userId) {
+          const incomingMsg = rowToMessage(raw, userId);
+          callback(senderId, incomingMsg, raw);
+        }
+      }
+    )
+    .subscribe();
+
+  return () => {
+    void supabase.removeChannel(channel);
+  };
+};
+
 export const markChatAsRead = async (contactId: string): Promise<void> => {
   const userId = getCurrentUserId();
   await supabase
@@ -331,13 +426,13 @@ export const deleteMessage = async (messageId: string): Promise<void> => {
 // contact_user_id es el uid real del otro usuario y es lo único
 // válido para abrir un chat. El id de la fila NO sirve para eso.
 const rowToContact = (row: any): Contact => ({
-  id: row.contact_user_id ?? row.id,
-  clientName: row.client_name,
+  id: row.contact_user_id || row.id,
+  clientName: row.client_name || row.alias || 'Contacto',
   alias: row.alias ?? undefined,
-  avatar: row.avatar,
-  phone: row.phone,
-  status: row.status,
-  role: row.role,
+  avatar: row.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(row.client_name || 'Contacto')}&background=random`,
+  phone: row.phone || '',
+  status: row.status || UserStatus.Lead,
+  role: row.role || 'client',
   projects: [],
   lastMessage: row.last_message || '',
   lastMessageTime: row.last_message_time ? new Date(row.last_message_time) : new Date(),
@@ -345,24 +440,89 @@ const rowToContact = (row: any): Contact => ({
   notes: row.notes ?? undefined,
 });
 
-export const addContact = async (contact: Contact): Promise<void> => {
-  // Alta mutua vía RPC SECURITY DEFINER (add_contact_mutual)
-  const { error } = await supabase.rpc('add_contact_mutual', {
-    p_other_user: contact.id,
-    p_client_name: contact.clientName,
-    p_avatar: contact.avatar ?? null,
-    p_phone: contact.phone ?? null,
-    p_status: contact.status,
-    p_role: contact.role,
-    p_alias: contact.alias ?? null,
-  });
+export const addContact = async (contact: Contact): Promise<Contact> => {
+  const userId = getCurrentUserId();
+  const isManualLead = contact.id.startsWith('lead_');
 
-  if (error) {
-    if (error.message.includes('function public.add_contact_mutual') || error.code === '42883') {
-      throw new Error('Falta aplicar supabase_contacts_alias_and_anchor.sql en Supabase.');
-    }
-    throw error;
+  // 1. Intentar llamar a la función RPC (add_contact_mutual) — solo para usuarios registrados
+  if (!isManualLead) {
+    const { error: rpcError } = await supabase.rpc('add_contact_mutual', {
+      p_other_user: contact.id,
+      p_client_name: contact.clientName,
+      p_avatar: contact.avatar ?? null,
+      p_phone: contact.phone ?? null,
+      p_status: contact.status,
+      p_role: contact.role,
+      p_alias: contact.alias ?? null,
+    });
+
+    if (!rpcError) return contact;
+
+    console.warn('[addContact] RPC add_contact_mutual falló. Ejecutando fallback a inserción directa:', rpcError.message);
   }
+
+  if (!userId) {
+    throw new Error('Usuario no autenticado en la sesión actual.');
+  }
+
+  // 2. Fallback: Inserción directa en la tabla contacts
+  //    Para leads manuales, contact_user_id es null (no existe en auth.users)
+  const contactRow: any = {
+    user_id: userId,
+    contact_user_id: isManualLead ? null : contact.id,
+    client_name: contact.clientName,
+    alias: contact.alias || null,
+    avatar: contact.avatar || null,
+    phone: contact.phone || null,
+    status: contact.status,
+    role: contact.role,
+    last_message: '',
+    last_message_time: new Date().toISOString(),
+    unread_count: 0,
+  };
+
+  let res = await supabase
+    .from('contacts')
+    .insert(contactRow)
+    .select();
+
+  let insertError = res.error;
+  let insertedData = res.data;
+
+  // Si falla porque la columna 'alias' no ha sido creada en la tabla contacts de Supabase
+  if (insertError && (insertError.message.includes('alias') || insertError.code === '42703')) {
+    delete contactRow.alias;
+    const fallbackRes = await supabase
+      .from('contacts')
+      .insert(contactRow)
+      .select();
+    insertError = fallbackRes.error;
+    insertedData = fallbackRes.data;
+  }
+
+  if (insertError) {
+    console.error('Error insertando contacto en la tabla contacts:', insertError);
+    throw insertError;
+  }
+
+  // 3. Registrar en user_chats (solo para usuarios registrados)
+  if (!isManualLead) {
+    await supabase
+      .from('user_chats')
+      .upsert({
+        user_id: userId,
+        contact_id: contact.id,
+        last_message: '',
+        last_message_time: new Date().toISOString(),
+        unread: 0
+      }, { onConflict: 'user_id,contact_id' });
+  }
+
+  if (insertedData && insertedData.length > 0) {
+    return rowToContact(insertedData[0]);
+  }
+
+  return contact;
 };
 
 export const listenToContacts = (
@@ -403,19 +563,35 @@ export const listenToContacts = (
 
 export const deleteContact = async (contactId: string): Promise<void> => {
   const userId = getCurrentUserId();
+  const isUuid = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(contactId);
 
-  const { error } = await supabase
+  const filterQuery = isUuid
+    ? `contact_user_id.eq.${contactId},id.eq.${contactId}`
+    : `id.eq.${contactId}`;
+
+  const { error: contactError } = await supabase
     .from('contacts')
     .delete()
     .eq('user_id', userId)
-    .eq('contact_user_id', contactId);
-  if (error) throw error;
+    .or(filterQuery);
+
+  if (contactError) {
+    console.error('Error al eliminar contacto de Supabase:', contactError);
+    throw new Error(`Error en Supabase al eliminar contacto: ${contactError.message}`);
+  }
 
   await supabase
     .from('user_chats')
     .delete()
     .eq('user_id', userId)
     .eq('contact_id', contactId);
+
+  if (isUuid) {
+    await supabase
+      .from('messages')
+      .delete()
+      .or(`and(sender_id.eq.${userId},recipient_id.eq.${contactId}),and(sender_id.eq.${contactId},recipient_id.eq.${userId})`);
+  }
 };
 
 export const updateContactStatus = async (): Promise<void> => {

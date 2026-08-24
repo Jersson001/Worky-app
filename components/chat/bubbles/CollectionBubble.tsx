@@ -37,8 +37,8 @@ export const CollectionBubble: React.FC<CollectionBubbleProps> = React.memo(({
           <div className="text-[10px] text-slate-400">{meta.number}</div>
           {meta.projectName && <div className="text-xs text-slate-700 font-semibold mt-1">{meta.projectName}</div>}
         </div>
-        <div className="w-8 h-8 rounded-full bg-orange-50 flex items-center justify-center text-orange-600">
-          <i className="fa-solid fa-file-invoice"></i>
+        <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center text-white shadow-sm shadow-orange-500/30">
+          <i className="fa-solid fa-file-invoice text-sm"></i>
         </div>
       </div>
 

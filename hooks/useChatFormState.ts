@@ -3,7 +3,8 @@
  * Extracts 30+ useState calls from the monolithic component.
  */
 import { useState, useCallback } from 'react';
-import { InvoiceItem, QuoteItem, Product } from '../types';
+import { InvoiceItem, QuoteItem, Product, QuoteMode, CarpentrySection, CarpentryCategoryKey, CarpentryLineItem } from '../types';
+import { createCarpentrySection, createBlankCarpentryItem, computeM2FromDimensions } from '../utils/carpentryCalculations';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -31,6 +32,8 @@ export interface QuoteFormState {
   clientAddress: string;
   clientPhone: string;
   showProductPicker: boolean;
+  mode: QuoteMode;
+  sections: CarpentrySection[];
 }
 
 export interface CollectionFormState {
@@ -85,6 +88,12 @@ export interface ChatFormActions {
   updateQuoteItemImage: (index: number, url: string) => void;
   setQuoteField: <K extends keyof QuoteFormState>(field: K, value: QuoteFormState[K]) => void;
   resetQuote: (contactPhone?: string) => void;
+  setQuoteMode: (mode: QuoteMode) => void;
+  addCarpentrySection: (category: CarpentryCategoryKey) => void;
+  removeCarpentrySection: (sectionId: string) => void;
+  addCarpentryItem: (sectionId: string, groupId: string) => void;
+  updateCarpentryItem: (sectionId: string, groupId: string, itemId: string, field: keyof CarpentryLineItem, value: any) => void;
+  removeCarpentryItem: (sectionId: string, groupId: string, itemId: string) => void;
 
   // Collection
   collection: CollectionFormState;
@@ -129,6 +138,8 @@ const DEFAULT_QUOTE_BASE: Omit<QuoteFormState, 'clientPhone'> = {
   aiuIva: '19',
   clientAddress: '',
   showProductPicker: false,
+  mode: 'basica',
+  sections: [],
 };
 const DEFAULT_RECEIPT: ReceiptFormState = { amount: '', concept: '', selectedAccount: '' };
 const DEFAULT_MODALS: ModalVisibility = {
@@ -241,6 +252,73 @@ export const useChatFormState = (
     setQuote({ ...DEFAULT_QUOTE_BASE, clientPhone: contactPhone || initialPhone, items: [{ description: '', quantity: 1, price: 0 }] });
   }, [initialPhone]);
 
+  const setQuoteMode = useCallback((mode: QuoteMode) => {
+    setQuote(prev => ({ ...prev, mode }));
+  }, []);
+  const addCarpentrySection = useCallback((category: CarpentryCategoryKey) => {
+    setQuote(prev => ({ ...prev, sections: [...prev.sections, createCarpentrySection(category)] }));
+  }, []);
+  const removeCarpentrySection = useCallback((sectionId: string) => {
+    setQuote(prev => ({ ...prev, sections: prev.sections.filter(s => s.id !== sectionId) }));
+  }, []);
+  const addCarpentryItem = useCallback((sectionId: string, groupId: string) => {
+    setQuote(prev => ({
+      ...prev,
+      sections: prev.sections.map(section => {
+        if (section.id !== sectionId) return section;
+        return {
+          ...section,
+          groups: section.groups.map(group => {
+            if (group.id !== groupId) return group;
+            const config = { defaultUnit: group.items[0]?.unit || 'UND' as const };
+            return { ...group, items: [...group.items, createBlankCarpentryItem(config.defaultUnit)] };
+          }),
+        };
+      }),
+    }));
+  }, []);
+  const updateCarpentryItem = useCallback((sectionId: string, groupId: string, itemId: string, field: keyof CarpentryLineItem, value: any) => {
+    setQuote(prev => ({
+      ...prev,
+      sections: prev.sections.map(section => {
+        if (section.id !== sectionId) return section;
+        return {
+          ...section,
+          groups: section.groups.map(group => {
+            if (group.id !== groupId) return group;
+            return {
+              ...group,
+              items: group.items.map(item => {
+                if (item.id !== itemId) return item;
+                const updated = { ...item, [field]: value };
+                // Ancho/Alto -> medida en m² automáticamente para ítems M2.
+                if ((field === 'width' || field === 'height') && updated.unit === 'M2') {
+                  updated.measure = computeM2FromDimensions(updated.width, updated.height);
+                }
+                return updated;
+              }),
+            };
+          }),
+        };
+      }),
+    }));
+  }, []);
+  const removeCarpentryItem = useCallback((sectionId: string, groupId: string, itemId: string) => {
+    setQuote(prev => ({
+      ...prev,
+      sections: prev.sections.map(section => {
+        if (section.id !== sectionId) return section;
+        return {
+          ...section,
+          groups: section.groups.map(group => {
+            if (group.id !== groupId) return group;
+            return { ...group, items: group.items.filter(i => i.id !== itemId) };
+          }),
+        };
+      }),
+    }));
+  }, []);
+
   // ── Collection ──
   const [collection, setCollection] = useState<CollectionFormState>({
     amount: '', concept: '', directedTo: initialClientName, nit: '', selectedAccount: '', selectedProject: '',
@@ -282,6 +360,7 @@ export const useChatFormState = (
     invoice, addInvoiceItem, updateInvoiceItem, deleteInvoiceItem, setInvoiceField, resetInvoice,
     quote, addQuoteItem, addProductToQuote, updateQuoteItem, updateQuoteItemPrice,
     deleteQuoteItem, addQuoteItemImages, removeQuoteItemImage, updateQuoteItemImage, setQuoteField, resetQuote,
+    setQuoteMode, addCarpentrySection, removeCarpentrySection, addCarpentryItem, updateCarpentryItem, removeCarpentryItem,
     collection, setCollectionField, resetCollection,
     receipt, setReceiptField, resetReceipt,
     modals, openModal, closeModal,

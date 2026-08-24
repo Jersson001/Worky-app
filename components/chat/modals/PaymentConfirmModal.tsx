@@ -26,34 +26,46 @@ export const PaymentConfirmModal: React.FC<PaymentConfirmModalProps> = React.mem
   };
 
   return (
-    <div className="absolute inset-0 bg-slate-900/40 z-50 flex items-center justify-center p-4 animate-fade-in backdrop-blur-sm">
-      <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl p-6 relative">
-        <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-800 bg-slate-100 w-8 h-8 rounded-full flex items-center justify-center">
-          <i className="fa-solid fa-xmark"></i>
+    <div className="absolute inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4 animate-fade-in backdrop-blur-sm">
+      <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl p-6 relative border border-slate-100">
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 w-8 h-8 rounded-full flex items-center justify-center transition"
+        >
+          <i className="fa-solid fa-xmark text-sm"></i>
         </button>
-        <h3 className="text-slate-800 font-bold text-lg mb-6 flex items-center gap-2">
-          <i className="fa-solid fa-circle-check text-emerald-500"></i> Confirmar Pago
+        <h3 className="text-slate-900 font-bold text-lg mb-4 flex items-center gap-2.5 pr-8">
+          <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0">
+            <i className="fa-solid fa-circle-check text-sm"></i>
+          </div>
+          <span>Confirmar Pago</span>
         </h3>
         <div className="space-y-4">
-          <div className="bg-slate-50 rounded-lg p-4">
-            <div className="text-sm text-slate-600 mb-2">{getDocLabel()}</div>
-            <div className="text-xs text-slate-400 mb-1">
+          <div className="bg-slate-50 rounded-xl p-4 border border-slate-200">
+            <div className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">{getDocLabel()}</div>
+            <div className="text-xs text-slate-400 mb-2">
               {pendingPayment.metadata?.number && `#${pendingPayment.metadata.number}`}
             </div>
             {pendingPayment.metadata?.amount && (
-              <div className="text-lg font-bold text-slate-800">{formatCurrency(pendingPayment.metadata.amount)}</div>
+              <div className="text-xl font-bold text-slate-900">{formatCurrency(pendingPayment.metadata.amount)}</div>
             )}
             {pendingPayment.metadata?.total && (
-              <div className="text-lg font-bold text-slate-800">{formatCurrency(pendingPayment.metadata.total)}</div>
+              <div className="text-xl font-bold text-slate-900">{formatCurrency(pendingPayment.metadata.total)}</div>
             )}
           </div>
-          <p className="text-sm text-slate-600 text-center">¿Confirmas que este documento ha sido pagado?</p>
-          <div className="flex gap-3">
-            <button onClick={onClose} className="flex-1 bg-slate-200 text-slate-700 py-3 rounded-lg font-bold hover:bg-slate-300 transition">
+          <p className="text-sm font-medium text-slate-600 text-center">¿Confirmas que este documento ha sido pagado?</p>
+          <div className="flex gap-2.5 pt-1">
+            <button
+              onClick={onClose}
+              className="flex-1 bg-slate-100 text-slate-700 py-3 rounded-xl font-bold hover:bg-slate-200 transition"
+            >
               Cancelar
             </button>
-            <button onClick={onConfirm} className="flex-1 bg-emerald-500 text-white py-3 rounded-lg font-bold hover:bg-emerald-600 transition flex items-center justify-center gap-2">
-              <i className="fa-solid fa-check"></i> Confirmar Pago
+            <button
+              onClick={onConfirm}
+              className="flex-1 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white py-3 rounded-xl font-bold shadow-lg shadow-emerald-500/25 hover:shadow-xl transition active:scale-[0.99] flex items-center justify-center gap-2"
+            >
+              <i className="fa-solid fa-check"></i> Confirmar
             </button>
           </div>
         </div>
