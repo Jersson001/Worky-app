@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { QuoteData, InvoiceData, ReceiptData, CollectionAccountData, UserProfileData } from '../types';
 import { shareQuoteViaWhatsApp, shareInvoiceViaWhatsApp, openWhatsApp, generateDocumentId, saveSharedDocument, generateDocumentViewLink } from '../services/whatsappService';
+import { publishCatalogForCurrentUser } from '../services/catalogShareService';
 import { computeLineSubtotal, computeGroupSubtotal, computeSectionSubtotal } from '../utils/carpentryCalculations';
 
 interface DocumentViewerProps {
@@ -25,11 +26,22 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({ type, data, onCl
     window.print();
   };
 
-  const handleShareViaWhatsApp = () => {
+  const handleShareViaWhatsApp = async () => {
     if (!contactPhone) {
       alert('No hay número de teléfono disponible para compartir');
       return;
     }
+
+    // Instantánea del catálogo, para que el documento lleve enlace y QR.
+    // Si falla o no hay productos, el documento sale igual, sin ese bloque.
+    const negocio = userProfile?.businessName || userProfile?.ownerName || 'nuestro catálogo';
+    const catalogLink = await publishCatalogForCurrentUser({
+      businessName: userProfile?.businessName ?? '',
+      ownerName: userProfile?.ownerName ?? '',
+      phone: userProfile?.phone ?? '',
+      city: userProfile?.city,
+      businessLogo: userProfile?.businessLogo,
+    });
 
     // Generar ID único y guardar documento
     const documentId = generateDocumentId();
@@ -40,7 +52,11 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({ type, data, onCl
       userProfile,
       digitalSignature
     };
-    saveSharedDocument(documentId, documentToShare);
+    await saveSharedDocument(
+      documentId,
+      documentToShare,
+      catalogLink ? { url: catalogLink, negocio } : undefined,
+    );
     const documentLink = generateDocumentViewLink(documentId, documentToShare);
 
     if (type === 'quote') {
@@ -55,7 +71,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({ type, data, onCl
           price: item.price
         })),
         sections: quoteData.sections,
-      }, documentLink);
+      }, documentLink, catalogLink ?? undefined);
     } else if (type === 'invoice') {
       const invoiceData = data as InvoiceData;
       shareInvoiceViaWhatsApp(contactPhone, {
@@ -63,13 +79,14 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({ type, data, onCl
         clientName: invoiceData.clientName,
         total: invoiceData.total,
         dueDate: invoiceData.date
-      }, documentLink);
+      }, documentLink, catalogLink ?? undefined);
     } else {
       // Para otros tipos de documentos, enviar un mensaje genérico con link
       const documentName = type === 'receipt' ? 'Recibo' : 
                           type === 'collection_account' ? 'Cuenta de Cobro' : 
                           'Documento';
-      openWhatsApp(contactPhone, `📄 Te comparto el ${documentName} generado.\n\n📎 *Ver documento completo:*\n${documentLink}\n\n📲 *Descarga Worky App en Google Play:*\nhttps://play.google.com/store/apps/details?id=com.worky.app.v2&hl=es`);
+      const catalogoTexto = catalogLink ? `\n🛒 *Mira nuestro catálogo:*\n${catalogLink}\n` : '';
+      openWhatsApp(contactPhone, `📄 Te comparto el ${documentName} generado.\n\n📎 *Ver documento completo:*\n${documentLink}\n${catalogoTexto}\n📲 *Descarga Worky App en Google Play:*\nhttps://play.google.com/store/apps/details?id=com.worky.app.v2&hl=es`);
     }
   };
 

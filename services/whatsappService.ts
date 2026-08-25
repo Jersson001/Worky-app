@@ -1,4 +1,17 @@
 import { supabase } from './supabaseConfig';
+import { qrImageUrl } from './catalogShareService';
+
+/**
+ * Pie del documento con el enlace y el QR del catálogo.
+ * Quien lo escanee entra sin registrarse; solo hace falta cuenta para chatear.
+ */
+const bloqueCatalogo = ({ url, negocio }: { url: string; negocio: string }): string => `
+    <div style="margin-top:32px;padding:24px;background:#f8f9fa;border:1px solid #e2e8f0;border-radius:10px;text-align:center">
+      <p style="font-size:1.05em;font-weight:bold;color:#2c3e50;margin:0 0 4px">Conoce todo nuestro catálogo</p>
+      <p style="color:#7f8c8d;font-size:.88em;margin:0 0 16px">Escanea el código o abre el enlace — no necesitas registrarte.</p>
+      <img src="${qrImageUrl(url, 200)}" alt="QR del catálogo de ${negocio}" width="160" height="160" style="display:block;margin:0 auto 12px;background:#fff;padding:8px;border-radius:8px">
+      <a href="${url}" style="color:#3498db;font-size:.85em;word-break:break-all">${url}</a>
+    </div>`;
 
 /**
  * Formatea un número de teléfono para WhatsApp
@@ -42,7 +55,12 @@ export const WORKY_PLAY_STORE_URL = 'https://play.google.com/store/apps/details?
 /**
  * Guarda un documento en localStorage y en Supabase Storage (como JSON + HTML)
  */
-export const saveSharedDocument = async (documentId: string, documentData: any): Promise<void> => {
+export const saveSharedDocument = async (
+  documentId: string,
+  documentData: any,
+  /** Si se pasa, el documento lleva al pie el enlace y el QR del catálogo. */
+  catalogo?: { url: string; negocio: string },
+): Promise<void> => {
   const docWithMeta = {
     ...documentData,
     createdAt: new Date().toISOString(),
@@ -97,6 +115,7 @@ export const saveSharedDocument = async (documentId: string, documentData: any):
     <div class="document">
       <pre>${JSON.stringify(docWithMeta, null, 2)}</pre>
     </div>
+    ${catalogo ? bloqueCatalogo(catalogo) : ''}
     <p style="text-align: center; margin-top: 40px; color: #7f8c8d; font-size: 0.9em;">
       Documento compartido - ${new Date().toLocaleString('es-ES')}
     </p>
@@ -170,7 +189,7 @@ export const generateQuoteMessage = (quoteData: {
       items: Array<{ description: string; quantity: number; unitCost: number; unit: string; measure?: number }>;
     }>;
   }>;
-}, documentLink?: string): string => {
+}, documentLink?: string, catalogLink?: string): string => {
   let itemsText: string;
 
   if (quoteData.sections && quoteData.sections.length > 0) {
@@ -199,6 +218,7 @@ export const generateQuoteMessage = (quoteData: {
   }
 
   const linkText = documentLink ? `\n\n📄 *Ver documento completo:*\n${documentLink}\n` : '';
+  const catalogText = catalogLink ? `\n🛒 *Mira nuestro catálogo:*\n${catalogLink}\n` : '';
 
   return `📋 *Cotización #${quoteData.quoteNumber}*
 
@@ -208,7 +228,7 @@ Te envío la cotización solicitada:
 
 ${itemsText}
 
-*Total: $${quoteData.total.toLocaleString()}*${linkText}
+*Total: $${quoteData.total.toLocaleString()}*${linkText}${catalogText}
 ¿Te parece bien? Puedo ajustar cualquier detalle.
 
 Saludos!
@@ -225,20 +245,21 @@ export const generateInvoiceMessage = (invoiceData: {
   clientName: string;
   total: number;
   dueDate?: Date;
-}, documentLink?: string): string => {
+}, documentLink?: string, catalogLink?: string): string => {
   const dueDateText = invoiceData.dueDate 
     ? `\n*Fecha de vencimiento:* ${invoiceData.dueDate.toLocaleDateString()}`
     : '';
   
   const linkText = documentLink ? `\n\n📄 *Ver documento completo:*\n${documentLink}\n` : '';
-  
+  const catalogText = catalogLink ? `\n🛒 *Mira nuestro catálogo:*\n${catalogLink}\n` : '';
+
   return `🧾 *Factura #${invoiceData.invoiceNumber}*
 
 Hola ${invoiceData.clientName},
 
 Te envío la factura correspondiente:
 
-*Total: $${invoiceData.total.toLocaleString()}*${dueDateText}${linkText}
+*Total: $${invoiceData.total.toLocaleString()}*${dueDateText}${linkText}${catalogText}
 Por favor, realiza el pago a la brevedad posible.
 
 ¡Gracias por tu preferencia!
@@ -304,9 +325,10 @@ export const shareQuoteViaWhatsApp = (
     }>;
     pdfUrl?: string;
   },
-  documentLink?: string
+  documentLink?: string,
+  catalogLink?: string
 ): void => {
-  const message = generateQuoteMessage(quoteData, documentLink);
+  const message = generateQuoteMessage(quoteData, documentLink, catalogLink);
   const fullMessage = quoteData.pdfUrl
     ? `${message}\n\n📄 Ver PDF completo: ${quoteData.pdfUrl}`
     : message;
@@ -326,9 +348,10 @@ export const shareInvoiceViaWhatsApp = (
     dueDate?: Date;
     pdfUrl?: string;
   },
-  documentLink?: string
+  documentLink?: string,
+  catalogLink?: string
 ): void => {
-  const message = generateInvoiceMessage(invoiceData, documentLink);
+  const message = generateInvoiceMessage(invoiceData, documentLink, catalogLink);
   const fullMessage = invoiceData.pdfUrl
     ? `${message}\n\n📄 Ver PDF completo: ${invoiceData.pdfUrl}`
     : message;

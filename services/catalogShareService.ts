@@ -10,6 +10,7 @@
  * el QR impreso sigue sirviendo después de actualizar el catálogo.
  */
 import { supabase } from './supabaseConfig';
+import { getCurrentUserId } from './messagingService';
 import { Product, UserProfileData } from '../types';
 
 /** Dónde vive la app en la web; a donde va quien quiera registrarse. */
@@ -195,6 +196,34 @@ export const publishCatalog = async (
     return catalogUrl(userId);
   } catch (e) {
     console.error('Error publicando el catálogo:', e);
+    return null;
+  }
+};
+
+/**
+ * Publica el catálogo del usuario actual leyendo sus productos.
+ *
+ * Existe para que el flujo de documentos no tenga que recibir la lista de
+ * productos por props: DocumentViewer se renderiza desde sitios que no la
+ * tienen. Devuelve null si no hay sesión, no hay productos o falla la subida,
+ * y en ese caso el documento simplemente sale sin el bloque de catálogo.
+ */
+export const publishCatalogForCurrentUser = async (
+  profile: Parameters<typeof buildCatalogHtml>[0],
+): Promise<string | null> => {
+  try {
+    const userId = getCurrentUserId();
+    const { data, error } = await supabase
+      .from('products')
+      .select('id, name, price, image, images, description')
+      .eq('user_id', userId);
+
+    if (error) throw error;
+    if (!data?.length) return null;
+
+    return publishCatalog(userId, profile, data as Product[]);
+  } catch (e) {
+    console.warn('No se pudo publicar el catálogo para el documento:', e);
     return null;
   }
 };
