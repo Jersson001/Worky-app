@@ -6,6 +6,7 @@ import ContractGenerator from './components/ContractGenerator';
 import ProFeatureGuard from './components/ProFeatureGuard';
 import AdminPanel from './components/AdminPanel';
 import { generateProductDescription } from './services/geminiService';
+import CatalogShareModal from './components/CatalogShareModal';
 import { StatusView } from './components/StatusView';
 import { WalletModal } from './components/WalletModal';
 import { SignaturePad } from './components/SignaturePad';
@@ -727,6 +728,7 @@ const App: React.FC = () => {
   }, [stories]);
   const [startCamera, setStartCamera] = useState(false);
   const [showCatalogManager, setShowCatalogManager] = useState(false);
+  const [showCatalogShare, setShowCatalogShare] = useState(false);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<ProductCategory[]>([]);
@@ -2327,9 +2329,19 @@ const App: React.FC = () => {
                 </div>
                 <h2 className="text-white text-xl font-bold">Gestión de Catálogo</h2>
               </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowCatalogShare(true)}
+                  title="Compartir catálogo con QR"
+                  className="bg-white/20 hover:bg-white/30 text-white px-3 py-2 rounded-xl font-bold text-sm transition flex items-center gap-2"
+                >
+                  <i className="fa-solid fa-qrcode"></i>
+                  <span className="hidden sm:inline">Compartir</span>
+                </button>
               <button onClick={() => { setShowCatalogManager(false); setCatalogView('folders'); setSelectedCategory(null); setEditingProduct(null); setNewProductName(''); setNewProductPrice(''); setNewProductStock(''); setNewProductDescription(''); setNewProductImage(''); setNewProductImages([]); setNewProductCategory(''); setImageEnhancementSuggestions(''); setDetectedFeatures([]); setNewCategoryName(''); setNewCategoryIcon('fa-box'); setNewCategoryCoverImage(''); setShowCategoryForm(false); }} className="text-white/80 hover:text-white text-2xl">
                 <i className="fa-solid fa-times"></i>
               </button>
+              </div>
             </div>
 
             <div className="flex-1 overflow-y-auto p-6">
@@ -2849,6 +2861,13 @@ const App: React.FC = () => {
               )}
             </div>
           </div>
+
+          <CatalogShareModal
+            show={showCatalogShare}
+            onClose={() => setShowCatalogShare(false)}
+            profile={userProfile}
+            products={products}
+          />
         </div>
       )}
 
