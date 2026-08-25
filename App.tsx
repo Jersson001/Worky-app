@@ -1449,7 +1449,11 @@ const App: React.FC = () => {
       return;
     }
 
-    const colors = ['bg-red-500', 'bg-blue-500', 'bg-green-500', 'bg-yellow-500', 'bg-purple-500', 'bg-pink-500', 'bg-indigo-500', 'bg-teal-500'];
+    // Hexadecimal, no clases de Tailwind: la columna es varchar(7) y la UI ya
+    // lo usa como color directo (`category.color + '15'` para la
+    // transparencia). Con 'bg-red-500' salía 'bg-red-50015', que no es un
+    // color válido, y además Postgres rechazaba el guardado por longitud.
+    const colors = ['#ef4444', '#3b82f6', '#22c55e', '#eab308', '#a855f7', '#ec4899', '#6366f1', '#14b8a6'];
     const randomColor = colors[Math.floor(Math.random() * colors.length)];
 
     const newCategory: ProductCategory = {
