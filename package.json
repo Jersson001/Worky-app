@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "android": "npm run build && npx cap sync && npx cap open android",
     "build:android": "npm run build && npx cap sync",
-    "bundle:release": "npm run build:android && cd android && gradlew bundleRelease",
+    "bundle:release": "npm run build:android && cd android && gradlew.bat bundleRelease",
     "prepare:playstore": "npm run bundle:release"
   },
   "dependencies": {
