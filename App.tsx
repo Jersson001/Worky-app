@@ -1338,7 +1338,16 @@ const App: React.FC = () => {
   };
 
   const handleSaveProduct = async () => {
-    if (!newProductName || !newProductPrice) return;
+    // Antes se salía en silencio: el botón parecía no responder y no había
+    // forma de saber qué faltaba.
+    const faltan = [
+      !newProductName && 'el nombre',
+      !newProductPrice && 'el precio',
+    ].filter(Boolean);
+    if (faltan.length) {
+      alert(`Para guardar el producto falta ${faltan.join(' y ')}.`);
+      return;
+    }
 
     const productImages = newProductImages.length > 0 ? newProductImages : undefined;
     const mainImage = productImages?.[0] || 'https://placehold.co/100x100/e2e8f0/64748b?text=' + newProductName.substring(0, 1);
@@ -1434,7 +1443,10 @@ const App: React.FC = () => {
   };
 
   const handleSaveCategory = async () => {
-    if (!newCategoryName) return;
+    if (!newCategoryName) {
+      alert('Para crear la carpeta falta el nombre.');
+      return;
+    }
 
     const colors = ['bg-red-500', 'bg-blue-500', 'bg-green-500', 'bg-yellow-500', 'bg-purple-500', 'bg-pink-500', 'bg-indigo-500', 'bg-teal-500'];
     const randomColor = colors[Math.floor(Math.random() * colors.length)];
