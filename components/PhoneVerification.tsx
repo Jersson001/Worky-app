@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { authService } from '../services/authService';
 
 interface PhoneVerificationProps {
-  phone: string; // E.164, ej: +573142036659
+  phone: string; // E.164, ej: +573001234567
   onVerified: () => void;
   onBack?: () => void;
   onLogout?: () => void;

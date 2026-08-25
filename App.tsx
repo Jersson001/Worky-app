@@ -2208,7 +2208,7 @@ const App: React.FC = () => {
                 <label className="text-xs text-slate-700 font-bold uppercase mb-1 block tracking-wide">Teléfono (Obligatorio) *</label>
                 <input
                   type="tel"
-                  placeholder="Ej. 3142036659"
+                  placeholder="Ej. 3001234567"
                   value={newContactPhone}
                   onChange={e => setNewContactPhone(e.target.value)}
                   className="w-full bg-slate-50 text-slate-900 font-semibold p-3 rounded-xl outline-none border border-slate-200 focus:border-blue-500 focus:bg-white transition text-sm placeholder-slate-400"

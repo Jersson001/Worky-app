@@ -329,7 +329,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister })
                     <input
                       type="text"
                       className="w-full p-3.5 bg-slate-50 border border-slate-200 text-slate-900 font-semibold rounded-xl outline-none focus:border-blue-600 focus:bg-white transition placeholder-slate-400 text-sm"
-                      placeholder="Ej. Jersson"
+                      placeholder="Ej. Juan"
                       value={firstName}
                       onChange={e => setFirstName(e.target.value)}
                       required
@@ -340,7 +340,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister })
                     <input
                       type="text"
                       className="w-full p-3.5 bg-slate-50 border border-slate-200 text-slate-900 font-semibold rounded-xl outline-none focus:border-blue-600 focus:bg-white transition placeholder-slate-400 text-sm"
-                      placeholder="Ej. Escobar"
+                      placeholder="Ej. Pérez"
                       value={lastName}
                       onChange={e => setLastName(e.target.value)}
                       required
@@ -377,7 +377,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister })
                       <input
                         type="tel"
                         className="w-full p-3.5 bg-slate-50 border border-slate-200 text-slate-900 font-semibold rounded-xl outline-none focus:border-blue-600 focus:bg-white transition placeholder-slate-400 text-sm"
-                        placeholder="3142036659"
+                        placeholder="3001234567"
                         value={phone}
                         onChange={e => setPhone(e.target.value)}
                         required
