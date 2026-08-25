@@ -9,8 +9,18 @@
  * un usuario autenticado: sin eso el proxy sería una barra libre para
  * cualquiera que conozca la anon key, que es pública por diseño.
  *
- * Desplegar:  supabase functions deploy gemini
- * Secreto:    supabase secrets set GEMINI_API_KEY=...
+ * IMPORTANTE — desplegar con verify_jwt DESACTIVADO:
+ *
+ *   supabase functions deploy gemini --no-verify-jwt
+ *
+ * No es un descuido. El navegador manda un preflight OPTIONS antes del POST,
+ * y ese preflight viaja sin cabecera Authorization porque el estándar CORS no
+ * permite otra cosa. Con verify_jwt activo la plataforma lo rechaza con 401
+ * antes de ejecutar este código, y el navegador cancela la petición con un
+ * error de CORS. La autenticación no se pierde: se comprueba abajo con
+ * auth.getUser(), que sí ve la cabecera del POST real.
+ *
+ * Secreto:  supabase secrets set GEMINI_API_KEY=...
  */
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.0";
