@@ -5,9 +5,10 @@
  */
 import React, { useState } from 'react';
 import { ModalWrapper } from './ModalWrapper';
+import { DecimalInput } from './DecimalInput';
 import ProFeatureGuard from '../../ProFeatureGuard';
 import { QuoteItem, Product, ContactRole, QuoteMode, CarpentrySection, CarpentryCategoryKey, CarpentryLineItem, CarpentryUnit } from '../../../types';
-import { formatCurrency, extractRawAmount, parseAmount } from '../../../utils/currency';
+import { formatCurrency, extractRawAmount } from '../../../utils/currency';
 import { calculateTax } from '../../../utils/taxCalculations';
 import { CARPENTRY_CATEGORIES, computeGrandTotal, computeSectionSubtotal, computeGroupSubtotal, computeLineSubtotal } from '../../../utils/carpentryCalculations';
 
@@ -70,10 +71,6 @@ const CarpentryItemRow: React.FC<{
   onRemove: () => void;
   allowUnitChange?: boolean;
 }> = ({ item, onUpdate, onRemove, allowUnitChange = true }) => {
-  const [widthInput, setWidthInput] = React.useState(item.width?.toString() ?? '');
-  const [heightInput, setHeightInput] = React.useState(item.height?.toString() ?? '');
-  const [measureInput, setMeasureInput] = React.useState(item.measure?.toString() ?? '');
-
   const subtotal = computeLineSubtotal(item);
 
   return (
@@ -108,34 +105,24 @@ const CarpentryItemRow: React.FC<{
           <>
             <div className="w-16">
               <label className="text-[9px] text-slate-400 font-semibold uppercase block mb-0.5">Ancho</label>
-              <input
-                type="text"
-                value={widthInput}
-                onChange={e => setWidthInput(e.target.value)}
-                onBlur={() => {
-                  const value = widthInput === '' ? undefined : parseAmount(widthInput);
-                  onUpdate('width', value);
-                }}
+              <DecimalInput
+                value={item.width}
+                onCommit={value => onUpdate('width', value)}
                 className="w-full bg-slate-50 p-1.5 rounded-lg text-[11px] text-slate-900 outline-none border border-slate-200 focus:border-blue-500 focus:bg-white transition"
               />
             </div>
             <div className="w-16">
               <label className="text-[9px] text-slate-400 font-semibold uppercase block mb-0.5">Alto</label>
-              <input
-                type="text"
-                value={heightInput}
-                onChange={e => setHeightInput(e.target.value)}
-                onBlur={() => {
-                  const value = heightInput === '' ? undefined : parseAmount(heightInput);
-                  onUpdate('height', value);
-                }}
+              <DecimalInput
+                value={item.height}
+                onCommit={value => onUpdate('height', value)}
                 className="w-full bg-slate-50 p-1.5 rounded-lg text-[11px] text-slate-900 outline-none border border-slate-200 focus:border-blue-500 focus:bg-white transition"
               />
             </div>
             <div className="w-16">
               <label className="text-[9px] text-slate-400 font-semibold uppercase block mb-0.5">M²</label>
               <div className="w-full bg-slate-100 p-1.5 rounded-lg text-[11px] text-slate-600 font-bold text-center border border-slate-200">
-                {(item.measure || 0).toFixed(2)}
+                {(item.measure || 0).toFixed(2).replace('.', ',')}
               </div>
             </div>
           </>
@@ -143,14 +130,9 @@ const CarpentryItemRow: React.FC<{
         {item.unit === 'ML' && (
           <div className="w-16">
             <label className="text-[9px] text-slate-400 font-semibold uppercase block mb-0.5">ML</label>
-            <input
-              type="text"
-              value={measureInput}
-              onChange={e => setMeasureInput(e.target.value)}
-              onBlur={() => {
-                const value = measureInput === '' ? undefined : parseAmount(measureInput);
-                onUpdate('measure', value);
-              }}
+            <DecimalInput
+              value={item.measure}
+              onCommit={value => onUpdate('measure', value)}
               className="w-full bg-slate-50 p-1.5 rounded-lg text-[11px] text-slate-900 outline-none border border-slate-200 focus:border-blue-500 focus:bg-white transition"
             />
           </div>
@@ -629,14 +611,12 @@ export const QuoteModal: React.FC<QuoteModalProps> = React.memo(({
                                               {item.unit === 'ML' && (
                                                 <div className="w-16">
                                                   <label className="text-[9px] text-slate-400 font-semibold uppercase block mb-0.5">ML</label>
-                                                  <input
-                                                    type="text"
-                                                    value={isTemplate ? '' : (item.measure ?? '')}
+                                                  <DecimalInput
+                                                    value={isTemplate ? undefined : item.measure}
                                                     placeholder={isTemplate ? String(item.measure ?? '') : undefined}
-                                                    onChange={e => {
-                                                      const val = e.target.value.replace(',', '.');
+                                                    onCommit={value => {
                                                       onUpdateCarpentryItem(section.id, group.id, item.id, 'isTemplate', false);
-                                                      onUpdateCarpentryItem(section.id, group.id, item.id, 'measure', val === '' ? undefined : parseFloat(val));
+                                                      onUpdateCarpentryItem(section.id, group.id, item.id, 'measure', value);
                                                     }}
                                                     className={`w-full bg-slate-50 p-1.5 rounded-lg text-[11px] outline-none border border-slate-200 ${
                                                       isTemplate ? 'text-slate-300 placeholder-slate-300' : 'text-slate-900'
