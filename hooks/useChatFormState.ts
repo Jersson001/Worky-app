@@ -5,7 +5,7 @@
 import { useState, useCallback } from 'react';
 import { InvoiceItem, QuoteItem, Product, QuoteMode, CarpentrySection, CarpentryCategoryKey, CarpentryLineItem } from '../types';
 import { createCarpentrySection, createBlankCarpentryItem, computeM2FromDimensions } from '../utils/carpentryCalculations';
-import { parseAmount } from '../utils/currency';
+import { parseMoney } from '../utils/currency';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -211,7 +211,7 @@ export const useChatFormState = (
   const updateQuoteItemPrice = useCallback((index: number, value: string) => {
     setQuote(prev => {
       const items = [...prev.items];
-      items[index] = { ...items[index], price: parseAmount(value) };
+      items[index] = { ...items[index], price: parseMoney(value) };
       return { ...prev, items };
     });
   }, []);

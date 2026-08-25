@@ -2,16 +2,19 @@
  * Campo de dinero que permite teclear decimales.
  *
  * Reformatear en cada tecla se come el separador: "1.500," se vuelve a
- * imprimir como "1.500" y la coma nunca llega a entrar. Además, una vez que
- * el texto lleva separadores de miles ya no se puede distinguir cuál era el
- * decimal. Por eso, mientras el campo tiene el foco se conserva el texto tal
- * cual se escribe (sin agrupar) y solo al salir se muestra formateado.
+ * imprimir como "1.500" y la coma nunca llega a entrar. Por eso, mientras el
+ * campo tiene el foco se conserva el texto tal cual se escribe y solo al
+ * salir se muestra formateado.
  *
- * onCommit entrega el monto canónico en string ("1500.5"), el mismo contrato
- * que extractRawAmount, para no tocar los setters existentes.
+ * El texto en edición sí conserva los puntos de miles que puso el formateo,
+ * así que interpretarlo requiere parseMoney (parseAmount leería el último
+ * punto de "200.000" como decimal y daría 200).
+ *
+ * onCommit entrega el monto canónico en string ("1500.5") para no tocar los
+ * setters ni el guardado.
  */
 import React, { useState } from 'react';
-import { formatAmountForInput, parseAmount } from '../../../utils/currency';
+import { formatAmountForInput, parseMoney } from '../../../utils/currency';
 
 interface CurrencyInputProps {
   value: number | string | undefined;
@@ -36,10 +39,11 @@ export const CurrencyInput: React.FC<CurrencyInputProps> = ({
       inputMode="decimal"
       value={draft ?? display}
       placeholder={placeholder}
+      onFocus={() => setDraft(formatted)}
       onChange={e => {
         const next = e.target.value.replace(/[^\d.,]/g, '');
         setDraft(next);
-        onCommit(next === '' ? '' : String(parseAmount(next)));
+        onCommit(next === '' ? '' : String(parseMoney(next)));
       }}
       onBlur={() => setDraft(null)}
       className={className}

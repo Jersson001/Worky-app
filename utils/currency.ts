@@ -22,7 +22,42 @@ export const formatCurrency = (value: string | number): string => {
     return COP_FORMATTER.format(value);
   }
   if (!/\d/.test(value)) return '';
-  return COP_FORMATTER.format(parseAmount(value));
+  return COP_FORMATTER.format(parseMoney(value));
+};
+
+/**
+ * Convierte texto de dinero a número distinguiendo el separador decimal del
+ * de miles. Hace falta porque el campo se muestra agrupado ("2.000.000") y al
+ * editarlo esos puntos vuelven a entrar al parser.
+ *
+ * - "1.500,50" / "1,500.50" → 1500.5   (dos separadores: el último es decimal)
+ * - "2.000.000" / "2.00.000" → 2000000 (el mismo separador repetido: miles)
+ * - "200.000"                → 200000  (3 dígitos detrás: miles; el peso no
+ *                                       usa 3 decimales)
+ * - "1500,75" / "2,5"        → 1500.75 / 2.5
+ */
+export const parseMoney = (raw: string): number => {
+  const cleaned = (raw ?? '').replace(/[^\d.,]/g, '');
+  if (!cleaned) return 0;
+
+  const separators = (cleaned.match(/[.,]/g) || []).length;
+  const mixed = cleaned.includes('.') && cleaned.includes(',');
+
+  let decimalIndex = -1;
+  if (mixed) {
+    decimalIndex = Math.max(cleaned.lastIndexOf('.'), cleaned.lastIndexOf(','));
+  } else if (separators === 1) {
+    const i = cleaned.search(/[.,]/);
+    // Exactamente 3 dígitos detrás ⇒ separador de miles, no decimal.
+    if (cleaned.length - i - 1 !== 3) decimalIndex = i;
+  }
+  // Un mismo separador repetido ⇒ todos son de miles.
+
+  const intPart = (decimalIndex === -1 ? cleaned : cleaned.slice(0, decimalIndex)).replace(/\D/g, '');
+  const decPart = decimalIndex === -1 ? '' : cleaned.slice(decimalIndex + 1).replace(/\D/g, '');
+
+  const n = Number(`${intPart || '0'}.${decPart || '0'}`);
+  return Number.isFinite(n) ? n : 0;
 };
 
 /**
@@ -30,28 +65,17 @@ export const formatCurrency = (value: string | number): string => {
  * 1500.5 → "1.500,5" · 1500 → "1.500" · 0 o vacío → "".
  */
 export const formatAmountForInput = (value: string | number | undefined | null): string => {
-  const amount = typeof value === 'number' ? value : parseAmount(value ?? '');
+  const amount = typeof value === 'number' ? value : parseMoney(value ?? '');
   if (!amount) return '';
   return amount.toLocaleString('es-CO', { maximumFractionDigits: 2 });
 };
 
 /**
- * Extracts y normaliza el monto del input del usuario.
- * Convierte "1.500,50" → "1500.50" para almacenar correctamente.
- * Permite puntos (.) y comas (,) como separadores decimales.
- */
-export const extractRawAmount = (input: string): string => {
-  const raw = input.replace(/[^\d.,]/g, '');
-  if (!raw) return '';
-
-  const amount = parseAmount(raw);
-  return amount.toString();
-};
-
-/**
- * Convierte un string de monto a número, soportando . o , como decimal.
- * El ÚLTIMO separador es el decimal, los anteriores son de miles.
- * Ej: "1.500,50" → 1500.50, "1,500.50" → 1500.50
+ * Convierte a número un valor decimal simple (metrajes, cantidades), donde no
+ * hay separadores de miles: el ÚLTIMO separador es siempre el decimal.
+ * Ej: "2,45" → 2.45, "0.6" → 0.6, "1.500,50" → 1500.50
+ *
+ * Para dinero usa parseMoney, que además reconoce el separador de miles.
  */
 export const parseAmount = (raw: string): number => {
   if (!raw) return 0;
