@@ -8,6 +8,7 @@
 import React, { useEffect, useState } from 'react';
 import { Product, UserProfileData } from '../types';
 import { getCurrentUserId } from '../services/messagingService';
+import { describeError } from '../utils/errorMessage';
 import { publishCatalog, qrImageUrl } from '../services/catalogShareService';
 
 interface CatalogShareModalProps {
@@ -22,6 +23,7 @@ export const CatalogShareModal: React.FC<CatalogShareModalProps> = ({
 }) => {
   const [estado, setEstado] = useState<'publicando' | 'listo' | 'error'>('publicando');
   const [enlace, setEnlace] = useState('');
+  const [detalle, setDetalle] = useState('');
   const [copiado, setCopiado] = useState(false);
 
   useEffect(() => {
@@ -34,7 +36,8 @@ export const CatalogShareModal: React.FC<CatalogShareModalProps> = ({
     let userId: string;
     try {
       userId = getCurrentUserId();
-    } catch {
+    } catch (e) {
+      setDetalle(describeError(e));
       setEstado('error');
       return;
     }
@@ -42,8 +45,14 @@ export const CatalogShareModal: React.FC<CatalogShareModalProps> = ({
     publishCatalog(userId, profile ?? { businessName: '', ownerName: '', phone: '' } as any, products)
       .then(publicada => {
         if (!vigente) return;
-        if (publicada) { setEnlace(publicada); setEstado('listo'); }
-        else setEstado('error');
+        setEnlace(publicada);
+        setEstado('listo');
+      })
+      .catch(e => {
+        if (!vigente) return;
+        console.error('Error publicando el catálogo:', e);
+        setDetalle(describeError(e));
+        setEstado('error');
       });
 
     return () => { vigente = false; };
@@ -94,7 +103,11 @@ export const CatalogShareModal: React.FC<CatalogShareModalProps> = ({
             <div className="py-12 text-center">
               <i className="fa-solid fa-triangle-exclamation text-2xl text-amber-500 mb-3 block"></i>
               <p className="text-sm font-semibold text-slate-700">No se pudo publicar el catálogo</p>
-              <p className="text-xs text-slate-500 mt-1">Revisa tu conexión e inténtalo de nuevo.</p>
+              {detalle && (
+                <p className="text-xs text-slate-500 mt-2 bg-slate-50 border border-slate-200 rounded-lg p-2 text-left break-words">
+                  {detalle}
+                </p>
+              )}
             </div>
           )}
 

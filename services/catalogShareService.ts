@@ -182,22 +182,20 @@ export const publishCatalog = async (
   userId: string,
   profile: Parameters<typeof buildCatalogHtml>[0],
   products: Product[],
-): Promise<string | null> => {
-  try {
-    const html = buildCatalogHtml(profile, await prepararProductos(products));
-    const { error } = await supabase.storage
-      .from('files')
-      .upload(`${CATALOG_DIR}/${userId}.html`, new Blob([html], { type: 'text/html' }), {
-        contentType: 'text/html',
-        upsert: true,
-      });
+): Promise<string> => {
+  const html = buildCatalogHtml(profile, await prepararProductos(products));
+  const { error } = await supabase.storage
+    .from('files')
+    .upload(`${CATALOG_DIR}/${userId}.html`, new Blob([html], { type: 'text/html' }), {
+      contentType: 'text/html',
+      upsert: true,
+    });
 
-    if (error) throw error;
-    return catalogUrl(userId);
-  } catch (e) {
-    console.error('Error publicando el catálogo:', e);
-    return null;
-  }
+  // Se propaga en vez de devolver null: quien llama decide si lo muestra.
+  // Con null, el fallo llegaba a la pantalla como "revisa tu conexión", que
+  // casi nunca es la causa real.
+  if (error) throw error;
+  return catalogUrl(userId);
 };
 
 /**
