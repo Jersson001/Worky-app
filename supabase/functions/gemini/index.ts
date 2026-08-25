@@ -91,6 +91,17 @@ serve(async (req) => {
     return json({ error: "El servicio de IA no está configurado." }, 500);
   }
 
+  // El cuerpo se lee SIEMPRE antes de responder, incluso para rechazar.
+  // Si se responde sin consumirlo, el cliente sigue enviando contra una
+  // conexión que ya nadie drena y la petición se queda colgada. Con cuerpos
+  // pequeños no se nota (caben en el búfer); con una foto en base64, sí.
+  let payload: Record<string, any>;
+  try {
+    payload = await req.json();
+  } catch {
+    return json({ error: "Cuerpo inválido." }, 400);
+  }
+
   // Solo usuarios autenticados: la anon key es pública y por sí sola no
   // distingue a un usuario real de cualquiera que la copie del bundle.
   const authHeader = req.headers.get("Authorization") ?? "";
@@ -101,13 +112,6 @@ serve(async (req) => {
   );
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return json({ error: "No autorizado." }, 401);
-
-  let payload: Record<string, any>;
-  try {
-    payload = await req.json();
-  } catch {
-    return json({ error: "Cuerpo inválido." }, 400);
-  }
 
   const { action } = payload;
 
