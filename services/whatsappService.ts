@@ -1,17 +1,18 @@
 import { supabase } from './supabaseConfig';
 import { qrImageUrl } from './catalogShareService';
+import { buildDocumentHtml } from './documentHtml';
 
 /**
  * Pie del documento con el enlace y el QR del catálogo.
  * Quien lo escanee entra sin registrarse; solo hace falta cuenta para chatear.
  */
 const bloqueCatalogo = ({ url, negocio }: { url: string; negocio: string }): string => `
-    <div style="margin-top:32px;padding:24px;background:#f8f9fa;border:1px solid #e2e8f0;border-radius:10px;text-align:center">
-      <p style="font-size:1.05em;font-weight:bold;color:#2c3e50;margin:0 0 4px">Conoce todo nuestro catálogo</p>
-      <p style="color:#7f8c8d;font-size:.88em;margin:0 0 16px">Escanea el código o abre el enlace — no necesitas registrarte.</p>
-      <img src="${qrImageUrl(url, 200)}" alt="QR del catálogo de ${negocio}" width="160" height="160" style="display:block;margin:0 auto 12px;background:#fff;padding:8px;border-radius:8px">
-      <a href="${url}" style="color:#3498db;font-size:.85em;word-break:break-all">${url}</a>
-    </div>`;
+      <div style="margin-top:28px;padding:22px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;text-align:center">
+        <p style="font-size:1rem;font-weight:700;color:#1e293b;margin:0 0 4px">Conoce todo nuestro catálogo</p>
+        <p style="color:#64748b;font-size:.84rem;margin:0 0 14px">Escanea el código o abre el enlace — no necesitas registrarte.</p>
+        <img src="${qrImageUrl(url, 200)}" alt="QR del catálogo de ${negocio}" width="150" height="150" style="display:block;margin:0 auto 10px;background:#fff;padding:8px;border-radius:8px">
+        <a href="${url}" style="color:#2563eb;font-size:.8rem;word-break:break-all">${url}</a>
+      </div>`;
 
 /**
  * Formatea un número de teléfono para WhatsApp
@@ -91,37 +92,7 @@ export const saveSharedDocument = async (
 
   // 3. Subir HTML renderizado para visualización directa en navegador/móvil
   try {
-    const htmlContent = `<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Documento ${documentId}</title>
-  <style>
-    body { font-family: Arial, sans-serif; margin: 20px; color: #333; }
-    .container { max-width: 900px; margin: 0 auto; }
-    h1 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; }
-    .document { background: #f8f9fa; padding: 20px; border-radius: 8px; margin-top: 20px; }
-    .item { padding: 10px; margin: 5px 0; background: white; border-left: 4px solid #3498db; }
-    .total { font-size: 1.5em; font-weight: bold; color: #27ae60; margin-top: 20px; }
-    table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-    th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
-    th { background: #f0f0f0; font-weight: bold; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <h1>${docWithMeta.type === 'quote' ? 'Cotización' : docWithMeta.type}</h1>
-    <div class="document">
-      <pre>${JSON.stringify(docWithMeta, null, 2)}</pre>
-    </div>
-    ${catalogo ? bloqueCatalogo(catalogo) : ''}
-    <p style="text-align: center; margin-top: 40px; color: #7f8c8d; font-size: 0.9em;">
-      Documento compartido - ${new Date().toLocaleString('es-ES')}
-    </p>
-  </div>
-</body>
-</html>`;
+    const htmlContent = buildDocumentHtml(docWithMeta, catalogo ? bloqueCatalogo(catalogo) : '');
 
     const htmlBlob = new Blob([htmlContent], { type: 'text/html' });
     await supabase.storage
