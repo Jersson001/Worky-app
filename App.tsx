@@ -1381,12 +1381,16 @@ const App: React.FC = () => {
       }
     } catch (error) {
       console.error('Error guardando producto:', error);
-      // Fallback: actualizar estado local
+      // Se muestra en pantalla igual para no perder lo escrito, pero hay que
+      // avisar: antes se actualizaba en silencio y el producto parecía
+      // guardado hasta que recargabas y ya no estaba.
       if (editingProduct) {
         setProducts(prev => prev.map(p => p.id === editingProduct.id ? productToSave : p));
       } else {
         setProducts(prev => [...prev, productToSave]);
       }
+      const detalle = error instanceof Error ? error.message : String(error);
+      alert(`El producto no se pudo guardar en el servidor y se perderá al recargar.\n\nDetalle: ${detalle}`);
     }
 
     setNewProductName('');
@@ -1447,8 +1451,9 @@ const App: React.FC = () => {
       setCategories(prev => [...prev, newCategory]);
     } catch (error) {
       console.error('Error guardando categoría:', error);
-      // Fallback: agregar al estado local
       setCategories(prev => [...prev, newCategory]);
+      const detalle = error instanceof Error ? error.message : String(error);
+      alert(`La carpeta no se pudo guardar en el servidor y se perderá al recargar.\n\nDetalle: ${detalle}`);
     }
 
     setNewCategoryName('');
