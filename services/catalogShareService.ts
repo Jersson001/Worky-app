@@ -109,7 +109,7 @@ const productCard = (p: Product): string => {
         <div class="card-body">
           <h3>${esc(p.name)}</h3>
           ${p.description ? `<p class="desc">${esc(p.description)}</p>` : ''}
-          <p class="precio">${money(p.price)}</p>
+          ${p.price ? `<p class="precio">${money(p.price)}</p>` : '<p class="precio sin-precio">Consultar precio</p>'}
         </div>
       </article>`;
 };
@@ -147,6 +147,7 @@ export const buildCatalogHtml = (
   .card h3{font-size:.95rem;font-weight:600}
   .desc{font-size:.82rem;color:#64748b;flex:1}
   .precio{font-size:1.05rem;font-weight:700;color:#2563eb}
+  .sin-precio{font-size:.9rem;color:#64748b}
   .cta{background:#fff;border-radius:14px;padding:24px 16px;text-align:center;box-shadow:0 1px 3px rgba(15,23,42,.1);margin-bottom:24px}
   .cta h2{font-size:1.1rem;margin-bottom:6px}
   .cta p{color:#64748b;font-size:.88rem;margin-bottom:14px}

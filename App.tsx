@@ -1333,6 +1333,12 @@ const App: React.FC = () => {
     return value.replace(/\D/g, '');
   };
 
+  /** Precio para mostrar. Sin precio no se enseña "$ 0", que confunde. */
+  const mostrarPrecio = (price: number): string =>
+    price
+      ? new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(price)
+      : 'Consultar precio';
+
   const handleProductPriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const formatted = formatCurrencyInput(e.target.value);
     setNewProductPrice(formatted);
@@ -1341,9 +1347,10 @@ const App: React.FC = () => {
   const handleSaveProduct = async () => {
     // Antes se salía en silencio: el botón parecía no responder y no había
     // forma de saber qué faltaba.
+    // El precio es opcional: hay quien cotiza a medida y no publica tarifa.
+    // Sin precio se guarda 0, y donde se muestra sale "Consultar precio".
     const faltan = [
       !newProductName && 'el nombre',
-      !newProductPrice && 'el precio',
     ].filter(Boolean);
     if (faltan.length) {
       alert(`Para guardar el producto falta ${faltan.join(' y ')}.`);
@@ -1434,7 +1441,7 @@ const App: React.FC = () => {
   const handleEditProduct = (product: Product) => {
     setEditingProduct(product);
     setNewProductName(product.name);
-    setNewProductPrice(formatCurrencyInput(product.price.toString()));
+    setNewProductPrice(product.price ? formatCurrencyInput(product.price.toString()) : '');
     setNewProductStock(product.stock?.toString() || '');
     setNewProductDescription(product.description);
     setNewProductImage(product.image);
@@ -2590,7 +2597,7 @@ const App: React.FC = () => {
                         />
                         <input
                           type="text"
-                          placeholder="Precio (ej: 500.000)"
+                          placeholder="Precio (opcional, ej: 500.000)"
                           value={newProductPrice}
                           onChange={handleProductPriceChange}
                           className="bg-white p-3 rounded-lg border border-slate-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-100 outline-none"
@@ -2841,7 +2848,7 @@ const App: React.FC = () => {
                           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition flex flex-col justify-end p-3">
                             <h4 className="font-bold text-white text-sm mb-1 truncate">{product.name}</h4>
                             <div className="text-white font-bold text-xs">
-                              {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(product.price)}
+                              {mostrarPrecio(product.price)}
                             </div>
                             {product.stock !== undefined && (
                               <div className="text-white/80 text-xs mt-1">Stock: {product.stock}</div>
@@ -2956,7 +2963,7 @@ const App: React.FC = () => {
                 <div className="bg-black/70 text-white px-4 py-2 rounded-lg text-center">
                   <div className="font-bold">{viewingProduct.name}</div>
                   <div className="text-sm text-purple-300">
-                    {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(viewingProduct.price)}
+                    {mostrarPrecio(viewingProduct.price)}
                   </div>
                 </div>
               )}

@@ -91,4 +91,6 @@ con la Edge Function `view-doc`, que quedó sin uso.
   dado; falta ejecutarlo. Además el error se traga con un `return`.
 - **Contactos manuales** generan ids `lead_<uuid>`, que no son uuid válidos y
   chocan con `contacts.id` y `projects.contact_id`, ambos de tipo uuid.
-- **Decidir** si el nombre y el precio del producto siguen siendo obligatorios.
+- ~~Decidir si el nombre y el precio del producto siguen siendo obligatorios.~~
+  Resuelto: el precio es opcional y sale como "Consultar precio"; el nombre
+  sigue haciendo falta.
