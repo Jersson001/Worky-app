@@ -1,4 +1,4 @@
-import { supabase } from './supabaseConfig';
+import { supabase, PUBLIC_BUCKET } from './supabaseConfig';
 import { qrImageUrl } from './catalogShareService';
 import { buildDocumentHtml } from './documentHtml';
 
@@ -81,7 +81,7 @@ export const saveSharedDocument = async (
   try {
     const jsonBlob = new Blob([JSON.stringify(docWithMeta)], { type: 'application/json' });
     await supabase.storage
-      .from('files')
+      .from(PUBLIC_BUCKET)
       .upload(`shared_docs/${documentId}.json`, jsonBlob, {
         contentType: 'application/json',
         upsert: true
@@ -96,7 +96,7 @@ export const saveSharedDocument = async (
 
     const htmlBlob = new Blob([htmlContent], { type: 'text/html' });
     await supabase.storage
-      .from('files')
+      .from(PUBLIC_BUCKET)
       .upload(`shared_docs/${documentId}.html`, htmlBlob, {
         contentType: 'text/html',
         upsert: true
@@ -118,7 +118,7 @@ export const getSharedDocument = async (documentId: string): Promise<any | null>
     }
 
     // 2. Si no está en local (ej: cliente en su propio teléfono), obtener de Supabase Storage
-    const { data } = supabase.storage.from('files').getPublicUrl(`shared_docs/${documentId}.json`);
+    const { data } = supabase.storage.from(PUBLIC_BUCKET).getPublicUrl(`shared_docs/${documentId}.json`);
     if (data?.publicUrl) {
       const res = await fetch(data.publicUrl);
       if (res.ok) {
@@ -141,7 +141,7 @@ export const getSharedDocument = async (documentId: string): Promise<any | null>
  */
 export const generateDocumentViewLink = (documentId: string): string => {
   // Link directo al HTML en Supabase Storage - accesible desde cualquier navegador/dispositivo
-  const { data } = supabase.storage.from('files').getPublicUrl(`shared_docs/${documentId}.html`);
+  const { data } = supabase.storage.from(PUBLIC_BUCKET).getPublicUrl(`shared_docs/${documentId}.html`);
   return data?.publicUrl || `${window.location.origin}/?view=${documentId}`;
 };
 

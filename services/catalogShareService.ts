@@ -9,7 +9,7 @@
  * La URL es estable por usuario (`shared_catalogs/<userId>.html`), de modo que
  * el QR impreso sigue sirviendo después de actualizar el catálogo.
  */
-import { supabase } from './supabaseConfig';
+import { supabase, PUBLIC_BUCKET } from './supabaseConfig';
 import { getCurrentUserId } from './messagingService';
 import { Product, UserProfileData } from '../types';
 
@@ -35,7 +35,7 @@ export const qrImageUrl = (data: string, size = 300): string =>
 
 /** URL pública del catálogo de un usuario. Estable: no cambia al republicar. */
 export const catalogUrl = (userId: string): string => {
-  const { data } = supabase.storage.from('files').getPublicUrl(`${CATALOG_DIR}/${userId}.html`);
+  const { data } = supabase.storage.from(PUBLIC_BUCKET).getPublicUrl(`${CATALOG_DIR}/${userId}.html`);
   return data?.publicUrl ?? '';
 };
 
@@ -185,7 +185,7 @@ export const publishCatalog = async (
 ): Promise<string> => {
   const html = buildCatalogHtml(profile, await prepararProductos(products));
   const { error } = await supabase.storage
-    .from('files')
+    .from(PUBLIC_BUCKET)
     .upload(`${CATALOG_DIR}/${userId}.html`, new Blob([html], { type: 'text/html' }), {
       contentType: 'text/html',
       upsert: true,

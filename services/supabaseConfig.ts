@@ -20,6 +20,17 @@ export const supabase = createClient(supabaseUrl ?? '', supabaseAnonKey ?? '', {
   },
 });
 
+/**
+ * Bucket donde se publica todo lo que se comparte por enlace o QR.
+ *
+ * Es `chat_media` y no `files` por una razón concreta: `files` no tiene ninguna
+ * política de escritura en storage.objects, así que toda subida ahí devuelve
+ * "new row violates row-level security policy". `chat_media` sí las tiene
+ * (INSERT para authenticated, lectura pública) y es el que ya usa el chat en
+ * producción. Ver PENDIENTE-CATALOGO-STORAGE.md.
+ */
+export const PUBLIC_BUCKET = 'chat_media';
+
 // Topic único por suscripción. supabase.channel(topic) DEVUELVE la instancia
 // existente si el topic coincide — incluida una ya suscrita o a medio cerrar
 // (removeChannel es asíncrono). Añadirle .on('postgres_changes') a esa

@@ -20,8 +20,9 @@ serve(async (req) => {
   const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
   // Obtener URL pública del documento HTML
+  // Mismo bucket en el que sube la app (ver PUBLIC_BUCKET en supabaseConfig.ts).
   const { data } = supabase.storage
-    .from("files")
+    .from("chat_media")
     .getPublicUrl(`shared_docs/${documentId}.html`);
 
   if (!data?.publicUrl) {
