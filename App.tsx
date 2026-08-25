@@ -7,6 +7,7 @@ import ProFeatureGuard from './components/ProFeatureGuard';
 import AdminPanel from './components/AdminPanel';
 import { generateProductDescription } from './services/geminiService';
 import CatalogShareModal from './components/CatalogShareModal';
+import { describeError } from './utils/errorMessage';
 import { StatusView } from './components/StatusView';
 import { WalletModal } from './components/WalletModal';
 import { SignaturePad } from './components/SignaturePad';
@@ -1389,7 +1390,7 @@ const App: React.FC = () => {
       } else {
         setProducts(prev => [...prev, productToSave]);
       }
-      const detalle = error instanceof Error ? error.message : String(error);
+      const detalle = describeError(error);
       alert(`El producto no se pudo guardar en el servidor y se perderá al recargar.\n\nDetalle: ${detalle}`);
     }
 
@@ -1452,7 +1453,7 @@ const App: React.FC = () => {
     } catch (error) {
       console.error('Error guardando categoría:', error);
       setCategories(prev => [...prev, newCategory]);
-      const detalle = error instanceof Error ? error.message : String(error);
+      const detalle = describeError(error);
       alert(`La carpeta no se pudo guardar en el servidor y se perderá al recargar.\n\nDetalle: ${detalle}`);
     }
 
