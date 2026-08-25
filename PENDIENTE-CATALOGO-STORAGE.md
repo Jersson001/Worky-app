@@ -8,9 +8,18 @@ el QR de punta a punta.
 El bucket `files` no tiene ninguna política de escritura en `storage.objects`,
 así que toda subida devolvía "new row violates row-level security policy". Se
 cambió a `chat_media`, que ya tenía lectura pública e INSERT para
-`authenticated` sin condición de carpeta, y se añadió la política de UPDATE que
-faltaba (`supabase_catalogo_storage.sql`), necesaria porque el catálogo sube con
-`upsert` sobre una ruta fija por usuario.
+`authenticated` sin condición de carpeta.
+
+Republicar seguía fallando, porque con `upsert` sobre una ruta fija la segunda
+publicación es un UPDATE y ese bucket tampoco tiene política de UPDATE. Se
+ejecutó una (`supabase_catalogo_storage.sql`) y **aun así siguió fallando**; en
+vez de seguir peleando con eso, **cada publicación estrena nombre de archivo**
+(`shared_catalogs/<userId>/<milisegundos>.html`) y la página se queda con la más
+reciente. Solo hacen falta inserciones, que es lo único que ese bucket permite.
+
+Se puede hacer porque el QR ya no apunta al objeto sino a la app, que resuelve
+cuál es la instantánea vigente: el enlace impreso no cambia. Los catálogos
+publicados con el nombre antiguo se siguen leyendo hasta que su dueño republique.
 
 Comprobado listando el bucket sin sesión: hay catálogos publicados en
 `shared_catalogs/`, de ~106 KB y `mimetype: text/html`.
@@ -50,8 +59,7 @@ apunta también a la app (`?view=`), que ya era una ruta pública y lee el JSON.
 
 1. **Desplegar.** Hasta que el push llegue a Vercel, el enlace del QR apunta a
    una ruta que en producción todavía no existe.
-2. **Publicar el catálogo dos veces** desde la app: la segunda es la que prueba
-   el `upsert`, es decir la política de UPDATE.
+2. **Publicar el catálogo dos veces** desde la app, que es lo que fallaba.
 3. **Abrir el enlace sin sesión**, en ventana privada o desde el móvil.
 4. **Mandar un documento por WhatsApp** y abrir su enlace, que es el arreglo que
    va de propina y nadie ha probado.
@@ -67,6 +75,10 @@ nada: nada de lo que se comparte usa ese bucket.
 `storageService.uploadFile` y `getFileDownloadURL` siguen apuntando a `files`.
 No se tocaron porque nadie los llama (el chat usa `uploadFileForChat`, que va a
 `chat_media`). Si se reactivan, hay que cambiarles el bucket.
+
+Las instantáneas viejas del catálogo se acumulan, unos 100 KB cada una: borrar
+necesitaría una política de DELETE, que ese bucket tampoco tiene. Si algún día
+molesta, se limpian con la clave de servicio desde fuera de la app.
 
 `saveSharedDocument` sigue subiendo el `.html` del documento además del JSON,
 que ya no lee nadie: son ~100 KB por documento para nada. Se puede quitar junto

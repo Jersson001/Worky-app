@@ -7,7 +7,11 @@
 -- a `chat_media`, que ya tiene lectura pública e INSERT.
 -- ============================================================
 
--- 1. Permitir sobrescribir. El catálogo vive en una ruta fija por usuario
+-- 1. Permitir sobrescribir.  ⚠️ YA NO HACE FALTA.
+--    Se ejecutó y aun así republicar seguía dando el error de RLS, así que el
+--    catálogo dejó de sobrescribir: ahora cada publicación estrena nombre de
+--    archivo y solo hace INSERT. Se deja aquí por si algún día se averigua por
+--    qué no surtió efecto. Lo que sí importa de este script es el punto 2. El catálogo vive en una ruta fija por usuario
 --    (`shared_catalogs/<uid>.html`) para que el QR impreso siga sirviendo
 --    tras actualizarlo, así que republicar es un UPDATE, no un INSERT.
 --    Sin esta política la primera publicación funciona y la segunda falla

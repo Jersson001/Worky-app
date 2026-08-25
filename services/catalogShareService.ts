@@ -34,16 +34,46 @@ export const qrImageUrl = (data: string, size = 300): string =>
   `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(data)}`;
 
 /**
- * URL del objeto en Storage. Interna: no sirve para compartir.
+ * URL de un objeto de Storage. Interna: no sirve para compartir.
  *
  * Supabase devuelve todo HTML público de Storage con `Content-Type: text/plain`
  * y `X-Content-Type-Options: nosniff` —para que nadie aloje páginas en su
  * dominio—, así que abrir esta URL muestra el código fuente, no la página.
  * Por eso el catálogo se sirve desde la app y esto solo se usa para bajarlo.
  */
-const catalogStorageUrl = (userId: string): string => {
-  const { data } = supabase.storage.from(PUBLIC_BUCKET).getPublicUrl(`${CATALOG_DIR}/${userId}.html`);
+const objectUrl = (ruta: string): string => {
+  const { data } = supabase.storage.from(PUBLIC_BUCKET).getPublicUrl(ruta);
   return data?.publicUrl ?? '';
+};
+
+/**
+ * Cada publicación estrena nombre de archivo.
+ *
+ * El bucket solo admite INSERT: no tiene política de UPDATE, así que sobrescribir
+ * con `upsert` devolvía "new row violates row-level security policy" en la
+ * segunda publicación. Con un nombre nuevo cada vez solo hacen falta inserciones.
+ * Se puede porque el QR ya no apunta al objeto sino a la app, que resuelve cuál
+ * es la instantánea vigente: el enlace impreso sigue siendo el mismo.
+ *
+ * El nombre es el instante en milisegundos, y todos tienen los mismos dígitos
+ * hasta el año 2286, así que ordenar por nombre es ordenar por fecha.
+ */
+const nuevaInstantanea = (userId: string): string =>
+  `${CATALOG_DIR}/${userId}/${Date.now()}.html`;
+
+/**
+ * Ruta de la instantánea vigente: la última publicada.
+ *
+ * Listar no necesita sesión —el bucket tiene lectura pública— que es lo que
+ * hace falta, porque quien abre el catálogo es un visitante cualquiera.
+ */
+const ultimaInstantanea = async (userId: string): Promise<string | null> => {
+  const { data } = await supabase.storage
+    .from(PUBLIC_BUCKET)
+    .list(`${CATALOG_DIR}/${userId}`, { limit: 100, sortBy: { column: 'name', order: 'desc' } });
+
+  const reciente = data?.find(o => o.name.endsWith('.html'));
+  return reciente ? `${CATALOG_DIR}/${userId}/${reciente.name}` : null;
 };
 
 /**
@@ -56,10 +86,13 @@ const catalogStorageUrl = (userId: string): string => {
 export const catalogPageUrl = (userId: string): string =>
   `${WORKY_APP_URL}/?catalogo=${userId}`;
 
-/** Baja la instantánea publicada. La usa la página pública del catálogo. */
+/** Baja la instantánea vigente. La usa la página pública del catálogo. */
 export const fetchCatalogHtml = async (userId: string): Promise<string | null> => {
   try {
-    const res = await fetch(catalogStorageUrl(userId));
+    // El nombre fijo es de los catálogos publicados antes de este cambio: sirve
+    // hasta que su dueño republique, y entonces deja de mirarse.
+    const ruta = (await ultimaInstantanea(userId)) ?? `${CATALOG_DIR}/${userId}.html`;
+    const res = await fetch(objectUrl(ruta));
     return res.ok ? await res.text() : null;
   } catch {
     return null;
@@ -211,11 +244,11 @@ export const publishCatalog = async (
   products: Product[],
 ): Promise<string> => {
   const html = buildCatalogHtml(profile, await prepararProductos(products));
+  // Sin `upsert`: cada publicación es un archivo nuevo, ver nuevaInstantanea.
   const { error } = await supabase.storage
     .from(PUBLIC_BUCKET)
-    .upload(`${CATALOG_DIR}/${userId}.html`, new Blob([html], { type: 'text/html' }), {
+    .upload(nuevaInstantanea(userId), new Blob([html], { type: 'text/html' }), {
       contentType: 'text/html',
-      upsert: true,
     });
 
   // Se propaga en vez de devolver null: quien llama decide si lo muestra.
