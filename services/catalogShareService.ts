@@ -33,10 +33,37 @@ const money = (n: number): string => `$ ${(n || 0).toLocaleString('es-CO', { max
 export const qrImageUrl = (data: string, size = 300): string =>
   `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(data)}`;
 
-/** URL pública del catálogo de un usuario. Estable: no cambia al republicar. */
-export const catalogUrl = (userId: string): string => {
+/**
+ * URL del objeto en Storage. Interna: no sirve para compartir.
+ *
+ * Supabase devuelve todo HTML público de Storage con `Content-Type: text/plain`
+ * y `X-Content-Type-Options: nosniff` —para que nadie aloje páginas en su
+ * dominio—, así que abrir esta URL muestra el código fuente, no la página.
+ * Por eso el catálogo se sirve desde la app y esto solo se usa para bajarlo.
+ */
+const catalogStorageUrl = (userId: string): string => {
   const { data } = supabase.storage.from(PUBLIC_BUCKET).getPublicUrl(`${CATALOG_DIR}/${userId}.html`);
   return data?.publicUrl ?? '';
+};
+
+/**
+ * URL que se comparte: la del QR y la del enlace. Estable por usuario, así que
+ * el QR impreso sigue sirviendo después de republicar.
+ *
+ * Apunta a la app publicada y no a `window.location.origin` a propósito: un QR
+ * generado mientras se desarrolla en localhost no le serviría a nadie.
+ */
+export const catalogPageUrl = (userId: string): string =>
+  `${WORKY_APP_URL}/?catalogo=${userId}`;
+
+/** Baja la instantánea publicada. La usa la página pública del catálogo. */
+export const fetchCatalogHtml = async (userId: string): Promise<string | null> => {
+  try {
+    const res = await fetch(catalogStorageUrl(userId));
+    return res.ok ? await res.text() : null;
+  } catch {
+    return null;
+  }
 };
 
 // ─── Página ──────────────────────────────────────────────────────────────────
@@ -195,7 +222,7 @@ export const publishCatalog = async (
   // Con null, el fallo llegaba a la pantalla como "revisa tu conexión", que
   // casi nunca es la causa real.
   if (error) throw error;
-  return catalogUrl(userId);
+  return catalogPageUrl(userId);
 };
 
 /**

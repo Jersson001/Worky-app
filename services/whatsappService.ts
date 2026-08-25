@@ -1,5 +1,5 @@
 import { supabase, PUBLIC_BUCKET } from './supabaseConfig';
-import { qrImageUrl } from './catalogShareService';
+import { qrImageUrl, WORKY_APP_URL } from './catalogShareService';
 import { buildDocumentHtml } from './documentHtml';
 
 /**
@@ -135,15 +135,15 @@ export const getSharedDocument = async (documentId: string): Promise<any | null>
 };
 
 /**
- * Genera el link público de Supabase Storage para ver un documento compartido
- * Retorna el link al archivo HTML renderizado (no JSON)
- * Este link funciona en iOS, Android y cualquier dispositivo sin depender del dominio
+ * Link para ver un documento compartido. Lo abre quien lo recibe, sin sesión:
+ * `?view=` se resuelve antes del login.
+ *
+ * Apuntaba al HTML en Storage, pero Supabase sirve todo HTML público como
+ * text/plain con nosniff, así que el destinatario veía el código fuente. La app
+ * lee el JSON de Storage y lo pinta ella, igual que hace con el catálogo.
  */
-export const generateDocumentViewLink = (documentId: string): string => {
-  // Link directo al HTML en Supabase Storage - accesible desde cualquier navegador/dispositivo
-  const { data } = supabase.storage.from(PUBLIC_BUCKET).getPublicUrl(`shared_docs/${documentId}.html`);
-  return data?.publicUrl || `${window.location.origin}/?view=${documentId}`;
-};
+export const generateDocumentViewLink = (documentId: string): string =>
+  `${WORKY_APP_URL}/?view=${documentId}`;
 
 /**
  * Genera un mensaje para compartir una cotización
