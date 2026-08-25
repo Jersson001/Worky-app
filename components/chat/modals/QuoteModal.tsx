@@ -6,9 +6,10 @@
 import React, { useState } from 'react';
 import { ModalWrapper } from './ModalWrapper';
 import { DecimalInput } from './DecimalInput';
+import { CurrencyInput } from './CurrencyInput';
 import ProFeatureGuard from '../../ProFeatureGuard';
 import { QuoteItem, Product, ContactRole, QuoteMode, CarpentrySection, CarpentryCategoryKey, CarpentryLineItem, CarpentryUnit } from '../../../types';
-import { formatCurrency, extractRawAmount } from '../../../utils/currency';
+import { formatCurrency } from '../../../utils/currency';
 import { calculateTax } from '../../../utils/taxCalculations';
 import { CARPENTRY_CATEGORIES, computeGrandTotal, computeSectionSubtotal, computeGroupSubtotal, computeLineSubtotal } from '../../../utils/carpentryCalculations';
 
@@ -148,10 +149,10 @@ const CarpentryItemRow: React.FC<{
         </div>
         <div className="flex-1 min-w-[90px]">
           <label className="text-[9px] text-slate-400 font-semibold uppercase block mb-0.5">Costo unitario</label>
-          <input
-            type="text"
-            value={item.unitCost > 0 ? formatCurrency(item.unitCost) : ''}
-            onChange={e => onUpdate('unitCost', extractRawAmount(e.target.value))}
+          <CurrencyInput
+            symbol
+            value={item.unitCost}
+            onCommit={raw => onUpdate('unitCost', raw === '' ? 0 : Number(raw))}
             placeholder="$0"
             className="w-full bg-slate-50 p-1.5 rounded-lg text-[11px] text-slate-900 outline-none border border-slate-200 focus:border-blue-500 focus:bg-white transition"
           />
@@ -386,11 +387,10 @@ export const QuoteModal: React.FC<QuoteModalProps> = React.memo(({
                     </div>
                     <div className="flex-1 relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm font-semibold">$</span>
-                      <input
-                        type="text"
+                      <CurrencyInput
                         placeholder="Precio Unit."
-                        value={item.price > 0 ? formatCurrency(item.price).replace('$', '').trim() : ''}
-                        onChange={e => onUpdateItemPrice(idx, e.target.value)}
+                        value={item.price}
+                        onCommit={raw => onUpdateItemPrice(idx, raw)}
                         className="w-full bg-white p-2.5 pl-7 rounded-xl border border-slate-200 text-sm text-slate-900 font-semibold placeholder-slate-400 outline-none focus:border-blue-500 transition"
                       />
                     </div>
@@ -641,13 +641,13 @@ export const QuoteModal: React.FC<QuoteModalProps> = React.memo(({
                                               </div>
                                               <div className="flex-1 min-w-[90px]">
                                                 <label className="text-[9px] text-slate-400 font-semibold uppercase block mb-0.5">Costo unitario</label>
-                                                <input
-                                                  type="text"
-                                                  value={isTemplate || !item.unitCost ? '' : formatCurrency(item.unitCost)}
-                                                  onChange={e => {
+                                                <CurrencyInput
+                                                  symbol
+                                                  value={isTemplate ? undefined : item.unitCost}
+                                                  onCommit={raw => {
                                                     // Al editar, quitar flag de plantilla
                                                     onUpdateCarpentryItem(section.id, group.id, item.id, 'isTemplate', false);
-                                                    onUpdateCarpentryItem(section.id, group.id, item.id, 'unitCost', extractRawAmount(e.target.value));
+                                                    onUpdateCarpentryItem(section.id, group.id, item.id, 'unitCost', raw === '' ? 0 : Number(raw));
                                                   }}
                                                   placeholder="$0"
                                                   className={`w-full bg-slate-50 p-1.5 rounded-lg text-[11px] outline-none border border-slate-200 ${

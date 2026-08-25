@@ -3,8 +3,8 @@
  */
 import React from 'react';
 import { ModalWrapper } from './ModalWrapper';
+import { CurrencyInput } from './CurrencyInput';
 import { InvoiceItem, Project } from '../../../types';
-import { formatCurrency, extractRawAmount } from '../../../utils/currency';
 import { calculateTax, TaxType } from '../../../utils/taxCalculations';
 
 interface InvoiceModalProps {
@@ -26,9 +26,8 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = React.memo(({
   show, onClose, items, selectedProject, taxType, uniqueApprovedProjects,
   onAddItem, onUpdateItem, onDeleteItem, onSelectProject, onChangeTaxType, onSend,
 }) => {
-  const handlePriceChange = (idx: number, value: string) => {
-    const rawValue = extractRawAmount(value);
-    onUpdateItem(idx, 'price', rawValue === '' ? '' : Number(rawValue));
+  const handlePriceChange = (idx: number, raw: string) => {
+    onUpdateItem(idx, 'price', raw === '' ? '' : Number(raw));
   };
 
   const subtotal = items.reduce((acc, i) => acc + (i.price * i.quantity), 0);
@@ -79,11 +78,10 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = React.memo(({
                 </div>
                 <div className="flex-1 relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm font-semibold">$</span>
-                  <input
-                    type="text"
+                  <CurrencyInput
                     placeholder="Precio Unit."
-                    value={item.price ? Number(item.price).toLocaleString('es-CO') : ''}
-                    onChange={e => handlePriceChange(idx, e.target.value)}
+                    value={item.price}
+                    onCommit={raw => handlePriceChange(idx, raw)}
                     className="w-full bg-white p-2.5 pl-7 rounded-xl border border-slate-200 text-sm text-slate-900 font-semibold placeholder-slate-400 outline-none focus:border-indigo-500 transition"
                   />
                 </div>

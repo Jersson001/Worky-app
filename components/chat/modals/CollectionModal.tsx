@@ -3,8 +3,8 @@
  */
 import React from 'react';
 import { ModalWrapper } from './ModalWrapper';
+import { CurrencyInput } from './CurrencyInput';
 import { Project, PaymentAccount } from '../../../types';
-import { formatCurrency, extractRawAmount } from '../../../utils/currency';
 
 interface CollectionModalProps {
   show: boolean;
@@ -32,10 +32,6 @@ export const CollectionModal: React.FC<CollectionModalProps> = React.memo(({
   onAmountChange, onConceptChange, onDirectedToChange, onNitChange,
   onAccountChange, onProjectChange, onSend,
 }) => {
-  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onAmountChange(extractRawAmount(e.target.value));
-  };
-
   return (
     <ModalWrapper show={show} onClose={onClose} title="Cuenta de Cobro" icon="fa-file-invoice" iconColor="text-orange-500">
       <div className="space-y-3">
@@ -89,11 +85,10 @@ export const CollectionModal: React.FC<CollectionModalProps> = React.memo(({
           <label className="text-xs text-slate-700 font-bold uppercase mb-1.5 block tracking-wide">Valor</label>
           <div className="relative">
             <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-base font-bold">$</span>
-            <input
-              type="text"
+            <CurrencyInput
               placeholder="0"
-              value={formatCurrency(amount).replace('$', '').trim()}
-              onChange={handleAmountChange}
+              value={amount}
+              onCommit={onAmountChange}
               className="w-full bg-slate-50 text-slate-900 font-bold placeholder-slate-400 rounded-xl p-3 pl-8 outline-none border border-slate-200 focus:border-orange-500 focus:bg-white transition text-base"
             />
           </div>

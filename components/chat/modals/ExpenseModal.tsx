@@ -3,8 +3,8 @@
  */
 import React from 'react';
 import { ModalWrapper } from './ModalWrapper';
+import { CurrencyInput } from './CurrencyInput';
 import { Contact, Project } from '../../../types';
-import { formatCurrency, extractRawAmount } from '../../../utils/currency';
 
 interface ExpenseModalProps {
   show: boolean;
@@ -25,10 +25,6 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = React.memo(({
   amount, description, targetProjectId,
   onAmountChange, onDescriptionChange, onTargetProjectChange, onSave,
 }) => {
-  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onAmountChange(extractRawAmount(e.target.value));
-  };
-
   return (
     <ModalWrapper show={show} onClose={onClose} title="Registrar Gasto" icon="fa-circle-minus" iconColor="text-rose-500">
       <div className="space-y-3">
@@ -69,11 +65,10 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = React.memo(({
           <label className="text-xs text-slate-700 font-bold uppercase mb-1.5 block tracking-wide">Valor</label>
           <div className="relative">
             <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-base font-bold">$</span>
-            <input
-              type="text"
+            <CurrencyInput
               placeholder="0"
-              value={amount ? Number(amount).toLocaleString('es-CO') : ''}
-              onChange={handleAmountChange}
+              value={amount}
+              onCommit={onAmountChange}
               className="w-full bg-slate-50 text-slate-900 font-bold placeholder-slate-400 rounded-xl p-3 pl-8 outline-none border border-slate-200 focus:border-rose-500 focus:bg-white transition text-base"
             />
           </div>

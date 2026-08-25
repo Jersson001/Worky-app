@@ -6,21 +6,33 @@
 const COP_FORMATTER = new Intl.NumberFormat('es-CO', {
   style: 'currency',
   currency: 'COP',
-  maximumFractionDigits: 0,
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 2,
 });
 
 /**
  * Formats a number or raw string into a COP currency display.
  * - Number → `$ 1.500.000`
- * - String → strips non-digits, then formats.
+ * - String → se interpreta con parseAmount, así que conserva los decimales
+ *   (antes se descartaban al filtrar por dígitos y el monto mostrado no
+ *   coincidía con el almacenado).
  */
 export const formatCurrency = (value: string | number): string => {
   if (typeof value === 'number') {
     return COP_FORMATTER.format(value);
   }
-  const digits = value.replace(/\D/g, '');
-  if (!digits) return '';
-  return `$ ${Number(digits).toLocaleString('es-CO')}`;
+  if (!/\d/.test(value)) return '';
+  return COP_FORMATTER.format(parseAmount(value));
+};
+
+/**
+ * Monto agrupado y sin símbolo, para mostrarlo dentro de un input.
+ * 1500.5 → "1.500,5" · 1500 → "1.500" · 0 o vacío → "".
+ */
+export const formatAmountForInput = (value: string | number | undefined | null): string => {
+  const amount = typeof value === 'number' ? value : parseAmount(value ?? '');
+  if (!amount) return '';
+  return amount.toLocaleString('es-CO', { maximumFractionDigits: 2 });
 };
 
 /**
