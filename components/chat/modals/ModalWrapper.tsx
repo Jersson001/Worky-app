@@ -11,6 +11,11 @@ interface ModalWrapperProps {
   icon: string;
   iconColor: string;
   children: React.ReactNode;
+  /**
+   * Panel flotante que cubre el modal mientras se edita algo que no cabe
+   * cómodamente en el formulario. Al cerrarlo se vuelve a ver `children`.
+   */
+  overlay?: React.ReactNode;
 }
 
 export const ModalWrapper: React.FC<ModalWrapperProps> = React.memo(({
@@ -20,6 +25,7 @@ export const ModalWrapper: React.FC<ModalWrapperProps> = React.memo(({
   icon,
   iconColor,
   children,
+  overlay,
 }) => {
   if (!show) return null;
 
@@ -41,6 +47,7 @@ export const ModalWrapper: React.FC<ModalWrapperProps> = React.memo(({
         <div className="overflow-y-auto custom-scrollbar flex-1 -mr-1 pr-1">
           {children}
         </div>
+        {overlay}
       </div>
     </div>
   );

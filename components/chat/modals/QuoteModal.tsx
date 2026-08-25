@@ -11,7 +11,7 @@ import ProFeatureGuard from '../../ProFeatureGuard';
 import { QuoteItem, Product, ContactRole, QuoteMode, CarpentrySection, CarpentryCategoryKey, CarpentryLineItem, CarpentryUnit } from '../../../types';
 import { formatCurrency } from '../../../utils/currency';
 import { calculateTax } from '../../../utils/taxCalculations';
-import { CARPENTRY_CATEGORIES, computeGrandTotal, computeSectionSubtotal, computeGroupSubtotal, computeLineSubtotal } from '../../../utils/carpentryCalculations';
+import { CARPENTRY_CATEGORIES, CarpentryCategoryConfig, computeGrandTotal, computeSectionSubtotal, computeGroupSubtotal, computeLineSubtotal } from '../../../utils/carpentryCalculations';
 
 interface QuoteModalProps {
   show: boolean;
@@ -274,6 +274,18 @@ export const QuoteModal: React.FC<QuoteModalProps> = React.memo(({
   // grupos expandidos (muestran ítems) — solo para grupos activos
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
 
+  // Al elegir una categoría, abrir su panel de una vez: es lo que el usuario
+  // va a editar. onAddSection no devuelve el id, así que se detecta la que entró.
+  const sectionCount = React.useRef(sections.length);
+  React.useEffect(() => {
+    if (sections.length > sectionCount.current) {
+      setExpandedSectionId(sections[sections.length - 1].id);
+    }
+    sectionCount.current = sections.length;
+  }, [sections]);
+
+  const editingSection = sections.find(s => s.id === expandedSectionId) ?? null;
+
   const toggleGroupActive = (groupId: string) => {
     setActiveGroups(prev => {
       const next = { ...prev, [groupId]: !prev[groupId] };
@@ -301,241 +313,12 @@ export const QuoteModal: React.FC<QuoteModalProps> = React.memo(({
   const title = contactRole === 'supplier' ? 'Enviar Cotización' : 'Nueva Cotización';
   const canSend = mode === 'personalizada' ? personalizadaSubtotal > 0 : items.some(i => i.description && i.price > 0);
 
-  return (
-    <ModalWrapper show={show} onClose={onClose} title={title} icon="fa-file-invoice-dollar" iconColor="text-blue-600">
-      {/* Mode tabs */}
-      <div className="flex bg-slate-100 p-1 rounded-xl mb-4">
-        <button
-          type="button"
-          onClick={() => onSetMode('basica')}
-          className={`flex-1 py-2 text-xs font-bold rounded-lg transition ${mode === 'basica' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-        >
-          Básica
-        </button>
-        <button
-          type="button"
-          onClick={() => onSetMode('personalizada')}
-          className={`flex-1 py-2 text-xs font-bold rounded-lg transition flex items-center justify-center gap-1.5 ${mode === 'personalizada' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-        >
-          Personalizada
-          {!isPro && <i className="fa-solid fa-crown text-amber-500 text-[10px]"></i>}
-        </button>
-      </div>
-
-      <div className="space-y-4">
-        {/* Validity */}
-        <div>
-          <label className="text-xs text-slate-700 font-bold uppercase mb-1.5 block tracking-wide">Vigencia (Días)</label>
-          <select
-            value={validDays}
-            onChange={e => onSetValidDays(e.target.value)}
-            className="w-full bg-slate-50 p-3 rounded-xl border border-slate-200 text-sm font-semibold text-slate-900 outline-none focus:border-blue-500 focus:bg-white transition"
-          >
-            <option value="7" className="text-slate-900 bg-white">7 Días</option>
-            <option value="15" className="text-slate-900 bg-white">15 Días</option>
-            <option value="30" className="text-slate-900 bg-white">30 Días</option>
-          </select>
-        </div>
-
-        {/* Client data */}
-        <div>
-          <label className="text-xs text-slate-700 font-bold uppercase mb-1.5 block tracking-wide">Datos del Cliente (Opcional)</label>
-          <input
-            type="text"
-            value={clientAddress}
-            onChange={(e) => onSetClientAddress(e.target.value)}
-            placeholder="Dirección del cliente"
-            className="w-full bg-slate-50 p-3 rounded-xl border border-slate-200 text-sm font-semibold text-slate-900 placeholder-slate-400 mb-2 outline-none focus:border-blue-500 focus:bg-white transition"
-          />
-          <input
-            type="tel"
-            value={clientPhone}
-            onChange={(e) => onSetClientPhone(e.target.value)}
-            placeholder="Teléfono del cliente"
-            className="w-full bg-slate-50 p-3 rounded-xl border border-slate-200 text-sm font-semibold text-slate-900 placeholder-slate-400 outline-none focus:border-blue-500 focus:bg-white transition"
-          />
-        </div>
-
-        {mode === 'basica' ? (
-          <>
-            {/* Items */}
-            <div className="space-y-2.5">
-              {items.map((item, idx) => (
-                <div key={idx} className="bg-slate-50 p-3 rounded-xl border border-slate-200 relative group">
-                  <button
-                    onClick={() => onDeleteItem(idx)}
-                    className="absolute top-2 right-2 text-slate-400 hover:text-red-500 transition p-1"
-                  >
-                    <i className="fa-solid fa-trash text-xs"></i>
-                  </button>
-                  <input
-                    type="text"
-                    placeholder="Producto o servicio..."
-                    value={item.description}
-                    onChange={e => onUpdateItem(idx, 'description', e.target.value)}
-                    className="w-full bg-white p-2.5 rounded-xl border border-slate-200 text-sm text-slate-900 font-semibold placeholder-slate-400 mb-2 pr-8 outline-none focus:border-blue-500 transition"
-                  />
-                  <div className="flex gap-2">
-                    <div className="w-20">
-                      <input
-                        type="number"
-                        placeholder="Cant."
-                        value={item.quantity}
-                        onChange={e => onUpdateItem(idx, 'quantity', Number(e.target.value))}
-                        className="w-full bg-white p-2.5 rounded-xl border border-slate-200 text-sm text-slate-900 font-semibold text-center placeholder-slate-400 outline-none focus:border-blue-500 transition"
-                      />
-                    </div>
-                    <div className="flex-1 relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm font-semibold">$</span>
-                      <CurrencyInput
-                        placeholder="Precio Unit."
-                        value={item.price}
-                        onCommit={raw => onUpdateItemPrice(idx, raw)}
-                        className="w-full bg-white p-2.5 pl-7 rounded-xl border border-slate-200 text-sm text-slate-900 font-semibold placeholder-slate-400 outline-none focus:border-blue-500 transition"
-                      />
-                    </div>
-                  </div>
-                  {/* Image upload buttons */}
-                  <div className="mt-2.5">
-                    <div className="flex items-center gap-2 mb-2">
-                      <button
-                        type="button"
-                        onClick={() => { const input = document.createElement('input'); input.type = 'file'; input.accept = 'image/*'; input.multiple = true; input.capture = 'environment' as any; input.onchange = (e) => onImageUpload(e as any, idx); input.click(); }}
-                        className="flex-1 bg-purple-50 text-purple-700 py-2 rounded-lg border border-purple-200 text-xs font-bold hover:bg-purple-100 transition flex items-center justify-center gap-1.5"
-                      >
-                        <i className="fa-solid fa-camera"></i> Cámara
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => { const input = document.createElement('input'); input.type = 'file'; input.accept = 'image/*'; input.multiple = true; input.onchange = (e) => onImageUpload(e as any, idx); input.click(); }}
-                        className="flex-1 bg-pink-50 text-pink-700 py-2 rounded-lg border border-pink-200 text-xs font-bold hover:bg-pink-100 transition flex items-center justify-center gap-1.5"
-                      >
-                        <i className="fa-solid fa-image"></i> Galería
-                      </button>
-                    </div>
-                    {item.images && item.images.length > 0 && (
-                      <div className="grid grid-cols-3 gap-2 mt-2">
-                        {item.images.map((imageUrl, imgIdx) => (
-                          <div key={imgIdx} className="relative rounded-lg overflow-hidden border border-slate-200">
-                            <img src={imageUrl} className="w-full h-20 object-cover" />
-                            <button
-                              type="button"
-                              onClick={() => onRemoveImage(idx, imgIdx)}
-                              className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] hover:bg-red-600 shadow"
-                            >
-                              <i className="fa-solid fa-times"></i>
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    {(!item.images || item.images.length === 0) && item.image && (
-                      <div className="relative inline-block mt-2 rounded-lg overflow-hidden border border-slate-200">
-                        <img src={item.image} className="w-full h-20 object-cover" />
-                        <button
-                          type="button"
-                          onClick={() => onUpdateItemImage(idx, '')}
-                          className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] hover:bg-red-600 shadow"
-                        >
-                          <i className="fa-solid fa-times"></i>
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Add item buttons */}
-            <div className="flex gap-2 mb-2">
-              <button
-                type="button"
-                onClick={onAddItem}
-                className="flex-1 py-2.5 bg-white text-slate-700 rounded-xl text-xs font-bold hover:bg-slate-50 border border-dashed border-slate-300 transition flex items-center justify-center gap-1.5"
-              >
-                <i className="fa-solid fa-plus text-xs"></i> Ítem Vacío
-              </button>
-              <button
-                type="button"
-                onClick={() => onShowProductPicker(true)}
-                className="flex-1 py-2.5 bg-blue-50 text-blue-700 rounded-xl text-xs font-bold hover:bg-blue-100 border border-blue-200 transition flex items-center justify-center gap-1.5"
-              >
-                <i className="fa-solid fa-box text-xs"></i> Catálogo
-              </button>
-            </div>
-
-            {/* Product picker */}
-            {showProductPicker && (
-              <div className="mb-4 bg-white border border-slate-200 rounded-lg p-3 max-h-40 overflow-y-auto">
-                <div className="text-xs font-bold text-slate-700 mb-2 uppercase">Seleccionar Producto</div>
-                {products.length > 0 ? (
-                  products.map(p => (
-                    <div key={p.id} onClick={() => onAddProductToQuote(p)} className="flex items-center gap-2 p-2 hover:bg-slate-50 rounded cursor-pointer">
-                      <img src={p.image} className="w-8 h-8 rounded object-cover" alt={p.name} />
-                      <div className="flex-1 min-w-0">
-                        <div className="text-xs font-bold truncate">{p.name}</div>
-                        <div className="text-[10px] text-slate-500">${p.price.toLocaleString()}</div>
-                      </div>
-                      <i className="fa-solid fa-plus text-indigo-500"></i>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center py-4 text-slate-400 text-xs italic">
-                    No hay productos en el catálogo. Agrega productos desde la sección de Catálogo.
-                  </div>
-                )}
-              </div>
-            )}
-          </>
-        ) : (
-          <ProFeatureGuard isPro={isPro} trialEndsAt={trialEndsAt}>
-            <div className="mb-4">
-              {/* Category picker */}
-              <div className="grid grid-cols-3 gap-2 mb-4">
-                {CARPENTRY_CATEGORIES.map(cat => (
-                  <button
-                    key={cat.key}
-                    type="button"
-                    onClick={() => { onAddSection(cat.key); }}
-                    className="bg-white p-2.5 rounded-xl shadow-sm hover:shadow-md transition flex flex-col items-center gap-1.5"
-                  >
-                    <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${cat.colorFrom} ${cat.colorTo} flex items-center justify-center text-white shadow-sm ${cat.shadowColor}`}>
-                      <i className={`${cat.icon} text-sm`}></i>
-                    </div>
-                    <span className="text-[10px] font-semibold text-slate-700 text-center leading-tight">{cat.label}</span>
-                  </button>
-                ))}
-              </div>
-
-              {/* Added sections */}
-              <div className="space-y-3">
-                {sections.map(section => {
-                  const config = CARPENTRY_CATEGORIES.find(c => c.key === section.category)!;
-                  const isExpanded = expandedSectionId === section.id;
-                  const sectionSubtotal = computeSectionSubtotal(section);
-                  return (
-                    <div key={section.id} className={`rounded-xl overflow-hidden border-2 transition-all duration-200 ${isExpanded ? 'border-blue-400 shadow-lg shadow-blue-100' : 'border-transparent'}`}>
-                      <div
-                        onClick={() => setExpandedSectionId(isExpanded ? null : section.id)}
-                        className={`flex items-center gap-2.5 p-3 cursor-pointer transition-colors duration-200 ${isExpanded ? `bg-gradient-to-r ${config.colorFrom} ${config.colorTo}` : 'bg-slate-100 hover:bg-slate-200'}`}
-                      >
-                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${isExpanded ? 'bg-white/20' : `bg-gradient-to-br ${config.colorFrom} ${config.colorTo}`}`}>
-                          <i className={`${config.icon} text-xs text-white`}></i>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className={`text-xs font-bold truncate ${isExpanded ? 'text-white' : 'text-slate-900'}`}>{section.name}</div>
-                          <div className={`text-[10px] font-semibold ${isExpanded ? 'text-white/70' : 'text-slate-500'}`}>{formatCurrency(sectionSubtotal)}</div>
-                        </div>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); onRemoveSection(section.id); }}
-                          className={`transition p-1 ${isExpanded ? 'text-white/60 hover:text-white' : 'text-slate-400 hover:text-red-500'}`}
-                        >
-                          <i className="fa-solid fa-trash text-xs"></i>
-                        </button>
-                        <i className={`fa-solid fa-chevron-down text-xs transition-transform duration-200 ${isExpanded ? 'rotate-180 text-white' : 'text-slate-400'}`}></i>
-                      </div>
-
-                      {isExpanded && (
+  /**
+   * Cuerpo editable de una sección. Se renderiza en el panel flotante, no
+   * en la lista, para no editar dentro de un carril estrecho que además
+   * comparte scroll con el resto del formulario.
+   */
+  const renderSectionBody = (section: CarpentrySection, config: CarpentryCategoryConfig) => (
                         <div className="px-3 pb-3 pt-2 space-y-2 bg-slate-100">
                           {section.groups.map(group => {
                             const groupSubtotal = computeGroupSubtotal(group);
@@ -795,7 +578,289 @@ export const QuoteModal: React.FC<QuoteModalProps> = React.memo(({
                             );
                           })}
                         </div>
-                      )}
+  );
+
+  /** Panel flotante de edición: ocupa todo el modal mientras se arma la sección. */
+  const sectionEditor = editingSection && (() => {
+    const config = CARPENTRY_CATEGORIES.find(c => c.key === editingSection.category)!;
+    return (
+      <div className="absolute inset-0 z-10 flex flex-col bg-slate-100 rounded-2xl overflow-hidden animate-fade-in">
+        <div className={`flex items-center gap-2.5 p-3.5 flex-shrink-0 bg-gradient-to-r ${config.colorFrom} ${config.colorTo}`}>
+          <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center flex-shrink-0">
+            <i className={`${config.icon} text-xs text-white`}></i>
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-xs font-bold truncate text-white">{editingSection.name}</div>
+            <div className="text-[10px] font-semibold text-white/70">{formatCurrency(computeSectionSubtotal(editingSection))}</div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setExpandedSectionId(null)}
+            className="text-white/70 hover:text-white transition p-1"
+          >
+            <i className="fa-solid fa-xmark text-sm"></i>
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto custom-scrollbar">
+          {renderSectionBody(editingSection, config)}
+        </div>
+
+        <div className="p-3 flex-shrink-0 bg-white border-t border-slate-200">
+          <button
+            type="button"
+            onClick={() => setExpandedSectionId(null)}
+            className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-blue-500/25 hover:shadow-xl transition active:scale-[0.99] flex items-center justify-center gap-2"
+          >
+            <i className="fa-solid fa-check"></i> Listo
+          </button>
+        </div>
+      </div>
+    );
+  })();
+
+  return (
+    <ModalWrapper
+      show={show}
+      onClose={onClose}
+      title={title}
+      icon="fa-file-invoice-dollar"
+      iconColor="text-blue-600"
+      overlay={sectionEditor}
+    >
+      {/* Mode tabs */}
+      <div className="flex bg-slate-100 p-1 rounded-xl mb-4">
+        <button
+          type="button"
+          onClick={() => onSetMode('basica')}
+          className={`flex-1 py-2 text-xs font-bold rounded-lg transition ${mode === 'basica' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+        >
+          Básica
+        </button>
+        <button
+          type="button"
+          onClick={() => onSetMode('personalizada')}
+          className={`flex-1 py-2 text-xs font-bold rounded-lg transition flex items-center justify-center gap-1.5 ${mode === 'personalizada' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+        >
+          Personalizada
+          {!isPro && <i className="fa-solid fa-crown text-amber-500 text-[10px]"></i>}
+        </button>
+      </div>
+
+      <div className="space-y-4">
+        {/* Validity */}
+        <div>
+          <label className="text-xs text-slate-700 font-bold uppercase mb-1.5 block tracking-wide">Vigencia (Días)</label>
+          <select
+            value={validDays}
+            onChange={e => onSetValidDays(e.target.value)}
+            className="w-full bg-slate-50 p-3 rounded-xl border border-slate-200 text-sm font-semibold text-slate-900 outline-none focus:border-blue-500 focus:bg-white transition"
+          >
+            <option value="7" className="text-slate-900 bg-white">7 Días</option>
+            <option value="15" className="text-slate-900 bg-white">15 Días</option>
+            <option value="30" className="text-slate-900 bg-white">30 Días</option>
+          </select>
+        </div>
+
+        {/* Client data */}
+        <div>
+          <label className="text-xs text-slate-700 font-bold uppercase mb-1.5 block tracking-wide">Datos del Cliente (Opcional)</label>
+          <input
+            type="text"
+            value={clientAddress}
+            onChange={(e) => onSetClientAddress(e.target.value)}
+            placeholder="Dirección del cliente"
+            className="w-full bg-slate-50 p-3 rounded-xl border border-slate-200 text-sm font-semibold text-slate-900 placeholder-slate-400 mb-2 outline-none focus:border-blue-500 focus:bg-white transition"
+          />
+          <input
+            type="tel"
+            value={clientPhone}
+            onChange={(e) => onSetClientPhone(e.target.value)}
+            placeholder="Teléfono del cliente"
+            className="w-full bg-slate-50 p-3 rounded-xl border border-slate-200 text-sm font-semibold text-slate-900 placeholder-slate-400 outline-none focus:border-blue-500 focus:bg-white transition"
+          />
+        </div>
+
+        {mode === 'basica' ? (
+          <>
+            {/* Items */}
+            <div className="space-y-2.5">
+              {items.map((item, idx) => (
+                <div key={idx} className="bg-slate-50 p-3 rounded-xl border border-slate-200 relative group">
+                  <button
+                    onClick={() => onDeleteItem(idx)}
+                    className="absolute top-2 right-2 text-slate-400 hover:text-red-500 transition p-1"
+                  >
+                    <i className="fa-solid fa-trash text-xs"></i>
+                  </button>
+                  <input
+                    type="text"
+                    placeholder="Producto o servicio..."
+                    value={item.description}
+                    onChange={e => onUpdateItem(idx, 'description', e.target.value)}
+                    className="w-full bg-white p-2.5 rounded-xl border border-slate-200 text-sm text-slate-900 font-semibold placeholder-slate-400 mb-2 pr-8 outline-none focus:border-blue-500 transition"
+                  />
+                  <div className="flex gap-2">
+                    <div className="w-20">
+                      <input
+                        type="number"
+                        placeholder="Cant."
+                        value={item.quantity}
+                        onChange={e => onUpdateItem(idx, 'quantity', Number(e.target.value))}
+                        className="w-full bg-white p-2.5 rounded-xl border border-slate-200 text-sm text-slate-900 font-semibold text-center placeholder-slate-400 outline-none focus:border-blue-500 transition"
+                      />
+                    </div>
+                    <div className="flex-1 relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm font-semibold">$</span>
+                      <CurrencyInput
+                        placeholder="Precio Unit."
+                        value={item.price}
+                        onCommit={raw => onUpdateItemPrice(idx, raw)}
+                        className="w-full bg-white p-2.5 pl-7 rounded-xl border border-slate-200 text-sm text-slate-900 font-semibold placeholder-slate-400 outline-none focus:border-blue-500 transition"
+                      />
+                    </div>
+                  </div>
+                  {/* Image upload buttons */}
+                  <div className="mt-2.5">
+                    <div className="flex items-center gap-2 mb-2">
+                      <button
+                        type="button"
+                        onClick={() => { const input = document.createElement('input'); input.type = 'file'; input.accept = 'image/*'; input.multiple = true; input.capture = 'environment' as any; input.onchange = (e) => onImageUpload(e as any, idx); input.click(); }}
+                        className="flex-1 bg-purple-50 text-purple-700 py-2 rounded-lg border border-purple-200 text-xs font-bold hover:bg-purple-100 transition flex items-center justify-center gap-1.5"
+                      >
+                        <i className="fa-solid fa-camera"></i> Cámara
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { const input = document.createElement('input'); input.type = 'file'; input.accept = 'image/*'; input.multiple = true; input.onchange = (e) => onImageUpload(e as any, idx); input.click(); }}
+                        className="flex-1 bg-pink-50 text-pink-700 py-2 rounded-lg border border-pink-200 text-xs font-bold hover:bg-pink-100 transition flex items-center justify-center gap-1.5"
+                      >
+                        <i className="fa-solid fa-image"></i> Galería
+                      </button>
+                    </div>
+                    {item.images && item.images.length > 0 && (
+                      <div className="grid grid-cols-3 gap-2 mt-2">
+                        {item.images.map((imageUrl, imgIdx) => (
+                          <div key={imgIdx} className="relative rounded-lg overflow-hidden border border-slate-200">
+                            <img src={imageUrl} className="w-full h-20 object-cover" />
+                            <button
+                              type="button"
+                              onClick={() => onRemoveImage(idx, imgIdx)}
+                              className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] hover:bg-red-600 shadow"
+                            >
+                              <i className="fa-solid fa-times"></i>
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {(!item.images || item.images.length === 0) && item.image && (
+                      <div className="relative inline-block mt-2 rounded-lg overflow-hidden border border-slate-200">
+                        <img src={item.image} className="w-full h-20 object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => onUpdateItemImage(idx, '')}
+                          className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] hover:bg-red-600 shadow"
+                        >
+                          <i className="fa-solid fa-times"></i>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Add item buttons */}
+            <div className="flex gap-2 mb-2">
+              <button
+                type="button"
+                onClick={onAddItem}
+                className="flex-1 py-2.5 bg-white text-slate-700 rounded-xl text-xs font-bold hover:bg-slate-50 border border-dashed border-slate-300 transition flex items-center justify-center gap-1.5"
+              >
+                <i className="fa-solid fa-plus text-xs"></i> Ítem Vacío
+              </button>
+              <button
+                type="button"
+                onClick={() => onShowProductPicker(true)}
+                className="flex-1 py-2.5 bg-blue-50 text-blue-700 rounded-xl text-xs font-bold hover:bg-blue-100 border border-blue-200 transition flex items-center justify-center gap-1.5"
+              >
+                <i className="fa-solid fa-box text-xs"></i> Catálogo
+              </button>
+            </div>
+
+            {/* Product picker */}
+            {showProductPicker && (
+              <div className="mb-4 bg-white border border-slate-200 rounded-lg p-3 max-h-40 overflow-y-auto">
+                <div className="text-xs font-bold text-slate-700 mb-2 uppercase">Seleccionar Producto</div>
+                {products.length > 0 ? (
+                  products.map(p => (
+                    <div key={p.id} onClick={() => onAddProductToQuote(p)} className="flex items-center gap-2 p-2 hover:bg-slate-50 rounded cursor-pointer">
+                      <img src={p.image} className="w-8 h-8 rounded object-cover" alt={p.name} />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs font-bold truncate">{p.name}</div>
+                        <div className="text-[10px] text-slate-500">${p.price.toLocaleString()}</div>
+                      </div>
+                      <i className="fa-solid fa-plus text-indigo-500"></i>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-4 text-slate-400 text-xs italic">
+                    No hay productos en el catálogo. Agrega productos desde la sección de Catálogo.
+                  </div>
+                )}
+              </div>
+            )}
+          </>
+        ) : (
+          <ProFeatureGuard isPro={isPro} trialEndsAt={trialEndsAt}>
+            <div className="mb-4">
+              {/* Category picker */}
+              <div className="grid grid-cols-3 gap-2 mb-4">
+                {CARPENTRY_CATEGORIES.map(cat => (
+                  <button
+                    key={cat.key}
+                    type="button"
+                    onClick={() => { onAddSection(cat.key); }}
+                    className="bg-white p-2.5 rounded-xl shadow-sm hover:shadow-md transition flex flex-col items-center gap-1.5"
+                  >
+                    <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${cat.colorFrom} ${cat.colorTo} flex items-center justify-center text-white shadow-sm ${cat.shadowColor}`}>
+                      <i className={`${cat.icon} text-sm`}></i>
+                    </div>
+                    <span className="text-[10px] font-semibold text-slate-700 text-center leading-tight">{cat.label}</span>
+                  </button>
+                ))}
+              </div>
+
+              {/* Added sections */}
+              <div className="space-y-3">
+                {sections.map(section => {
+                  const config = CARPENTRY_CATEGORIES.find(c => c.key === section.category)!;
+                  const sectionSubtotal = computeSectionSubtotal(section);
+                  const itemCount = section.groups.reduce((n, g) => n + g.items.filter(i => !i.isTemplate).length, 0);
+                  return (
+                    <div
+                      key={section.id}
+                      onClick={() => setExpandedSectionId(section.id)}
+                      className="flex items-center gap-2.5 p-3 rounded-xl bg-slate-100 hover:bg-slate-200 cursor-pointer transition-colors duration-200"
+                    >
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 bg-gradient-to-br ${config.colorFrom} ${config.colorTo}`}>
+                        <i className={`${config.icon} text-xs text-white`}></i>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs font-bold truncate text-slate-900">{section.name}</div>
+                        <div className="text-[10px] font-semibold text-slate-500">
+                          {formatCurrency(sectionSubtotal)}
+                          {itemCount > 0 && <span className="text-slate-400"> · {itemCount} ítem{itemCount === 1 ? '' : 's'}</span>}
+                        </div>
+                      </div>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onRemoveSection(section.id); }}
+                        className="transition p-1 text-slate-400 hover:text-red-500"
+                      >
+                        <i className="fa-solid fa-trash text-xs"></i>
+                      </button>
+                      <i className="fa-solid fa-pen-to-square text-xs text-slate-400"></i>
                     </div>
                   );
                 })}
