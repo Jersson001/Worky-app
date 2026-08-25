@@ -1,3 +1,4 @@
+import { newId } from '../utils/id';
 import React, { useState } from 'react';
 import { PaymentAccount, ThirdPartyAccount } from '../types';
 
@@ -68,7 +69,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({
     if (!receiveAccountNumber.trim() || !receiveHolderName.trim()) return;
 
     const styles = getBankStyles(receiveBankName);
-    const accountId = editingReceiveId || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 15));
+    const accountId = editingReceiveId || newId();
 
     const newAccount: PaymentAccount = {
       id: accountId,
@@ -95,7 +96,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({
     e.preventDefault();
     if (!payAlias.trim() || !payBankName.trim() || !payAccountNumber.trim() || !payHolderName.trim()) return;
 
-    const accountId = editingPayId || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 15));
+    const accountId = editingPayId || newId();
 
     const newAccount: ThirdPartyAccount = {
       id: accountId,

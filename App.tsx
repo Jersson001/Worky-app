@@ -8,6 +8,7 @@ import AdminPanel from './components/AdminPanel';
 import { generateProductDescription } from './services/geminiService';
 import CatalogShareModal from './components/CatalogShareModal';
 import { describeError } from './utils/errorMessage';
+import { newId } from './utils/id';
 import { StatusView } from './components/StatusView';
 import { WalletModal } from './components/WalletModal';
 import { SignaturePad } from './components/SignaturePad';
@@ -1117,7 +1118,7 @@ const App: React.FC = () => {
   const handleAddExpense = async (amount: number, description: string, targetProjectId?: string) => {
     if (!selectedContactId) return;
 
-    const newExpense: Expense = { id: Date.now().toString(), amount, description, date: new Date(), category: 'other', projectId: targetProjectId };
+    const newExpense: Expense = { id: newId(), amount, description, date: new Date(), category: 'other', projectId: targetProjectId };
 
     try {
       // Determinar el projectId final
@@ -1370,7 +1371,7 @@ const App: React.FC = () => {
       };
     } else {
       productToSave = {
-        id: Date.now().toString(),
+        id: newId(),
         name: newProductName,
         price: Number(priceValue),
         stock: Number(newProductStock) || 0,
@@ -1452,7 +1453,7 @@ const App: React.FC = () => {
     const randomColor = colors[Math.floor(Math.random() * colors.length)];
 
     const newCategory: ProductCategory = {
-      id: Date.now().toString(),
+      id: newId(),
       name: newCategoryName,
       icon: newCategoryIcon,
       color: randomColor,
@@ -1725,7 +1726,7 @@ const App: React.FC = () => {
     }
 
     const newProject: Project = {
-      id: Date.now().toString() + '_p',
+      id: newId(),
       name: newProjectName.trim(),
       value: 0,
       stage: ProjectStage.Inquiry,
