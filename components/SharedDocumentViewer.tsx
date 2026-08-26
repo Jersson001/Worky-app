@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { getSharedDocument, WORKY_PLAY_STORE_URL } from '../services/whatsappService';
+import { esLineaUsada } from '../utils/carpentryCalculations';
 
 interface SharedDocumentViewerProps {
   documentId: string;
@@ -213,7 +214,9 @@ export const SharedDocumentViewer: React.FC<SharedDocumentViewerProps> = ({ docu
                   </div>
                   <div className="p-4 space-y-4 bg-white">
                     {section.groups?.map((group: any, gIdx: number) => {
-                      const activeItems = group.items?.filter((i: any) => i.description && (i.unitCost > 0 || !i.isTemplate)) || [];
+                      // Mismo criterio que el resto del documento: las líneas de
+                      // plantilla, con sus valores de ejemplo, no se mandan.
+                      const activeItems = (group.items || []).filter(esLineaUsada);
                       if (activeItems.length === 0) return null;
                       return (
                         <div key={group.id || gIdx}>

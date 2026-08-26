@@ -1,9 +1,9 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { QuoteData, InvoiceData, ReceiptData, CollectionAccountData, UserProfileData } from '../types';
 import { shareQuoteViaWhatsApp, shareInvoiceViaWhatsApp, openWhatsApp, generateDocumentId, saveSharedDocument, generateDocumentViewLink } from '../services/whatsappService';
 import { publishCatalogForCurrentUser } from '../services/catalogShareService';
-import { computeLineSubtotal, computeGroupSubtotal, computeSectionSubtotal } from '../utils/carpentryCalculations';
+import { computeLineSubtotal, computeGroupSubtotal, computeSectionSubtotal, seccionesConContenido } from '../utils/carpentryCalculations';
 
 interface DocumentViewerProps {
   type: 'quote' | 'invoice' | 'receipt' | 'collection_account' | 'expense_receipt';
@@ -15,7 +15,32 @@ interface DocumentViewerProps {
   contactPhone?: string; // Teléfono del contacto para compartir por WhatsApp
 }
 
+/** Ancho real de la hoja. Es el que supone la maquetación del documento. */
+const ANCHO_HOJA = 850;
+
 export const DocumentViewer: React.FC<DocumentViewerProps> = ({ type, data, onClose, businessLogo, digitalSignature, userProfile, contactPhone }) => {
+  /**
+   * La hoja se reduce entera para caber en ventanas estrechas.
+   *
+   * Antes se encogía solo el ancho —`w-full` con un alto mínimo fijo—, así que
+   * en una ventana de 500px salía una tira de 500 por 1100 con todo
+   * apelotonado. Reduciéndola completa se mantiene la proporción del papel y
+   * se lee como un documento, solo que más pequeño. Al imprimir vuelve a su
+   * tamaño real (ver la regla de #printable-area en index.html).
+   */
+  const marco = useRef<HTMLDivElement>(null);
+  const [escala, setEscala] = useState(1);
+
+  useEffect(() => {
+    const medir = () => {
+      const disponible = marco.current?.clientWidth ?? ANCHO_HOJA;
+      setEscala(Math.min(1, disponible / ANCHO_HOJA));
+    };
+    medir();
+    window.addEventListener('resize', medir);
+    return () => window.removeEventListener('resize', medir);
+  }, []);
+
   const [signatureScale, setSignatureScale] = useState(1);
   const [signaturePosition, setSignaturePosition] = useState({ x: 0, y: 0 });
   const [showSignature, setShowSignature] = useState(true);
@@ -167,11 +192,11 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({ type, data, onCl
       </div>
 
       {/* Printable Area */}
-      <div className="py-8 w-full flex justify-center"
+      <div ref={marco} className="py-8 w-full flex justify-center"
         onMouseMove={(e) => isDragging && setSignaturePosition({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y })}
         onMouseUp={() => setIsDragging(false)}
       >
-        <div id="printable-area" className="bg-white text-black w-full max-w-[850px] min-h-[1100px] shadow-2xl relative rounded-sm animate-slide-in-top overflow-hidden">
+        <div id="printable-area" style={{ zoom: escala }} className="bg-white text-black w-[850px] max-w-full min-h-[1100px] shadow-2xl relative rounded-sm animate-slide-in-top overflow-hidden">
             {renderContent()}
             
             {/* Global Footer (Optional) */}
@@ -258,9 +283,9 @@ END:VCARD`);
 
         {/* Items Table */}
         <div className="mb-10">
-            {data.sections && data.sections.length > 0 ? (
+            {seccionesConContenido(data.sections || []).length > 0 ? (
                 <div className="space-y-6">
-                    {data.sections.map((section) => (
+                    {seccionesConContenido(data.sections || []).map((section) => (
                         <div key={section.id}>
                             <div className="bg-blue-600 text-white px-3 py-2 rounded-t-lg">
                                 <span className="text-sm font-bold uppercase tracking-wide">{section.name}</span>
@@ -273,7 +298,7 @@ END:VCARD`);
                                         </div>
                                         <table className="w-full">
                                             <tbody>
-                                                {group.items.filter(i => i.description).map((item) => (
+                                                {group.items.map((item) => (
                                                     <tr key={item.id} className="border-t border-gray-100">
                                                         <td className="py-2 px-3 text-sm text-gray-800">{item.description}</td>
                                                         <td className="py-2 px-2 text-center text-xs text-gray-500 w-20">{item.quantity} {item.unit}{(item.unit === 'ML' || item.unit === 'M2') && item.measure ? ` × ${item.measure}` : ''}</td>

@@ -21,6 +21,34 @@ export const computeLineSubtotal = (item: CarpentryLineItem): number => {
   return (item.quantity || 0) * (item.unitCost || 0) * measure;
 };
 
+/**
+ * Una línea cuenta cuando el usuario la ha tocado.
+ *
+ * Las plantillas nacen con nombre, cantidad y costo de ejemplo —para que se vea
+ * cómo se rellena— y `isTemplate` se limpia en cuanto se edita cualquier campo.
+ * Sin este criterio, un grupo que solo se abrió y no se llenó llegaba al
+ * documento del cliente con sus valores de ejemplo.
+ */
+export const esLineaUsada = (item: CarpentryLineItem): boolean =>
+  !!item.description && !item.isTemplate;
+
+/**
+ * Las secciones tal como deben salir en el documento: sin líneas de plantilla,
+ * y sin los grupos ni las secciones que se quedan vacíos al quitarlas.
+ *
+ * Vive aquí porque el documento se pinta en tres sitios —la vista de la app, la
+ * del enlace compartido y el HTML que se sube—, y cada uno filtraba distinto.
+ */
+export const seccionesConContenido = (sections: CarpentrySection[]): CarpentrySection[] =>
+  (sections || [])
+    .map(section => ({
+      ...section,
+      groups: (section.groups || [])
+        .map(group => ({ ...group, items: (group.items || []).filter(esLineaUsada) }))
+        .filter(group => group.items.length > 0),
+    }))
+    .filter(section => section.groups.length > 0);
+
 export const computeGroupSubtotal = (group: CarpentryItemGroup): number =>
   group.items.reduce((sum, item) => sum + computeLineSubtotal(item), 0);
 

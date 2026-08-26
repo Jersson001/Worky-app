@@ -9,7 +9,7 @@
  * suelto en Storage y lo abre cualquiera, sin sesión y sin la app.
  */
 import { formatCurrency } from '../utils/currency';
-import { computeLineSubtotal } from '../utils/carpentryCalculations';
+import { computeLineSubtotal, esLineaUsada } from '../utils/carpentryCalculations';
 
 type DocType = 'quote' | 'invoice' | 'receipt' | 'collection_account' | 'expense_receipt';
 
@@ -59,7 +59,7 @@ const tablaSecciones = (sections: any[]): string =>
   sections.map(section => {
     const grupos = (section.groups || [])
       .map((g: any) => {
-        const items = (g.items || []).filter((i: any) => i.description && !i.isTemplate);
+        const items = (g.items || []).filter(esLineaUsada);
         if (!items.length) return '';
         return `
         <tr class="grupo"><td colspan="3">${esc(g.label)}</td></tr>

@@ -231,6 +231,9 @@
           margin: 0;
           padding: 0;
           box-shadow: none !important;
+          /* En pantalla la hoja se reduce para caber en ventanas estrechas.
+             Al imprimir manda el papel, así que vuelve a su tamaño real. */
+          zoom: 1 !important;
         }
         .no-print-controls {
           cursor: default !important;
