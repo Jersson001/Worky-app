@@ -90,7 +90,13 @@ con la Edge Function `view-doc`, que quedó sin uso.
   `client_id` y `metadata`, y esas columnas no existen en la tabla. El SQL está
   dado; falta ejecutarlo. Además el error se traga con un `return`.
 - **Contactos manuales** generan ids `lead_<uuid>`, que no son uuid válidos y
-  chocan con `contacts.id` y `projects.contact_id`, ambos de tipo uuid.
+  chocan con `contacts.id` y `projects.contact_id`, ambos de tipo uuid. Sigue
+  pasando con los clientes que aún no tienen cuenta; los que sí la tienen ya
+  nacen con su uuid real desde que se pide el correo al agregarlos.
+- **Vincular al registrarse.** Si el cliente se registra *después* de que lo
+  agregaran, su ficha sigue siendo un lead suelto: nada la convierte. Ahora al
+  menos su correo queda guardado en `contacts.email`, que es con lo que se
+  podrá emparejar cuando se haga.
 - ~~Decidir si el nombre y el precio del producto siguen siendo obligatorios.~~
   Resuelto: el precio es opcional y sale como "Consultar precio"; el nombre
   sigue haciendo falta.

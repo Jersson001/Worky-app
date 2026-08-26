@@ -284,6 +284,12 @@ export interface Contact {
   alias?: string;
   avatar: string;
   phone: string;
+  /**
+   * Correo del cliente. Es lo que identifica a un usuario en Worky: el registro
+   * es por correo y `public_info` guarda eso, así que es lo único con lo que se
+   * puede reconocer a un contacto manual cuando resulta que ya tiene cuenta.
+   */
+  email?: string;
   status: UserStatus;
   role: ContactRole;
   projects: Project[]; // Array of projects per client

@@ -479,6 +479,7 @@ const App: React.FC = () => {
   const [newContactAlias, setNewContactAlias] = useState('');
   const [newProjectName, setNewProjectName] = useState('');
   const [newContactPhone, setNewContactPhone] = useState('');
+  const [newContactEmail, setNewContactEmail] = useState('');
   const [newContactRole, setNewContactRole] = useState<ContactRole>('client');
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [messages, setMessages] = useState<Record<string, Message[]>>({});
@@ -1732,8 +1733,26 @@ const App: React.FC = () => {
     }
 
     if (!newContactPhone.trim()) {
-      alert('El número de teléfono es obligatorio. Servirá como Ancla de vinculación cuando el cliente se registre en Worky.');
+      alert('El número de teléfono es obligatorio: es por donde le escribes por WhatsApp.');
       return;
+    }
+
+    const email = newContactEmail.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      alert('Hace falta el correo del cliente, y bien escrito. Es lo que identifica a un usuario en Worky: sin él no hay forma de reconocerlo si ya tiene cuenta.');
+      return;
+    }
+
+    // Si ese correo ya es de un usuario de Worky, el contacto nace vinculado en
+    // vez de quedarse como ficha suelta: el id pasa a ser el suyo y addContact
+    // toma el camino de add_contact_mutual, que crea la conversación por ambos
+    // lados. Antes esto solo pasaba desde el buscador, nunca al crear a mano.
+    let registrado: Awaited<ReturnType<typeof searchUserByPhoneOrEmail>> = null;
+    try {
+      registrado = await searchUserByPhoneOrEmail(email);
+    } catch (e) {
+      // Que no se pueda comprobar no debe impedir guardar el contacto.
+      console.warn('No se pudo comprobar si el correo ya es de un usuario:', e);
     }
 
     const newProject: Project = {
@@ -1746,11 +1765,15 @@ const App: React.FC = () => {
     };
 
     const newContact: Contact = {
-      id: `lead_${crypto.randomUUID()}`,
+      id: registrado ? registrado.userId : `lead_${crypto.randomUUID()}`,
       clientName: newContactName.trim(),
       alias: newContactAlias.trim() || undefined,
-      avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(newContactName.trim())}&background=random`,
+      // Si ya tiene cuenta, su foto real; el nombre se respeta el que escribió
+      // quien lo agrega, que es como lo tiene guardado.
+      avatar: registrado?.avatar
+        || `https://ui-avatars.com/api/?name=${encodeURIComponent(newContactName.trim())}&background=random`,
       phone: newContactPhone.trim(),
+      email,
       status: UserStatus.Lead,
       role: newContactRole,
       projects: [newProject],
@@ -1784,6 +1807,7 @@ const App: React.FC = () => {
       setNewContactAlias('');
       setNewProjectName('');
       setNewContactPhone('');
+      setNewContactEmail('');
       setNewContactRole('client');
     } catch (error: any) {
       console.error('Error creando contacto en Supabase:', error);
@@ -2246,9 +2270,22 @@ const App: React.FC = () => {
                   className="w-full bg-slate-50 text-slate-900 font-semibold p-3 rounded-xl outline-none border border-slate-200 focus:border-blue-500 focus:bg-white transition text-sm placeholder-slate-400"
                 />
               </div>
+              <div>
+                <label className="text-xs text-slate-700 font-bold uppercase mb-1 block tracking-wide">Correo (Obligatorio) *</label>
+                <input
+                  type="email"
+                  placeholder="Ej. juan@correo.com"
+                  value={newContactEmail}
+                  onChange={e => setNewContactEmail(e.target.value)}
+                  className="w-full bg-slate-50 text-slate-900 font-semibold p-3 rounded-xl outline-none border border-slate-200 focus:border-blue-500 focus:bg-white transition text-sm placeholder-slate-400"
+                />
+                <p className="text-[11px] text-slate-500 mt-1">
+                  Es lo que identifica a tu cliente en Worky. Si ya tiene cuenta, queda vinculado al guardarlo.
+                </p>
+              </div>
               <button
                 onClick={handleCreateContact}
-                disabled={!newContactName.trim() || !newContactPhone.trim() || !newProjectName.trim()}
+                disabled={!newContactName.trim() || !newContactPhone.trim() || !newContactEmail.trim() || !newProjectName.trim()}
                 className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 rounded-xl font-bold mt-2 hover:shadow-lg transition shadow-md shadow-blue-500/25 disabled:opacity-50 disabled:shadow-none disabled:cursor-not-allowed active:scale-[0.99]"
               >
                 Guardar Contacto

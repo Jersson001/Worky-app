@@ -431,6 +431,7 @@ const rowToContact = (row: any): Contact => ({
   alias: row.alias ?? undefined,
   avatar: row.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(row.client_name || 'Contacto')}&background=random`,
   phone: row.phone || '',
+  email: row.email ?? undefined,
   status: row.status || UserStatus.Lead,
   role: row.role || 'client',
   projects: [],
@@ -474,6 +475,7 @@ export const addContact = async (contact: Contact): Promise<Contact> => {
     alias: contact.alias || null,
     avatar: contact.avatar || null,
     phone: contact.phone || null,
+    email: contact.email || null,
     status: contact.status,
     role: contact.role,
     last_message: '',
@@ -489,9 +491,12 @@ export const addContact = async (contact: Contact): Promise<Contact> => {
   let insertError = res.error;
   let insertedData = res.data;
 
-  // Si falla porque la columna 'alias' no ha sido creada en la tabla contacts de Supabase
-  if (insertError && (insertError.message.includes('alias') || insertError.code === '42703')) {
+  // Si falla porque 'alias' o 'email' no se han creado todavía en la tabla
+  // contacts de Supabase (ver supabase_contacts_email.sql). Se reintenta sin
+  // ellas para no perder el contacto por una columna que falta.
+  if (insertError && (insertError.message.includes('alias') || insertError.message.includes('email') || insertError.code === '42703')) {
     delete contactRow.alias;
+    delete contactRow.email;
     const fallbackRes = await supabase
       .from('contacts')
       .insert(contactRow)
