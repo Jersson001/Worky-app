@@ -40,9 +40,27 @@ export const generateWhatsAppLink = (phone: string, message: string): string => 
  * @param phone Número de teléfono
  * @param message Mensaje a enviar
  */
-export const openWhatsApp = (phone: string, message: string): void => {
+/**
+ * Abre WhatsApp con el mensaje ya escrito.
+ *
+ * `ventana` es una pestaña abierta *antes* de las esperas: compartir un
+ * documento publica el catálogo y lo sube, y para cuando termina el navegador
+ * ya no considera que haya un clic detrás, así que el bloqueador de emergentes
+ * se comía el `window.open` sin decir nada —el botón parecía muerto—. Quien
+ * comparte abre la pestaña en el clic y aquí solo se le pone la dirección.
+ */
+export const openWhatsApp = (phone: string, message: string, ventana?: Window | null): void => {
   const url = generateWhatsAppLink(phone, message);
-  window.open(url, '_blank');
+
+  if (ventana && !ventana.closed) {
+    ventana.location.href = url;
+    return;
+  }
+
+  // Sin pestaña previa: si el bloqueador también impide esto, se navega en la
+  // misma, que es preferible a no hacer nada.
+  const abierta = window.open(url, '_blank');
+  if (!abierta) window.location.href = url;
 };
 
 /**
@@ -268,14 +286,15 @@ export const shareFileViaWhatsApp = (
   phone: string,
   fileName: string,
   fileUrl: string,
-  message?: string
+  message?: string,
+  ventana?: Window | null
 ): void => {
   const defaultMessage = `📎 Te comparto el archivo: ${fileName}`;
   const fullMessage = message 
     ? `${message}\n\n📎 Archivo: ${fileName}\n🔗 ${fileUrl}\n\n📲 *Descarga Worky App:*\n${WORKY_PLAY_STORE_URL}`
     : `${defaultMessage}\n\n🔗 ${fileUrl}\n\n📲 *Descarga Worky App:*\n${WORKY_PLAY_STORE_URL}`;
   
-  openWhatsApp(phone, fullMessage);
+  openWhatsApp(phone, fullMessage, ventana);
 };
 
 /**
@@ -298,14 +317,15 @@ export const shareQuoteViaWhatsApp = (
     pdfUrl?: string;
   },
   documentLink?: string,
-  catalogLink?: string
+  catalogLink?: string,
+  ventana?: Window | null
 ): void => {
   const message = generateQuoteMessage(quoteData, documentLink, catalogLink);
   const fullMessage = quoteData.pdfUrl
     ? `${message}\n\n📄 Ver PDF completo: ${quoteData.pdfUrl}`
     : message;
   
-  openWhatsApp(phone, fullMessage);
+  openWhatsApp(phone, fullMessage, ventana);
 };
 
 /**
@@ -321,14 +341,15 @@ export const shareInvoiceViaWhatsApp = (
     pdfUrl?: string;
   },
   documentLink?: string,
-  catalogLink?: string
+  catalogLink?: string,
+  ventana?: Window | null
 ): void => {
   const message = generateInvoiceMessage(invoiceData, documentLink, catalogLink);
   const fullMessage = invoiceData.pdfUrl
     ? `${message}\n\n📄 Ver PDF completo: ${invoiceData.pdfUrl}`
     : message;
   
-  openWhatsApp(phone, fullMessage);
+  openWhatsApp(phone, fullMessage, ventana);
 };
 
 
