@@ -84,19 +84,59 @@ const rowToMessage = (row: any, myUid: string): Message => {
 
 // ============ MENSAJES ============
 
+/**
+ * Quién es usuario de Worky y quién es una ficha creada a mano.
+ *
+ * Hace falta al mandar: `messages.recipient_id` es uuid con clave foránea a
+ * `auth.users`, así que poner ahí el id de un contacto manual hace que la base
+ * rechace la fila entera. Se cachea por sesión para no consultar en cada
+ * mensaje; `public_info` es de lectura pública, así que basta con mirar ahí.
+ */
+const esUsuarioCache = new Map<string, boolean>();
+
+const esUsuarioDeWorky = async (contactId: string): Promise<boolean> => {
+  const enCache = esUsuarioCache.get(contactId);
+  if (enCache !== undefined) return enCache;
+
+  // Un id que ni siquiera tiene forma de uuid no puede serlo.
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(contactId)) {
+    esUsuarioCache.set(contactId, false);
+    return false;
+  }
+
+  const { data } = await supabase
+    .from('public_info')
+    .select('user_id')
+    .eq('user_id', contactId)
+    .maybeSingle();
+
+  const esUsuario = !!data;
+  esUsuarioCache.set(contactId, esUsuario);
+  return esUsuario;
+};
+
 export const sendMessage = async (
   contactId: string,
   message: Omit<Message, 'id'>
 ): Promise<string> => {
   const userId = getCurrentUserId();
   const chatId = getChatId(userId, contactId);
+  const esUsuario = await esUsuarioDeWorky(contactId);
 
   const { data, error } = await supabase
     .from('messages')
     .insert({
       chat_id: chatId,
       sender_id: userId,
-      recipient_id: contactId,
+      // A un contacto sin cuenta no se le puede poner de destinatario, pero la
+      // conversación se identifica por chat_id: se guarda igual y se anota a
+      // quién iba. Ver supabase_mensajes_a_contactos_manuales.sql.
+      //
+      // La columna nueva solo se manda cuando hace falta: si se mandara
+      // siempre, los envíos entre usuarios se romperían en cuanto alguien
+      // usara una versión anterior a ese SQL.
+      recipient_id: esUsuario ? contactId : null,
+      ...(esUsuario ? {} : { recipient_contact: contactId }),
       text: message.text,
       type: message.type,
       metadata: message.metadata ?? null,
@@ -112,6 +152,11 @@ export const sendMessage = async (
     console.error('Error enviando mensaje:', error);
     throw error;
   }
+
+  // Lo que sigue es metadata de conversación entre usuarios: `user_chats`
+  // guarda ids de usuario y el contador de no leídos es del otro lado. Con un
+  // contacto sin cuenta no hay otro lado, y ambas llamadas fallarían por tipo.
+  if (!esUsuario) return data.id;
 
   // Mi lado: leído. Lado del otro: +1 no leído (vía RPC, porque RLS
   // no me deja escribir en la fila de otro usuario).
