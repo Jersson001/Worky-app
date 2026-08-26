@@ -10,6 +10,7 @@
  * el QR impreso sigue sirviendo después de actualizar el catálogo.
  */
 import { supabase, PUBLIC_BUCKET } from './supabaseConfig';
+import { reducirImagen } from '../utils/imagen';
 import { getCurrentUserId } from './messagingService';
 import { Product, UserProfileData } from '../types';
 
@@ -317,50 +318,12 @@ export const buildCatalogHtml = (
 
 // ─── Preparación de imágenes ─────────────────────────────────────────────────
 
-const MAX_LADO = 800;
-const CALIDAD = 0.72;
-
-/**
- * Reescala una imagen a un lado máximo y la devuelve como JPEG.
- *
- * Hace falta porque las fotos de producto se guardan como data URL en base64:
- * una foto de móvil son 4-6 MB, y con quince productos el catálogo pesaría más
- * de 100 MB — inservible por datos móviles, que es como se abre un QR.
- *
- * Si la imagen no se puede procesar (por ejemplo una URL remota, que ensucia
- * el canvas) se devuelve tal cual: no pesa en el HTML de todos modos.
- */
-const reescalar = (src: string): Promise<string> =>
-  new Promise(resolve => {
-    if (!src || !src.startsWith('data:')) return resolve(src);
-
-    const img = new Image();
-    img.onload = () => {
-      try {
-        const escala = Math.min(1, MAX_LADO / Math.max(img.width, img.height));
-        if (escala === 1 && src.length < 200_000) return resolve(src);
-
-        const canvas = document.createElement('canvas');
-        canvas.width = Math.round(img.width * escala);
-        canvas.height = Math.round(img.height * escala);
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return resolve(src);
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        resolve(canvas.toDataURL('image/jpeg', CALIDAD));
-      } catch {
-        resolve(src);
-      }
-    };
-    img.onerror = () => resolve('');
-    img.src = src;
-  });
-
 /** Copia de los productos con la imagen principal aligerada. */
 export const prepararProductos = async (products: Product[]): Promise<Product[]> =>
   Promise.all(
     products.map(async p => ({
       ...p,
-      image: await reescalar(p.image || p.images?.[0] || ''),
+      image: await reducirImagen(p.image || p.images?.[0] || ''),
       images: undefined, // el catálogo solo muestra la principal
     })),
   );

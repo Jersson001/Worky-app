@@ -10,6 +10,7 @@ import { CurrencyInput } from './CurrencyInput';
 import ProFeatureGuard from '../../ProFeatureGuard';
 import { QuoteItem, Product, ContactRole, QuoteMode, CarpentrySection, CarpentryCategoryKey, CarpentryLineItem, CarpentryUnit } from '../../../types';
 import { formatCurrency } from '../../../utils/currency';
+import { leerImagenReducida } from '../../../utils/imagen';
 import { calculateTax } from '../../../utils/taxCalculations';
 import { CARPENTRY_CATEGORIES, CarpentryCategoryConfig, computeGrandTotal, computeSectionSubtotal, computeGroupSubtotal, computeLineSubtotal } from '../../../utils/carpentryCalculations';
 
@@ -172,20 +173,11 @@ const CarpentryItemRow: React.FC<{
             onClick={() => { const input = document.createElement('input'); input.type = 'file'; input.accept = 'image/*'; input.multiple = true; input.capture = 'environment' as any; input.onchange = (e) => {
               const files = (e.target as HTMLInputElement).files;
               if (files) {
-                const newImages: string[] = [...(item.images || [])];
-                let loaded = 0;
-                Array.from(files).forEach(file => {
-                  const reader = new FileReader();
-                  reader.onload = () => {
-                    if (typeof reader.result === 'string') {
-                      newImages.push(reader.result);
-                    }
-                    loaded++;
-                    if (loaded === files.length) {
-                      onUpdate('images', newImages);
-                    }
-                  };
-                  reader.readAsDataURL(file);
+                // Se reducen al adjuntarlas: a tamaño original, tres fotos son unos
+                // 20 MB dentro del mensaje, que luego se cargan en cada apertura del
+                // chat y viajan en cada envío.
+                void Promise.all(Array.from(files).map(leerImagenReducida)).then(reducidas => {
+                  onUpdate('images', [...(item.images || []), ...reducidas.filter(Boolean)]);
                 });
               }
             }; input.click(); }}
@@ -198,20 +190,11 @@ const CarpentryItemRow: React.FC<{
             onClick={() => { const input = document.createElement('input'); input.type = 'file'; input.accept = 'image/*'; input.multiple = true; input.onchange = (e) => {
               const files = (e.target as HTMLInputElement).files;
               if (files) {
-                const newImages: string[] = [...(item.images || [])];
-                let loaded = 0;
-                Array.from(files).forEach(file => {
-                  const reader = new FileReader();
-                  reader.onload = () => {
-                    if (typeof reader.result === 'string') {
-                      newImages.push(reader.result);
-                    }
-                    loaded++;
-                    if (loaded === files.length) {
-                      onUpdate('images', newImages);
-                    }
-                  };
-                  reader.readAsDataURL(file);
+                // Se reducen al adjuntarlas: a tamaño original, tres fotos son unos
+                // 20 MB dentro del mensaje, que luego se cargan en cada apertura del
+                // chat y viajan en cada envío.
+                void Promise.all(Array.from(files).map(leerImagenReducida)).then(reducidas => {
+                  onUpdate('images', [...(item.images || []), ...reducidas.filter(Boolean)]);
                 });
               }
             }; input.click(); }}
@@ -455,20 +438,10 @@ export const QuoteModal: React.FC<QuoteModalProps> = React.memo(({
                                                   onClick={() => { const input = document.createElement('input'); input.type = 'file'; input.accept = 'image/*'; input.multiple = true; input.capture = 'environment' as any; input.onchange = (e) => {
                                                     const files = (e.target as HTMLInputElement).files;
                                                     if (files) {
-                                                      const newImages: string[] = [...(item.images || [])];
-                                                      let loaded = 0;
-                                                      Array.from(files).forEach(file => {
-                                                        const reader = new FileReader();
-                                                        reader.onload = () => {
-                                                          if (typeof reader.result === 'string') {
-                                                            newImages.push(reader.result);
-                                                          }
-                                                          loaded++;
-                                                          if (loaded === files.length) {
-                                                            onUpdateCarpentryItem(section.id, group.id, item.id, 'images', newImages);
-                                                          }
-                                                        };
-                                                        reader.readAsDataURL(file);
+                                                      // Reducidas al adjuntar: ver utils/imagen.
+                                                      void Promise.all(Array.from(files).map(leerImagenReducida)).then(reducidas => {
+                                                        onUpdateCarpentryItem(section.id, group.id, item.id, 'images',
+                                                          [...(item.images || []), ...reducidas.filter(Boolean)]);
                                                       });
                                                     }
                                                   }; input.click(); }}
@@ -481,20 +454,10 @@ export const QuoteModal: React.FC<QuoteModalProps> = React.memo(({
                                                   onClick={() => { const input = document.createElement('input'); input.type = 'file'; input.accept = 'image/*'; input.multiple = true; input.onchange = (e) => {
                                                     const files = (e.target as HTMLInputElement).files;
                                                     if (files) {
-                                                      const newImages: string[] = [...(item.images || [])];
-                                                      let loaded = 0;
-                                                      Array.from(files).forEach(file => {
-                                                        const reader = new FileReader();
-                                                        reader.onload = () => {
-                                                          if (typeof reader.result === 'string') {
-                                                            newImages.push(reader.result);
-                                                          }
-                                                          loaded++;
-                                                          if (loaded === files.length) {
-                                                            onUpdateCarpentryItem(section.id, group.id, item.id, 'images', newImages);
-                                                          }
-                                                        };
-                                                        reader.readAsDataURL(file);
+                                                      // Reducidas al adjuntar: ver utils/imagen.
+                                                      void Promise.all(Array.from(files).map(leerImagenReducida)).then(reducidas => {
+                                                        onUpdateCarpentryItem(section.id, group.id, item.id, 'images',
+                                                          [...(item.images || []), ...reducidas.filter(Boolean)]);
                                                       });
                                                     }
                                                   }; input.click(); }}
