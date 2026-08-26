@@ -2006,6 +2006,7 @@ const App: React.FC = () => {
   }
 
   const isChatOpen = !!selectedContactId || showFinancials || showStatus || showNotifications;
+  const totalSinLeer = contacts.reduce((suma, c) => suma + (c.unreadCount || 0), 0);
   const showLeftCol = isChatOpen ? 'hidden md:flex' : (mobileTab === 'chats' ? 'flex' : 'hidden md:flex');
   const showRightCol = isChatOpen ? 'flex' : (mobileTab === 'home' ? 'flex' : 'hidden md:flex');
 
@@ -2116,7 +2117,7 @@ const App: React.FC = () => {
         ) : (
           /* DASHBOARD (Modern Minimal) */
           <div className="flex-1 flex flex-col items-center p-4 pb-24 md:pb-4 relative overflow-y-auto">
-            <div className="w-full max-w-3xl flex flex-col z-10 pt-2">
+            <div className="w-full max-w-5xl flex flex-col z-10 pt-2">
               {/* Header */}
               <div className="mb-6 flex items-center gap-3">
                 <img src="/worky-logo 2.png" alt="Worky" className="w-11 h-11 object-contain" />
@@ -2126,11 +2127,26 @@ const App: React.FC = () => {
                 </div>
               </div>
 
-              <div className="w-full space-y-7">
+              {/* Dos columnas: lo que se hace a diario a la izquierda, lo que se
+                  consulta a la derecha. En móvil se apilan, que en pantalla
+                  estrecha dos columnas de tarjetas no caben. */}
+              <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
                 {/* Primary Actions */}
                 <div>
                   <h3 className="text-slate-400 text-[11px] font-bold uppercase tracking-wider mb-3">Acciones rápidas</h3>
-                  <div className="grid grid-cols-2 md:grid-cols-5 gap-2.5">
+                  <div className="grid grid-cols-2 gap-2.5">
+                    {/* El chat vivía solo en la barra de abajo, donde se perdía. */}
+                    <button onClick={() => { setSelectedContactId(null); setMobileTab('chats'); }} className="bg-white p-3.5 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2.5 relative">
+                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center text-white shadow-md shadow-green-500/30">
+                        <i className="fa-solid fa-comments text-xl"></i>
+                      </div>
+                      <span className="text-slate-700 text-[12.5px] font-semibold">Chats</span>
+                      {totalSinLeer > 0 && (
+                        <span className="absolute top-2 right-2 min-w-[20px] h-5 px-1.5 rounded-full bg-red-500 text-white text-[11px] font-bold flex items-center justify-center">
+                          {totalSinLeer > 99 ? '99+' : totalSinLeer}
+                        </span>
+                      )}
+                    </button>
                     <button onClick={() => handleDocumentClick('quote')} className="bg-white p-3.5 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2.5">
                       <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white shadow-md shadow-blue-500/30">
                         <i className="fa-solid fa-file-invoice-dollar text-xl"></i>
@@ -2173,7 +2189,7 @@ const App: React.FC = () => {
                 {/* Tools Grid */}
                 <div>
                   <h3 className="text-slate-400 text-[11px] font-bold uppercase tracking-wider mb-3">Herramientas</h3>
-                  <div className="grid grid-cols-3 md:grid-cols-6 gap-2.5">
+                  <div className="grid grid-cols-3 gap-2.5">
                     <button onClick={() => setShowFinancials(true)} className="bg-white p-3 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2">
                       <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center text-white shadow-sm shadow-teal-500/30">
                         <i className="fa-solid fa-chart-pie text-lg"></i>
