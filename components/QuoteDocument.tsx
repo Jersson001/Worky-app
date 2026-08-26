@@ -4,7 +4,8 @@ import { QuoteData, InvoiceData, ReceiptData, CollectionAccountData, UserProfile
 import { formatCurrency } from '../utils/currency';
 import { describeError } from '../utils/errorMessage';
 import { shareQuoteViaWhatsApp, shareInvoiceViaWhatsApp, openWhatsApp, generateDocumentId, saveSharedDocument, generateDocumentViewLink } from '../services/whatsappService';
-import { publishCatalogForCurrentUser } from '../services/catalogShareService';
+import { publishCatalogForCurrentUser, catalogPageUrl, qrImageUrl, WORKY_APP_URL } from '../services/catalogShareService';
+import { getCurrentUserId } from '../services/messagingService';
 import { computeLineSubtotal, computeGroupSubtotal, computeSectionSubtotal, seccionesConContenido } from '../utils/carpentryCalculations';
 
 interface DocumentViewerProps {
@@ -177,16 +178,19 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({ type, data, onCl
   return (
     <div id="document-overlay" className="fixed inset-0 bg-[#0b141a]/95 z-[100] flex flex-col items-center overflow-y-auto animate-fade-in backdrop-blur-sm">
       {/* Toolbar */}
-      <div className="sticky top-0 w-full bg-[#202c33] p-4 flex justify-between items-center shadow-lg z-50 no-print border-b border-gray-700">
+      {/* flex-wrap: en una ventana estrecha esta barra no cabía en una línea y
+          empujaba fuera de la pantalla los botones de compartir e imprimir,
+          que son justo a lo que se viene. Ahora bajan a la línea siguiente. */}
+      <div className="sticky top-0 w-full bg-[#202c33] p-3 sm:p-4 flex flex-wrap justify-between items-center gap-2 shadow-lg z-50 no-print border-b border-gray-700">
         <button 
             onClick={onClose} 
             className="text-[#e9edef] hover:text-[#00a884] transition flex items-center gap-2 font-medium text-lg"
         >
           <i className="fa-solid fa-arrow-left bg-[#37404a] p-2 rounded-full w-10 h-10 flex items-center justify-center"></i>
-          Volver al Chat
+          <span className="hidden sm:inline">Volver al Chat</span>
         </button>
 
-        <div className="flex gap-3 items-center">
+        <div className="flex flex-wrap gap-2 items-center justify-end">
             {digitalSignature && (
               <>
                 <div className="flex items-center gap-2 bg-[#37404a] px-4 py-2 rounded-full">
@@ -255,15 +259,20 @@ interface SignatureProps {
 }
 
 const QuoteTemplate = ({ data, businessLogo, userProfile, signature, scale, position, showSignature, onDragStart, onDrag, onDragEnd }: { data: QuoteData, businessLogo?: string, userProfile?: UserProfileData | null } & Partial<SignatureProps>) => {
-    // Generar datos para el QR (información de contacto del negocio)
-    const qrData = encodeURIComponent(`BEGIN:VCARD
-VERSION:3.0
-FN:${userProfile?.businessName || ''}
-ORG:${userProfile?.businessName || ''}
-TEL:${userProfile?.phone || ''}
-ADR:;;${userProfile?.address || ''};${userProfile?.city || ''};${userProfile?.country || ''}
-END:VCARD`);
-    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${qrData}`;
+    // El QR lleva al catálogo, que es lo que promete el texto de debajo.
+    // Antes codificaba una vCard con los datos del negocio: al escanearlo se
+    // guardaba un contacto y no se llegaba a ninguna parte. Es el mismo enlace
+    // que el QR del catálogo y el que se manda en los documentos compartidos.
+    // getCurrentUserId lanza si no hay sesión, y esto corre al pintar: sin el
+    // resguardo, un documento abierto sin sesión tumbaría la pantalla entera.
+    const enlaceCatalogo = (() => {
+      try {
+        return catalogPageUrl(getCurrentUserId());
+      } catch {
+        return WORKY_APP_URL;
+      }
+    })();
+    const qrCodeUrl = qrImageUrl(enlaceCatalogo, 120);
     
     return (
     <div className="p-16 h-full relative bg-white">
