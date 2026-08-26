@@ -35,7 +35,12 @@ export const reducirImagen = (src: string): Promise<string> =>
         const ctx = canvas.getContext('2d');
         if (!ctx) return resolve(src);
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        resolve(canvas.toDataURL('image/jpeg', CALIDAD));
+
+        // Un PNG puede traer transparencia —logos, firmas— y en JPEG lo
+        // transparente sale negro. Se le respeta el formato: lo que importa
+        // aquí es el tamaño, y reducirlo ya quita el grueso del peso.
+        const esPng = src.startsWith('data:image/png');
+        resolve(esPng ? canvas.toDataURL('image/png') : canvas.toDataURL('image/jpeg', CALIDAD));
       } catch {
         resolve(src);
       }

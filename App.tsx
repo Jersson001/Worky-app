@@ -10,6 +10,7 @@ import CatalogShareModal from './components/CatalogShareModal';
 import { recordarVendedorDeLaUrl, vendedorPendiente, olvidarVendedorPendiente, pedidoPendiente, olvidarPedidoPendiente, llegoInvitado, olvidarLlegadaInvitada } from './services/catalogShareService';
 import { uploadFileForChat } from './services/storageService';
 import { describeError } from './utils/errorMessage';
+import { leerImagenReducida } from './utils/imagen';
 import { newId } from './utils/id';
 import { StatusView } from './components/StatusView';
 import { WalletModal } from './components/WalletModal';
@@ -949,6 +950,8 @@ const App: React.FC = () => {
   const [newProductImages, setNewProductImages] = useState<string[]>([]);
   const [newProductCategory, setNewProductCategory] = useState('');
   const [isEnhancingImage, setIsEnhancingImage] = useState(false);
+  /** Cuántas fotos se están reduciendo ahora mismo, para no parecer colgado. */
+  const [fotosProcesando, setFotosProcesando] = useState(0);
   const [imageEnhancementSuggestions, setImageEnhancementSuggestions] = useState<string>('');
   const [detectedFeatures, setDetectedFeatures] = useState<string[]>([]);
   const [showCategoryForm, setShowCategoryForm] = useState(false);
@@ -1707,11 +1710,11 @@ const App: React.FC = () => {
   const handleCategoryCoverImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        setNewCategoryCoverImage(event.target?.result as string);
-      };
-      reader.readAsDataURL(file);
+      setFotosProcesando(n => n + 1);
+      void leerImagenReducida(file).then(reducida => {
+        setFotosProcesando(n => Math.max(0, n - 1));
+        if (reducida) setNewCategoryCoverImage(reducida);
+      });
     }
   };
 
@@ -1762,21 +1765,29 @@ const App: React.FC = () => {
     }
   };
 
+  /**
+   * Fotos del producto.
+   *
+   * Se reducen antes de guardarlas: una foto de móvil son unos 10 MB en base64
+   * y van dentro de la fila del producto, así que con dos o tres la escritura
+   * se pasaba del tiempo máximo y Supabase la abortaba —el error 57014, "no se
+   * pudo guardar y se perderá al recargar"—. Reducirlas también acelera el
+   * análisis con IA, que hasta ahora recibía la imagen entera.
+   *
+   * Mientras se procesan se avisa en pantalla: sin eso, el formulario parece
+   * colgado y da la sensación de que el botón no responde.
+   */
   const handleProductMultipleImagesUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files) {
       const fileArray = Array.from(files);
-      console.log('Uploading images:', fileArray.length);
+      setFotosProcesando(n => n + fileArray.length);
 
       fileArray.forEach((file, idx) => {
-        const reader = new FileReader();
-        reader.onload = async (event) => {
-          const result = event.target?.result as string;
-          console.log('Image loaded, size:', result.length);
-          setNewProductImages(prev => {
-            console.log('Current images:', prev.length);
-            return [...prev, result];
-          });
+        void leerImagenReducida(file).then(async result => {
+          setFotosProcesando(n => Math.max(0, n - 1));
+          if (!result) return;
+          setNewProductImages(prev => [...prev, result]);
 
           // Analizar la primera imagen con IA
           if (idx === 0 && !newProductDescription) {
@@ -1792,8 +1803,7 @@ const App: React.FC = () => {
               setIsEnhancingImage(false);
             }
           }
-        };
-        reader.readAsDataURL(file);
+        });
       });
     }
   };
@@ -3020,6 +3030,22 @@ const App: React.FC = () => {
                           )}
                         </div>
                       </div>
+
+                      {/* Reducción de las fotos: es lo primero que ocurre al
+                          elegirlas, y sin avisar parecía que no pasaba nada. */}
+                      {fotosProcesando > 0 && (
+                        <div className="mb-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
+                          <div className="flex items-center gap-3">
+                            <i className="fa-solid fa-circle-notch fa-spin text-slate-500"></i>
+                            <div className="flex-1">
+                              <p className="text-sm font-semibold text-slate-700">
+                                Preparando {fotosProcesando} {fotosProcesando === 1 ? 'foto' : 'fotos'}…
+                              </p>
+                              <p className="text-xs text-slate-500">Se aligeran para que el producto se guarde rápido</p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
 
                       {/* AI Enhancement Status & Suggestions */}
                       {isEnhancingImage && (
