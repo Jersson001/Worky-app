@@ -150,6 +150,8 @@ const App: React.FC = () => {
    * todavía lanza porque el id se asigna después, en onAuthStateChange.
    */
   const [uidSesion, setUidSesion] = useState<string | null>(null);
+  /** Alta exprés: quien llega invitado desde un catálogo se salta el perfil de negocio. */
+  const [altaExpres, setAltaExpres] = useState(false);
 
   /** Quién le mandó el catálogo, si llegó por un QR. Solo para saludarle por su nombre. */
   const [invitadoPor, setInvitadoPor] = useState<{ name: string; avatar?: string } | null>(null);
@@ -540,6 +542,43 @@ const App: React.FC = () => {
       throw new Error(`No se pudo guardar el perfil. Intenta de nuevo. (${errorMsg})`);
     }
   };
+
+  /**
+   * Alta exprés para quien llega desde un catálogo.
+   *
+   * Ese visitante no viene a montar un negocio: viene a escribirle a alguien.
+   * Pedirle nombre del negocio, tipo, ciudad y logo antes de dejarle mandar un
+   * mensaje es el paso donde se cae. Con lo que ya escribió al registrarse
+   * —nombre, correo y celular— hay de sobra para crearle el perfil y llevarle
+   * al chat; lo demás lo puede completar después si algún día vende.
+   */
+  useEffect(() => {
+    if (!needsOnboarding || altaExpres || !vendedorPendiente()) return;
+
+    const { email, phone, fullName } = registrationData;
+    if (!fullName && !email) return; // sin datos no hay perfil que guardar
+
+    setAltaExpres(true);
+    handleOnboardingComplete({
+      businessName: fullName || email,
+      ownerName: fullName || '',
+      phone,
+      businessType: '',
+      businessLogo: '',
+      username: '',
+      password: '',
+      email,
+      nit: '',
+      address: '',
+      city: '',
+      country: 'Colombia',
+    }).catch(e => {
+      // Si no se puede guardar, se le enseña el formulario de siempre en vez
+      // de dejarle atascado en una pantalla de espera.
+      console.warn('No se pudo dar de alta sin formulario:', e);
+      setAltaExpres(false);
+    });
+  }, [needsOnboarding, altaExpres, registrationData]);
 
   // Manejar el registro (mostrar onboarding)
   const handleRegister = (email: string, phone: string, fullName: string) => {
@@ -1993,6 +2032,17 @@ const App: React.FC = () => {
   }
 
   // Mostrar onboarding si es usuario nuevo
+  if (needsOnboarding && altaExpres) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-slate-50 text-slate-500 font-sans">
+        <div className="text-center">
+          <i className="fa-solid fa-circle-notch fa-spin text-2xl text-blue-500 mb-3 block"></i>
+          <p className="text-sm font-semibold">Preparando tu cuenta…</p>
+        </div>
+      </div>
+    );
+  }
+
   if (needsOnboarding) {
     return (
       <WelcomeOnboarding

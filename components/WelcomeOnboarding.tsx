@@ -92,7 +92,7 @@ export const WelcomeOnboarding: React.FC<WelcomeOnboardingProps> = ({ onComplete
           <div className="text-center mb-12 animate-fade-in">
             <img src="/worky-logo-2.png" alt="Worky" className="w-64 mx-auto mb-8" />
             <h1 className="text-5xl font-bold text-white mb-3 tracking-tight">
-              ¡Bienvenido a Worky Pro! 🎉
+              ¡Bienvenido a Worky! 🎉
             </h1>
             <p className="text-purple-200 text-xl">
               Configura tu perfil de negocio
