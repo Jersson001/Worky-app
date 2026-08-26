@@ -7,6 +7,7 @@ import ProFeatureGuard from './components/ProFeatureGuard';
 import AdminPanel from './components/AdminPanel';
 import { generateProductDescription } from './services/geminiService';
 import CatalogShareModal from './components/CatalogShareModal';
+import { recordarVendedorDeLaUrl, vendedorPendiente, olvidarVendedorPendiente } from './services/catalogShareService';
 import { describeError } from './utils/errorMessage';
 import { newId } from './utils/id';
 import { StatusView } from './components/StatusView';
@@ -24,7 +25,7 @@ import { Contact, Message, UserStatus, ProjectStage, Product, Expense, Story, Pa
 import { LoginScreen } from './components/LoginScreen';
 import { WelcomeOnboarding } from './components/WelcomeOnboarding';
 import { authService } from './services/authService';
-import { sendMessage as sendMessageToFirebase, listenToMessages, listenToContacts, addContact, deleteContact, saveUserProfile, getUserProfile, initializeUserId, setCurrentUserId, getCurrentUserId, searchUserByPhoneOrEmail, addContactFromSearch, deleteMessage, updateMessage, listenToGlobalIncomingMessages, markChatAsRead, markMessagesAsDelivered, markMessagesAsRead } from './services/messagingService';
+import { sendMessage as sendMessageToFirebase, listenToMessages, listenToContacts, addContact, deleteContact, saveUserProfile, getUserProfile, initializeUserId, setCurrentUserId, getCurrentUserId, searchUserByPhoneOrEmail, addContactFromSearch, deleteMessage, updateMessage, listenToGlobalIncomingMessages, markChatAsRead, markMessagesAsDelivered, markMessagesAsRead, getPublicInfoById } from './services/messagingService';
 import { saveProduct, deleteProduct, listenToProducts, saveCategory, deleteCategory, listenToCategories, saveProject, updateProject, addExpenseToProject, updateContactWithProjects, listenToPaymentAccounts, savePaymentAccount, deletePaymentAccount, PaymentAccountData, fetchProjectsForContact, listenToProjects } from './services/dataService';
 import { supabase } from './services/supabaseConfig';
 
@@ -140,6 +141,8 @@ const App: React.FC = () => {
   const [mobileTab, setMobileTab] = useState<'home' | 'chats'>('home');
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
   const [sharedDocumentId, setSharedDocumentId] = useState<string | null>(null);
+  /** Quién le mandó el catálogo, si llegó por un QR. Solo para saludarle por su nombre. */
+  const [invitadoPor, setInvitadoPor] = useState<{ name: string; avatar?: string } | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const [activeToast, setActiveToast] = useState<{
     id: string;
@@ -157,6 +160,76 @@ const App: React.FC = () => {
       setSharedDocumentId(viewParam);
     }
   }, []);
+
+  // Quien llega desde un catálogo trae consigo a quién se lo mandó. Se guarda
+  // antes de nada, porque el registro puede pasar por confirmación de correo y
+  // la URL no sobrevive a ese viaje.
+  useEffect(() => {
+    const vendedor = recordarVendedorDeLaUrl();
+    if (!vendedor) return;
+    getPublicInfoById(vendedor).then(info => {
+      if (info) setInvitadoPor({ name: info.name, avatar: info.avatar });
+    });
+  }, []);
+
+  /**
+   * Cierra el recorrido del QR: al terminar de entrar, el cliente se encuentra
+   * la conversación con quien le mandó el catálogo ya abierta.
+   *
+   * Se hace aquí y no al registrarse porque el mismo enlace lo puede abrir
+   * alguien que ya tiene cuenta: así vale para los dos casos.
+   */
+  useEffect(() => {
+    if (!isAuthenticated || needsOnboarding) return;
+
+    const vendedor = vendedorPendiente();
+    if (!vendedor) return;
+
+    let cancelado = false;
+
+    (async () => {
+      const yo = getCurrentUserId();
+      // Sin sesión todavía, o es su propio catálogo: no hay nada que vincular.
+      if (!yo || vendedor === yo) {
+        olvidarVendedorPendiente();
+        return;
+      }
+
+      try {
+        const info = await getPublicInfoById(vendedor);
+        const nombre = info?.name || 'Worky';
+        const contacto: Contact = {
+          id: vendedor,
+          clientName: nombre,
+          avatar: info?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(nombre)}&background=random`,
+          phone: '',
+          status: UserStatus.Lead,
+          // Desde el lado del cliente, quien le vende es un proveedor.
+          role: 'supplier',
+          projects: [],
+          lastMessage: '',
+          lastMessageTime: new Date(),
+          unreadCount: 0,
+        };
+
+        // add_contact_mutual resuelve el conflicto si ya estaban en contacto,
+        // así que no hace falta mirar antes si existe.
+        await addContact(contacto);
+        if (cancelado) return;
+
+        setContacts(prev => prev.some(c => c.id === vendedor) ? prev : [contacto, ...prev]);
+        setMessages(prev => ({ ...prev, [vendedor]: prev[vendedor] || [] }));
+        setSelectedContactId(vendedor);
+        olvidarVendedorPendiente();
+      } catch (e) {
+        // Si falla se deja pendiente: lo volverá a intentar la próxima vez que
+        // entre, en vez de perder la vinculación en silencio.
+        console.warn('No se pudo vincular con quien compartió el catálogo:', e);
+      }
+    })();
+
+    return () => { cancelado = true; };
+  }, [isAuthenticated, needsOnboarding]);
 
   // ── Supabase Auth: onAuthStateChange ──
   // This is the single source of truth for authentication state.
@@ -1835,7 +1908,7 @@ const App: React.FC = () => {
 
   // Mostrar pantalla de login si no está autenticado
   if (!isAuthenticated) {
-    return <LoginScreen onLogin={handleLogin} onRegister={handleRegister} />;
+    return <LoginScreen onLogin={handleLogin} onRegister={handleRegister} invitadoPor={invitadoPor} />;
   }
 
   // Mostrar spinner mientras carga el perfil (evita pantalla negra)

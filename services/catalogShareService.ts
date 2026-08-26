@@ -86,6 +86,17 @@ const ultimaInstantanea = async (userId: string): Promise<string | null> => {
 export const catalogPageUrl = (userId: string): string =>
   `${WORKY_APP_URL}/?catalogo=${userId}`;
 
+/**
+ * Enlace de «Chatear»: entra a la app diciendo con quién quiere hablar.
+ *
+ * Es lo que convierte un QR escaneado en una conversación. La app se guarda ese
+ * id mientras el visitante se registra y, al terminar, le crea el contacto y le
+ * abre el chat: sin esto aterrizaba en una app vacía sin saber con quién
+ * estaba hablando.
+ */
+export const chatInviteUrl = (userId: string): string =>
+  `${WORKY_APP_URL}/?vendedor=${userId}`;
+
 /** Baja la instantánea vigente. La usa la página pública del catálogo. */
 export const fetchCatalogHtml = async (userId: string): Promise<string | null> => {
   try {
@@ -96,6 +107,50 @@ export const fetchCatalogHtml = async (userId: string): Promise<string | null> =
     return res.ok ? await res.text() : null;
   } catch {
     return null;
+  }
+};
+
+// ─── Vendedor pendiente ──────────────────────────────────────────────────────
+
+const VENDEDOR_KEY = 'worky:vendedor-pendiente';
+
+/**
+ * Se queda con el `?vendedor=` del enlace y limpia la URL.
+ *
+ * Hace falta guardarlo porque entre que llega y termina de registrarse hay un
+ * camino largo —formulario, confirmación por correo, onboarding— y en algún
+ * punto la URL se pierde. Sin esto, el cliente aterriza en una app vacía sin
+ * saber con quién iba a hablar, que es justo lo que se quería evitar.
+ */
+export const recordarVendedorDeLaUrl = (): string | null => {
+  try {
+    const url = new URL(window.location.href);
+    const vendedor = url.searchParams.get('vendedor');
+    if (vendedor) {
+      localStorage.setItem(VENDEDOR_KEY, vendedor);
+      // La URL se limpia para que recargar no reviva una invitación ya usada.
+      url.searchParams.delete('vendedor');
+      window.history.replaceState({}, '', url.toString());
+    }
+    return vendedor || localStorage.getItem(VENDEDOR_KEY);
+  } catch {
+    return null;
+  }
+};
+
+export const vendedorPendiente = (): string | null => {
+  try {
+    return localStorage.getItem(VENDEDOR_KEY);
+  } catch {
+    return null;
+  }
+};
+
+export const olvidarVendedorPendiente = (): void => {
+  try {
+    localStorage.removeItem(VENDEDOR_KEY);
+  } catch {
+    /* sin localStorage no hay nada que olvidar */
   }
 };
 
@@ -121,6 +176,7 @@ const productCard = (p: Product): string => {
 export const buildCatalogHtml = (
   profile: Pick<UserProfileData, 'businessName' | 'ownerName' | 'phone' | 'city' | 'businessLogo'>,
   products: Product[],
+  userId?: string,
 ): string => {
   const negocio = esc(profile.businessName || profile.ownerName || 'Catálogo');
   const cards = products.map(productCard).join('');
@@ -171,7 +227,7 @@ export const buildCatalogHtml = (
     <div class="cta">
       <h2>¿Te interesa algo?</h2>
       <p>Escríbenos por Worky para cotizar, preguntar por disponibilidad o hacer un pedido.</p>
-      <a class="btn" href="${WORKY_APP_URL}" target="_blank" rel="noopener">Chatear con ${negocio}</a>
+      <a class="btn" href="${userId ? chatInviteUrl(userId) : WORKY_APP_URL}" target="_blank" rel="noopener">Chatear con ${negocio}</a>
     </div>
 
     <footer>
@@ -244,7 +300,7 @@ export const publishCatalog = async (
   profile: Parameters<typeof buildCatalogHtml>[0],
   products: Product[],
 ): Promise<string> => {
-  const html = buildCatalogHtml(profile, await prepararProductos(products));
+  const html = buildCatalogHtml(profile, await prepararProductos(products), userId);
   // Sin `upsert`: cada publicación es un archivo nuevo, ver nuevaInstantanea.
   const { error } = await supabase.storage
     .from(PUBLIC_BUCKET)

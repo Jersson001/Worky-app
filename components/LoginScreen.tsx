@@ -5,6 +5,12 @@ import { setCurrentUserId } from '../services/messagingService';
 interface LoginScreenProps {
   onLogin: () => void;
   onRegister: (email: string, phone: string, fullName: string) => void;
+  /**
+   * Quién le compartió el catálogo, cuando llega escaneando un QR. Se le
+   * enseña para que sepa dónde está entrando y por qué: sin esto, el salto del
+   * catálogo a una pantalla de registro parece de otra app.
+   */
+  invitadoPor?: { name: string; avatar?: string } | null;
 }
 
 // Si el registro quedó pendiente de confirmar por correo (signUp sin sesión),
@@ -58,7 +64,7 @@ const getAuthErrorMessage = (err: any): string => {
   return err?.message ? `Error de Supabase: ${err.message}` : 'Error de autenticación. Inténtalo de nuevo.';
 };
 
-export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister }) => {
+export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister, invitadoPor }) => {
   const [email, setEmail] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -283,6 +289,18 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister })
           </p>
         </div>
       </div>
+
+      {/* Quien llega desde un catálogo: se le dice con quién va a hablar */}
+      {invitadoPor && (
+        <div className="absolute top-0 inset-x-0 z-20 bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2.5 flex items-center justify-center gap-3 shadow-md">
+          {invitadoPor.avatar && (
+            <img src={invitadoPor.avatar} alt="" className="w-8 h-8 rounded-full object-cover border-2 border-white/40" />
+          )}
+          <p className="text-sm font-semibold text-center">
+            Crea tu cuenta y hablas directo con <span className="font-extrabold">{invitadoPor.name}</span>
+          </p>
+        </div>
+      )}
 
       {/* Panel derecho - Formulario */}
       <div className="w-full md:w-1/2 flex items-center justify-center min-h-screen overflow-y-auto p-6 relative z-10" style={{ WebkitOverflowScrolling: 'touch' }}>

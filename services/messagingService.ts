@@ -787,6 +787,36 @@ export const searchUserByPhoneOrEmail = async (
   return pub ? buildResult(pub) : { userId: legacy.user_id, name: 'Usuario', phone: term };
 };
 
+/**
+ * Datos públicos de un usuario a partir de su id.
+ *
+ * No necesita sesión —`public_info` es de lectura pública— porque quien la
+ * consulta es alguien que acaba de escanear un QR y todavía no tiene cuenta:
+ * hace falta para decirle a quién pertenece el catálogo que está mirando.
+ */
+export const getPublicInfoById = async (
+  userId: string
+): Promise<{ userId: string; name: string; avatar?: string } | null> => {
+  if (!userId?.trim()) return null;
+
+  const { data, error } = await supabase
+    .from('public_info')
+    .select('user_id, display_name, avatar_url')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (error || !data) {
+    if (error) console.warn('No se pudo leer public_info:', error.message);
+    return null;
+  }
+
+  return {
+    userId: data.user_id,
+    name: data.display_name || 'Usuario',
+    avatar: data.avatar_url || undefined,
+  };
+};
+
 export const addContactFromSearch = async (foundUser: {
   userId: string;
   name?: string;
