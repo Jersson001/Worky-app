@@ -2827,7 +2827,7 @@ const App: React.FC = () => {
                                 setCatalogView('products');
                                 setShowProductForm(true);
                               }}
-                              className="absolute top-2 right-2 w-8 h-8 bg-purple-600 text-white rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition flex items-center justify-center hover:bg-purple-700"
+                              className="absolute top-2 right-2 w-8 h-8 bg-purple-600 text-white rounded-full shadow-lg opacity-100 md:opacity-0 md:group-hover:opacity-100 transition flex items-center justify-center hover:bg-purple-700"
                               title="Agregar producto a esta carpeta"
                             >
                               <i className="fa-solid fa-plus"></i>
@@ -2839,7 +2839,7 @@ const App: React.FC = () => {
                                 e.stopPropagation();
                                 handleDeleteCategory(category.id);
                               }}
-                              className="absolute top-2 left-2 w-8 h-8 bg-red-500 text-white rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition flex items-center justify-center hover:bg-red-600"
+                              className="absolute top-2 left-2 w-8 h-8 bg-red-500 text-white rounded-full shadow-lg opacity-100 md:opacity-0 md:group-hover:opacity-100 transition flex items-center justify-center hover:bg-red-600"
                             >
                               <i className="fa-solid fa-trash text-xs"></i>
                             </button>
@@ -3152,8 +3152,10 @@ const App: React.FC = () => {
                             )}
                           </div>
 
-                          {/* Action Buttons */}
-                          <div className="absolute top-2 left-2 flex gap-1 opacity-0 group-hover:opacity-100 transition">
+                          {/* Action Buttons — visibles siempre en móvil: aparecían solo al
+                              pasar el ratón, y en un teléfono no hay ratón, así que editar y
+                              borrar un producto era imposible desde el móvil. */}
+                          <div className="absolute top-2 left-2 flex gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition">
                             <button
                               onClick={(e) => { e.stopPropagation(); handleEditProduct(product); setShowProductForm(true); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
                               className="w-8 h-8 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition flex items-center justify-center shadow-lg"
