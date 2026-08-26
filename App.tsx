@@ -142,6 +142,15 @@ const App: React.FC = () => {
   const [mobileTab, setMobileTab] = useState<'home' | 'chats'>('home');
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
   const [sharedDocumentId, setSharedDocumentId] = useState<string | null>(null);
+  /**
+   * Id de la sesión, puesto cuando ya se puede usar de verdad.
+   *
+   * No vale mirar `isAuthenticated`: se activa nada más entrar, para que la
+   * pantalla responda al instante, y en ese momento `getCurrentUserId()`
+   * todavía lanza porque el id se asigna después, en onAuthStateChange.
+   */
+  const [uidSesion, setUidSesion] = useState<string | null>(null);
+
   /** Quién le mandó el catálogo, si llegó por un QR. Solo para saludarle por su nombre. */
   const [invitadoPor, setInvitadoPor] = useState<{ name: string; avatar?: string } | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
@@ -237,7 +246,7 @@ const App: React.FC = () => {
    * alguien que ya tiene cuenta: así vale para los dos casos.
    */
   useEffect(() => {
-    if (!isAuthenticated || needsOnboarding) return;
+    if (!uidSesion || needsOnboarding) return;
 
     const vendedor = vendedorPendiente();
     if (!vendedor) return;
@@ -245,9 +254,8 @@ const App: React.FC = () => {
     let cancelado = false;
 
     (async () => {
-      const yo = getCurrentUserId();
-      // Sin sesión todavía, o es su propio catálogo: no hay nada que vincular.
-      if (!yo || vendedor === yo) {
+      // Su propio catálogo: no hay nada que vincular.
+      if (vendedor === uidSesion) {
         olvidarVendedorPendiente();
         return;
       }
@@ -288,7 +296,7 @@ const App: React.FC = () => {
     })();
 
     return () => { cancelado = true; };
-  }, [isAuthenticated, needsOnboarding]);
+  }, [uidSesion, needsOnboarding]);
 
   // ── Supabase Auth: onAuthStateChange ──
   // This is the single source of truth for authentication state.
@@ -311,6 +319,7 @@ const App: React.FC = () => {
         setIsLoadingProfile(true);
         setCurrentUserId(user.id, user.email || user.phone || '');
         await initializeUserId();
+        setUidSesion(user.id);
 
         // Try to load profile from Supabase
         unsubProfileRef?.();
@@ -334,6 +343,7 @@ const App: React.FC = () => {
         subscribedUserId = null;
         unsubProfileRef?.();
         unsubProfileRef = null;
+        setUidSesion(null);
         setIsAuthenticated(false);
         setUserProfile(null);
         setNeedsOnboarding(false);
