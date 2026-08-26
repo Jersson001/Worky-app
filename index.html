@@ -234,6 +234,22 @@
           /* En pantalla la hoja se reduce para caber en ventanas estrechas.
              Al imprimir manda el papel, así que vuelve a su tamaño real. */
           zoom: 1 !important;
+          /* Y tiene que poder crecer: con el alto fijo y el desbordamiento
+             oculto de la pantalla, lo que no cabía en la primera página no
+             pasaba a la segunda, se perdía. */
+          overflow: visible !important;
+          min-height: 0 !important;
+          height: auto !important;
+        }
+        /* El documento se muestra en una capa fija a pantalla completa, y lo
+           fijo no pagina: al imprimir vuelve a ser flujo normal. */
+        #document-overlay {
+          position: static !important;
+          display: block !important;
+          overflow: visible !important;
+          height: auto !important;
+          background: #fff !important;
+          backdrop-filter: none !important;
         }
         .no-print-controls {
           cursor: default !important;

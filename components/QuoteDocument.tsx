@@ -1,6 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { QuoteData, InvoiceData, ReceiptData, CollectionAccountData, UserProfileData } from '../types';
+import { formatCurrency } from '../utils/currency';
 import { shareQuoteViaWhatsApp, shareInvoiceViaWhatsApp, openWhatsApp, generateDocumentId, saveSharedDocument, generateDocumentViewLink } from '../services/whatsappService';
 import { publishCatalogForCurrentUser } from '../services/catalogShareService';
 import { computeLineSubtotal, computeGroupSubtotal, computeSectionSubtotal, seccionesConContenido } from '../utils/carpentryCalculations';
@@ -144,7 +145,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({ type, data, onCl
   };
 
   return (
-    <div className="fixed inset-0 bg-[#0b141a]/95 z-[100] flex flex-col items-center overflow-y-auto animate-fade-in backdrop-blur-sm">
+    <div id="document-overlay" className="fixed inset-0 bg-[#0b141a]/95 z-[100] flex flex-col items-center overflow-y-auto animate-fade-in backdrop-blur-sm">
       {/* Toolbar */}
       <div className="sticky top-0 w-full bg-[#202c33] p-4 flex justify-between items-center shadow-lg z-50 no-print border-b border-gray-700">
         <button 
@@ -196,7 +197,9 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({ type, data, onCl
         onMouseMove={(e) => isDragging && setSignaturePosition({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y })}
         onMouseUp={() => setIsDragging(false)}
       >
-        <div id="printable-area" style={{ zoom: escala }} className="bg-white text-black w-[850px] max-w-full min-h-[1100px] shadow-2xl relative rounded-sm animate-slide-in-top overflow-hidden">
+        {/* pb-14: el pie "Generado con Worky" va posicionado abajo del todo, y
+            sin este hueco tapaba la última línea del documento. */}
+        <div id="printable-area" style={{ zoom: escala }} className="bg-white text-black w-[850px] max-w-full min-h-[1100px] pb-14 shadow-2xl relative rounded-sm animate-slide-in-top overflow-hidden">
             {renderContent()}
             
             {/* Global Footer (Optional) */}
@@ -302,19 +305,19 @@ END:VCARD`);
                                                     <tr key={item.id} className="border-t border-gray-100">
                                                         <td className="py-2 px-3 text-sm text-gray-800">{item.description}</td>
                                                         <td className="py-2 px-2 text-center text-xs text-gray-500 w-20">{item.quantity} {item.unit}{(item.unit === 'ML' || item.unit === 'M2') && item.measure ? ` × ${item.measure}` : ''}</td>
-                                                        <td className="py-2 px-3 text-right text-sm text-gray-700 w-28">${item.unitCost.toLocaleString()}</td>
-                                                        <td className="py-2 px-3 text-right text-sm font-bold text-gray-900 w-28">${computeLineSubtotal(item).toLocaleString()}</td>
+                                                        <td className="py-2 px-3 text-right text-sm text-gray-700 w-28">{formatCurrency(item.unitCost)}</td>
+                                                        <td className="py-2 px-3 text-right text-sm font-bold text-gray-900 w-28">{formatCurrency(computeLineSubtotal(item))}</td>
                                                     </tr>
                                                 ))}
                                             </tbody>
                                         </table>
                                         <div className="flex justify-end px-3 py-1.5 bg-gray-50 border-t border-gray-100">
-                                            <span className="text-xs font-semibold text-gray-600">Subtotal {group.label}: ${computeGroupSubtotal(group).toLocaleString()}</span>
+                                            <span className="text-xs font-semibold text-gray-600">Subtotal {group.label}: {formatCurrency(computeGroupSubtotal(group))}</span>
                                         </div>
                                     </div>
                                 ))}
                                 <div className="flex justify-end px-3 py-2 bg-blue-50 border-t border-blue-100">
-                                    <span className="text-sm font-bold text-blue-700">Subtotal {section.name}: ${computeSectionSubtotal(section).toLocaleString()}</span>
+                                    <span className="text-sm font-bold text-blue-700">Subtotal {section.name}: {formatCurrency(computeSectionSubtotal(section))}</span>
                                 </div>
                             </div>
                         </div>
@@ -353,8 +356,8 @@ END:VCARD`);
                                 </div>
                             </td>
                             <td className="py-3 px-2 text-center text-sm text-gray-700">{item.quantity}</td>
-                            <td className="py-3 px-3 text-right text-sm text-gray-700">${item.price.toLocaleString()}</td>
-                            <td className="py-3 px-3 text-right text-sm font-bold text-gray-900">${(item.price * item.quantity).toLocaleString()}</td>
+                            <td className="py-3 px-3 text-right text-sm text-gray-700">{formatCurrency(item.price)}</td>
+                            <td className="py-3 px-3 text-right text-sm font-bold text-gray-900">{formatCurrency((item.price * item.quantity))}</td>
                         </tr>
                     ))}
                 </tbody>
@@ -369,7 +372,7 @@ END:VCARD`);
                     <div className="bg-gray-50 p-4 rounded-lg mb-3">
                         <div className="flex justify-between py-2 text-gray-700">
                             <span>Subtotal</span>
-                            <span className="font-semibold">${(data.subtotal || data.total).toLocaleString()}</span>
+                            <span className="font-semibold">{formatCurrency((data.subtotal || data.total))}</span>
                         </div>
                         {data.taxAmount && data.taxAmount > 0 && (
                             <>
@@ -391,23 +394,23 @@ END:VCARD`);
                                                 <>
                                                     <div className="flex justify-between py-2 text-gray-700 border-t border-gray-200">
                                                         <span>Administración ({adminPorcentaje}%)</span>
-                                                        <span className="font-semibold">${administracion.toLocaleString()}</span>
+                                                        <span className="font-semibold">{formatCurrency(administracion)}</span>
                                                     </div>
                                                     <div className="flex justify-between py-2 text-gray-700">
                                                         <span>Imprevistos ({imprevistosPorcentaje}%)</span>
-                                                        <span className="font-semibold">${imprevistos.toLocaleString()}</span>
+                                                        <span className="font-semibold">{formatCurrency(imprevistos)}</span>
                                                     </div>
                                                     <div className="flex justify-between py-2 text-gray-700">
                                                         <span>Utilidad ({utilidadPorcentaje}%)</span>
-                                                        <span className="font-semibold">${utilidad.toLocaleString()}</span>
+                                                        <span className="font-semibold">{formatCurrency(utilidad)}</span>
                                                     </div>
                                                     <div className="flex justify-between py-2 text-gray-700">
                                                         <span>IVA sobre Utilidad ({ivaPorcentaje}%)</span>
-                                                        <span className="font-semibold">${ivaUtilidad.toLocaleString()}</span>
+                                                        <span className="font-semibold">{formatCurrency(ivaUtilidad)}</span>
                                                     </div>
                                                     <div className="flex justify-between py-2 text-gray-700 border-t border-gray-300 font-semibold">
                                                         <span>Total AIU</span>
-                                                        <span>${data.taxAmount.toLocaleString()}</span>
+                                                        <span>{formatCurrency(data.taxAmount)}</span>
                                                     </div>
                                                 </>
                                             );
@@ -420,7 +423,7 @@ END:VCARD`);
                                                 ? `Impuesto (${data.taxPercentage}%)`
                                                 : 'Impuesto'}
                                         </span>
-                                        <span className="font-semibold">${data.taxAmount.toLocaleString()}</span>
+                                        <span className="font-semibold">{formatCurrency(data.taxAmount)}</span>
                                     </div>
                                 )}
                             </>
@@ -430,7 +433,7 @@ END:VCARD`);
                 <div className="bg-blue-600 text-white p-6 rounded-lg shadow-lg">
                     <div className="flex justify-between items-center">
                         <span className="text-lg font-semibold">TOTAL</span>
-                        <span className="text-3xl font-bold">${data.total.toLocaleString()}</span>
+                        <span className="text-3xl font-bold">{formatCurrency(data.total)}</span>
                     </div>
                 </div>
             </div>
@@ -520,8 +523,8 @@ const InvoiceTemplate = ({ data, businessLogo, userProfile, signature, scale, po
                         <tr key={idx} className="border-b border-gray-200 hover:bg-gray-50">
                             <td className="py-4 px-4 text-gray-800 font-medium">{item.description}</td>
                             <td className="py-4 px-3 text-center text-gray-700">{item.quantity}</td>
-                            <td className="py-4 px-4 text-right text-gray-700">${item.price.toLocaleString()}</td>
-                            <td className="py-4 px-4 text-right font-bold text-gray-900">${(item.price * item.quantity).toLocaleString()}</td>
+                            <td className="py-4 px-4 text-right text-gray-700">{formatCurrency(item.price)}</td>
+                            <td className="py-4 px-4 text-right font-bold text-gray-900">{formatCurrency((item.price * item.quantity))}</td>
                         </tr>
                     ))}
                 </tbody>
@@ -534,17 +537,17 @@ const InvoiceTemplate = ({ data, businessLogo, userProfile, signature, scale, po
                 <div className="bg-gray-50 p-4 rounded-lg mb-3">
                     <div className="flex justify-between py-2 text-gray-700">
                         <span>Subtotal</span>
-                        <span className="font-semibold">${data.total.toLocaleString()}</span>
+                        <span className="font-semibold">{formatCurrency(data.total)}</span>
                     </div>
                     <div className="flex justify-between py-2 text-gray-700 border-t border-gray-200">
                         <span>IVA (19%)</span>
-                        <span className="font-semibold">${(data.total * 0.19).toLocaleString()}</span>
+                        <span className="font-semibold">{formatCurrency((data.total * 0.19))}</span>
                     </div>
                 </div>
                 <div className="bg-purple-600 text-white p-6 rounded-lg shadow-lg">
                     <div className="flex justify-between items-center">
                         <span className="text-lg font-semibold">TOTAL</span>
-                        <span className="text-3xl font-bold">${(data.total * 1.19).toLocaleString()}</span>
+                        <span className="text-3xl font-bold">{formatCurrency((data.total * 1.19))}</span>
                     </div>
                 </div>
             </div>
@@ -607,7 +610,7 @@ const CollectionTemplate = ({ data, businessLogo, userProfile, signature, scale,
         {/* Amount Section */}
         <div className="bg-emerald-600 text-white p-8 rounded-lg mb-8 shadow-lg">
             <p className="text-sm uppercase tracking-wider mb-2 opacity-90">La suma de:</p>
-            <p className="text-4xl font-bold mb-4">${data.amount.toLocaleString()}</p>
+            <p className="text-4xl font-bold mb-4">{formatCurrency(data.amount)}</p>
             <p className="text-sm uppercase tracking-wider mb-2 opacity-90">Por concepto de:</p>
             <p className="text-xl font-medium italic">"{data.concept}"</p>
         </div>
@@ -693,7 +696,7 @@ const ReceiptTemplate = ({ data, businessLogo, userProfile, signature, scale, po
                 </div>
                 <div className="bg-emerald-600 text-white p-6 rounded-lg text-center shadow-lg">
                     <p className="text-xs uppercase tracking-wider mb-1">Valor</p>
-                    <p className="text-3xl font-bold">${data.amount.toLocaleString()}</p>
+                    <p className="text-3xl font-bold">{formatCurrency(data.amount)}</p>
                 </div>
             </div>
         </div>
@@ -713,7 +716,7 @@ const ReceiptTemplate = ({ data, businessLogo, userProfile, signature, scale, po
 
             <div className="bg-gray-50 p-5 rounded-lg border-l-4 border-emerald-600">
                 <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">La suma de</p>
-                <p className="text-2xl font-bold text-emerald-700">${data.amount.toLocaleString()}</p>
+                <p className="text-2xl font-bold text-emerald-700">{formatCurrency(data.amount)}</p>
             </div>
 
             <div className="bg-gray-50 p-5 rounded-lg border-l-4 border-emerald-600">
@@ -770,7 +773,7 @@ const ExpenseReceiptTemplate = ({ data, businessLogo, userProfile, signature, sc
                 </div>
                 <div className="bg-rose-600 text-white p-6 rounded-lg text-center shadow-lg">
                     <p className="text-xs uppercase tracking-wider mb-1">Valor</p>
-                    <p className="text-3xl font-bold">-${data.amount.toLocaleString()}</p>
+                    <p className="text-3xl font-bold">-{formatCurrency(data.amount)}</p>
                 </div>
             </div>
         </div>
@@ -792,7 +795,7 @@ const ExpenseReceiptTemplate = ({ data, businessLogo, userProfile, signature, sc
 
             <div className="bg-gray-50 p-5 rounded-lg border-l-4 border-rose-600">
                 <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Monto Gastado</p>
-                <p className="text-2xl font-bold text-rose-700">-${data.amount.toLocaleString()}</p>
+                <p className="text-2xl font-bold text-rose-700">-{formatCurrency(data.amount)}</p>
             </div>
 
             <div className="bg-gray-50 p-5 rounded-lg border-l-4 border-rose-600">
