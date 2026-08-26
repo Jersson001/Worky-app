@@ -81,7 +81,7 @@ export const InvoiceBubble: React.FC<InvoiceBubbleProps> = React.memo(({ msg, co
         {meta.items.map((item: any, idx: number) => (
           <div key={idx} className="flex justify-between border-b border-slate-50 pb-1">
             <span><span className="font-bold">{item.quantity}</span> x {item.description}</span>
-            <span className="font-medium text-slate-600">${(item.price * item.quantity).toLocaleString()}</span>
+            <span className="font-medium text-slate-600">{formatCurrency((item.price * item.quantity))}</span>
           </div>
         ))}
       </div>

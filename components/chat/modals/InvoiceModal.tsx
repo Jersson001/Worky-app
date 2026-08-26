@@ -6,6 +6,7 @@ import { ModalWrapper } from './ModalWrapper';
 import { CurrencyInput } from './CurrencyInput';
 import { InvoiceItem, Project } from '../../../types';
 import { calculateTax, TaxType } from '../../../utils/taxCalculations';
+import { formatCurrency } from '../../../utils/currency';
 
 interface InvoiceModalProps {
   show: boolean;
@@ -115,26 +116,26 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = React.memo(({
         <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2">
           <div className="flex justify-between text-xs text-slate-600 font-semibold">
             <span>Subtotal:</span>
-            <span>${subtotal.toLocaleString()}</span>
+            <span>{formatCurrency(subtotal)}</span>
           </div>
           {taxType !== 'none' && result.taxAmount > 0 && (
             <>
               {taxType === 'aiu' && result.breakdown && (
                 <>
-                  <div className="flex justify-between text-[11px] text-slate-500"><span>Administración (5%):</span><span>${result.breakdown.administracion.toLocaleString()}</span></div>
-                  <div className="flex justify-between text-[11px] text-slate-500"><span>Imprevistos (5%):</span><span>${result.breakdown.imprevistos.toLocaleString()}</span></div>
-                  <div className="flex justify-between text-[11px] text-slate-500"><span>Utilidad (5%):</span><span>${result.breakdown.utilidad.toLocaleString()}</span></div>
-                  <div className="flex justify-between text-[11px] text-slate-500"><span>IVA Utilidad (19%):</span><span>${result.breakdown.ivaUtilidad.toLocaleString()}</span></div>
+                  <div className="flex justify-between text-[11px] text-slate-500"><span>Administración (5%):</span><span>{formatCurrency(result.breakdown.administracion)}</span></div>
+                  <div className="flex justify-between text-[11px] text-slate-500"><span>Imprevistos (5%):</span><span>{formatCurrency(result.breakdown.imprevistos)}</span></div>
+                  <div className="flex justify-between text-[11px] text-slate-500"><span>Utilidad (5%):</span><span>{formatCurrency(result.breakdown.utilidad)}</span></div>
+                  <div className="flex justify-between text-[11px] text-slate-500"><span>IVA Utilidad (19%):</span><span>{formatCurrency(result.breakdown.ivaUtilidad)}</span></div>
                 </>
               )}
               {taxType === 'iva' && (
-                <div className="flex justify-between text-xs text-slate-600 font-semibold"><span>IVA (19%):</span><span>${result.taxAmount.toLocaleString()}</span></div>
+                <div className="flex justify-between text-xs text-slate-600 font-semibold"><span>IVA (19%):</span><span>{formatCurrency(result.taxAmount)}</span></div>
               )}
             </>
           )}
           <div className="flex justify-between text-sm font-bold text-slate-900 border-t border-slate-200 pt-2">
             <span>Total:</span>
-            <span className="text-indigo-600">${result.total.toLocaleString()}</span>
+            <span className="text-indigo-600">{formatCurrency(result.total)}</span>
           </div>
         </div>
 

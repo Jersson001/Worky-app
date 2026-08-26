@@ -1,6 +1,7 @@
 import { supabase, PUBLIC_BUCKET } from './supabaseConfig';
 import { qrImageUrl, WORKY_APP_URL } from './catalogShareService';
 import { buildDocumentHtml } from './documentHtml';
+import { formatCurrency } from '../utils/currency';
 
 /**
  * Pie del documento con el enlace y el QR del catálogo.
@@ -184,7 +185,7 @@ export const generateQuoteMessage = (quoteData: {
       .join('\n\n');
   } else {
     itemsText = quoteData.items
-      .map(item => `• ${item.description} x${item.quantity} - $${item.price.toLocaleString()}`)
+      .map(item => `• ${item.description} x${item.quantity} - ${formatCurrency(item.price)}`)
       .join('\n');
   }
 
@@ -199,7 +200,7 @@ Te envío la cotización solicitada:
 
 ${itemsText}
 
-*Total: $${quoteData.total.toLocaleString()}*${linkText}${catalogText}
+*Total: ${formatCurrency(quoteData.total)}*${linkText}${catalogText}
 ¿Te parece bien? Puedo ajustar cualquier detalle.
 
 Saludos!
@@ -230,7 +231,7 @@ Hola ${invoiceData.clientName},
 
 Te envío la factura correspondiente:
 
-*Total: $${invoiceData.total.toLocaleString()}*${dueDateText}${linkText}${catalogText}
+*Total: ${formatCurrency(invoiceData.total)}*${dueDateText}${linkText}${catalogText}
 Por favor, realiza el pago a la brevedad posible.
 
 ¡Gracias por tu preferencia!
@@ -252,7 +253,7 @@ export const generateProductMessage = (product: {
   
   return `🛍️ *${product.name}*
 
-${descriptionText}*Precio: $${product.price.toLocaleString()}*
+${descriptionText}*Precio: ${formatCurrency(product.price)}*
 
 ¿Te interesa? Puedo darte más información.
 

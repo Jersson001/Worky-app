@@ -4,6 +4,7 @@
 import React from 'react';
 import { ModalWrapper } from './ModalWrapper';
 import { Product } from '../../../types';
+import { formatCurrency } from '../../../utils/currency';
 
 interface ProductPickerModalProps {
   show: boolean;
@@ -29,7 +30,7 @@ export const ProductPickerModal: React.FC<ProductPickerModalProps> = React.memo(
             </div>
             <div className="p-2.5">
               <div className="font-bold text-xs text-slate-800 truncate">{p.name}</div>
-              <div className="text-blue-600 font-bold text-xs mt-1">${p.price.toLocaleString()}</div>
+              <div className="text-blue-600 font-bold text-xs mt-1">{formatCurrency(p.price)}</div>
             </div>
           </div>
         ))}

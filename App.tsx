@@ -29,6 +29,7 @@ import { authService } from './services/authService';
 import { sendMessage as sendMessageToFirebase, listenToMessages, listenToContacts, addContact, deleteContact, saveUserProfile, getUserProfile, initializeUserId, setCurrentUserId, getCurrentUserId, searchUserByPhoneOrEmail, addContactFromSearch, deleteMessage, updateMessage, listenToGlobalIncomingMessages, markChatAsRead, markMessagesAsDelivered, markMessagesAsRead, getPublicInfoById } from './services/messagingService';
 import { saveProduct, deleteProduct, listenToProducts, saveCategory, deleteCategory, listenToCategories, saveProject, updateProject, addExpenseToProject, updateContactWithProjects, listenToPaymentAccounts, savePaymentAccount, deletePaymentAccount, PaymentAccountData, fetchProjectsForContact, listenToProjects } from './services/dataService';
 import { supabase } from './services/supabaseConfig';
+import { formatCurrency } from './utils/currency';
 
 // Mock Data (usado como fallback o inicial)
 const MOCK_CONTACTS: Contact[] = [
@@ -1201,7 +1202,7 @@ const App: React.FC = () => {
                         updatedMessage.type === 'collection_account' ? 'Cuenta de Cobro' : 'Recibo';
         const docNum = updatedMessage.metadata.number || '';
         const docValue = updatedMessage.metadata.amount || updatedMessage.metadata.total || 0;
-        const formattedVal = docValue ? ` por $${docValue.toLocaleString()}` : '';
+        const formattedVal = docValue ? ` por ${formatCurrency(docValue)}` : '';
         const text = `✅ Pago confirmado por el contratista para la ${docType} ${docNum}${formattedVal}.`;
 
         updatedMessage.metadata.confirmationSent = true;

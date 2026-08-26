@@ -799,7 +799,7 @@ export const QuoteModal: React.FC<QuoteModalProps> = React.memo(({
                       <img src={p.image} className="w-8 h-8 rounded object-cover" alt={p.name} />
                       <div className="flex-1 min-w-0">
                         <div className="text-xs font-bold truncate">{p.name}</div>
-                        <div className="text-[10px] text-slate-500">${p.price.toLocaleString()}</div>
+                        <div className="text-[10px] text-slate-500">{formatCurrency(p.price)}</div>
                       </div>
                       <i className="fa-solid fa-plus text-indigo-500"></i>
                     </div>
@@ -908,24 +908,24 @@ export const QuoteModal: React.FC<QuoteModalProps> = React.memo(({
 
         {/* Total Summary */}
         <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 mb-4 space-y-2">
-          <div className="flex justify-between text-xs text-slate-600 font-semibold"><span>Subtotal:</span><span>${subtotal.toLocaleString()}</span></div>
+          <div className="flex justify-between text-xs text-slate-600 font-semibold"><span>Subtotal:</span><span>{formatCurrency(subtotal)}</span></div>
           {taxType !== 'none' && result.taxAmount > 0 && (
             <>
               {taxType === 'aiu' && result.breakdown && (
                 <>
-                  <div className="flex justify-between text-[11px] text-slate-500"><span>Administración ({aiuAdmin}%):</span><span>${result.breakdown.administracion.toLocaleString()}</span></div>
-                  <div className="flex justify-between text-[11px] text-slate-500"><span>Imprevistos ({aiuImprevistos}%):</span><span>${result.breakdown.imprevistos.toLocaleString()}</span></div>
-                  <div className="flex justify-between text-[11px] text-slate-500"><span>Utilidad ({aiuUtilidad}%):</span><span>${result.breakdown.utilidad.toLocaleString()}</span></div>
-                  <div className="flex justify-between text-[11px] text-slate-500"><span>IVA sobre Utilidad ({aiuIva}%):</span><span>${result.breakdown.ivaUtilidad.toLocaleString()}</span></div>
-                  <div className="flex justify-between text-xs font-bold text-blue-700 border-t border-slate-200 pt-1 mt-1"><span>Total AIU:</span><span>${result.taxAmount.toLocaleString()}</span></div>
+                  <div className="flex justify-between text-[11px] text-slate-500"><span>Administración ({aiuAdmin}%):</span><span>{formatCurrency(result.breakdown.administracion)}</span></div>
+                  <div className="flex justify-between text-[11px] text-slate-500"><span>Imprevistos ({aiuImprevistos}%):</span><span>{formatCurrency(result.breakdown.imprevistos)}</span></div>
+                  <div className="flex justify-between text-[11px] text-slate-500"><span>Utilidad ({aiuUtilidad}%):</span><span>{formatCurrency(result.breakdown.utilidad)}</span></div>
+                  <div className="flex justify-between text-[11px] text-slate-500"><span>IVA sobre Utilidad ({aiuIva}%):</span><span>{formatCurrency(result.breakdown.ivaUtilidad)}</span></div>
+                  <div className="flex justify-between text-xs font-bold text-blue-700 border-t border-slate-200 pt-1 mt-1"><span>Total AIU:</span><span>{formatCurrency(result.taxAmount)}</span></div>
                 </>
               )}
               {taxType === 'percentage' && (
-                <div className="flex justify-between text-xs text-slate-600 font-semibold"><span>Impuesto ({taxPercentage}%):</span><span>${result.taxAmount.toLocaleString()}</span></div>
+                <div className="flex justify-between text-xs text-slate-600 font-semibold"><span>Impuesto ({taxPercentage}%):</span><span>{formatCurrency(result.taxAmount)}</span></div>
               )}
             </>
           )}
-          <div className="flex justify-between text-sm font-bold text-slate-900 border-t border-slate-200 pt-2"><span>Total:</span><span className="text-blue-600">${result.total.toLocaleString()}</span></div>
+          <div className="flex justify-between text-sm font-bold text-slate-900 border-t border-slate-200 pt-2"><span>Total:</span><span className="text-blue-600">{formatCurrency(result.total)}</span></div>
         </div>
 
         <button
