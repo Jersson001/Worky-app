@@ -54,6 +54,17 @@ const tablaItems = (items: Array<{ description: string; quantity: number; price:
     </tbody>
   </table>`;
 
+/**
+ * Fotos de un ítem. Hasta tres: viajan como data URL dentro del propio HTML,
+ * así que cada una pesa lo suyo y el documento se manda por WhatsApp.
+ */
+const fotos = (imagenes?: string[]): string =>
+  imagenes?.length
+    ? `<div class="fotos">${imagenes.slice(0, 3)
+        .map(src => `<img src="${esc(src)}" alt="">`)
+        .join('')}</div>`
+    : '';
+
 /** Modo personalizado de cotización: secciones → grupos → ítems. */
 const tablaSecciones = (sections: any[]): string =>
   sections.map(section => {
@@ -67,7 +78,7 @@ const tablaSecciones = (sections: any[]): string =>
           const medida = (i.unit === 'ML' || i.unit === 'M2') && i.measure
             ? ` · ${i.measure} ${i.unit}` : '';
           return `<tr>
-            <td>${esc(i.description)}<span class="detalle">x${i.quantity}${medida}</span></td>
+            <td>${esc(i.description)}<span class="detalle">x${i.quantity}${medida}</span>${fotos(i.images)}</td>
             <td class="num">${formatCurrency(i.unitCost || 0)}</td>
             <td class="num">${formatCurrency(computeLineSubtotal(i))}</td>
           </tr>`;
@@ -187,6 +198,8 @@ export const buildDocumentHtml = (doc: DocumentoCompartido, pieCatalogo = ''): s
   .tot.total{font-size:1.15rem;font-weight:700;color:#2563eb;border-top:1px solid #e2e8f0;margin-top:6px;padding-top:10px}
   .firma{margin-top:26px;text-align:center}
   .firma img{max-width:190px;max-height:80px}
+  .fotos{display:flex;gap:6px;margin-top:6px}
+  .fotos img{width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid #e2e8f0}
   .firma p{border-top:1px solid #94a3b8;display:inline-block;padding-top:5px;margin-top:5px;color:#64748b;font-size:.8rem}
   footer{text-align:center;color:#94a3b8;font-size:.75rem;padding:20px}
   @media print{body{background:#fff;padding:0}.hoja{box-shadow:none}}

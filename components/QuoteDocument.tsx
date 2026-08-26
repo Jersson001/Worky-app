@@ -303,7 +303,23 @@ END:VCARD`);
                                             <tbody>
                                                 {group.items.map((item) => (
                                                     <tr key={item.id} className="border-t border-gray-100">
-                                                        <td className="py-2 px-3 text-sm text-gray-800">{item.description}</td>
+                                                        <td className="py-2 px-3 text-sm text-gray-800">
+                                                            {item.description}
+                                                            {/* Las fotos del ítem: se podían adjuntar en el
+                                                                formulario pero no llegaban al documento. */}
+                                                            {item.images && item.images.length > 0 && (
+                                                                <div className="flex gap-1.5 mt-1.5">
+                                                                    {item.images.slice(0, 3).map((img, i) => (
+                                                                        <img key={i} src={img} className="w-20 h-20 rounded object-cover border border-gray-200" />
+                                                                    ))}
+                                                                    {item.images.length > 3 && (
+                                                                        <div className="w-20 h-20 rounded border border-gray-200 bg-gray-100 flex items-center justify-center text-[10px] text-gray-500 font-bold">
+                                                                            +{item.images.length - 3}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            )}
+                                                        </td>
                                                         <td className="py-2 px-2 text-center text-xs text-gray-500 w-20">{item.quantity} {item.unit}{(item.unit === 'ML' || item.unit === 'M2') && item.measure ? ` × ${item.measure}` : ''}</td>
                                                         <td className="py-2 px-3 text-right text-sm text-gray-700 w-28">{formatCurrency(item.unitCost)}</td>
                                                         <td className="py-2 px-3 text-right text-sm font-bold text-gray-900 w-28">{formatCurrency(computeLineSubtotal(item))}</td>

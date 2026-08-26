@@ -237,7 +237,16 @@ export const SharedDocumentViewer: React.FC<SharedDocumentViewerProps> = ({ docu
                                   const lineSubtotal = (item.quantity || 1) * (item.unitCost || 0) * measureVal;
                                   return (
                                     <tr key={item.id || iIdx} className="border-b border-slate-100">
-                                      <td className="py-2.5 px-1 font-semibold text-slate-800">{item.description}</td>
+                                      <td className="py-2.5 px-1 font-semibold text-slate-800">
+                                        {item.description}
+                                        {item.images?.length > 0 && (
+                                          <div className="flex gap-1.5 mt-1.5">
+                                            {item.images.slice(0, 3).map((img: string, i: number) => (
+                                              <img key={i} src={img} className="w-16 h-16 rounded-lg object-cover border border-slate-200" />
+                                            ))}
+                                          </div>
+                                        )}
+                                      </td>
                                       <td className="py-2.5 px-1 text-center text-slate-600">
                                         {item.quantity} {item.unit}{item.measure ? ` (${item.measure} ${item.unit})` : ''}
                                       </td>
