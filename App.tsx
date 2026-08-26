@@ -2128,9 +2128,10 @@ const App: React.FC = () => {
               </div>
 
               {/* Dos columnas: lo que se hace a diario a la izquierda, lo que se
-                  consulta a la derecha. En móvil se apilan, que en pantalla
-                  estrecha dos columnas de tarjetas no caben. */}
-              <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                  consulta a la derecha. Desde 480px, que es donde las tarjetas
+                  siguen siendo legibles; por debajo —un móvil de verdad— se
+                  apilan, porque a dos columnas quedarían de unos 78px. */}
+              <div className="w-full grid grid-cols-1 min-[480px]:grid-cols-2 gap-6 items-start">
                 {/* Primary Actions */}
                 <div>
                   <h3 className="text-slate-400 text-[11px] font-bold uppercase tracking-wider mb-3">Acciones rápidas</h3>
@@ -2189,7 +2190,9 @@ const App: React.FC = () => {
                 {/* Tools Grid */}
                 <div>
                   <h3 className="text-slate-400 text-[11px] font-bold uppercase tracking-wider mb-3">Herramientas</h3>
-                  <div className="grid grid-cols-3 gap-2.5">
+                  {/* De tres en tres solo cuando hay sitio: compartiendo ancho
+                      con la otra columna, tres tarjetas caen a unos 75px. */}
+                  <div className="grid grid-cols-3 min-[480px]:grid-cols-2 md:grid-cols-3 gap-2.5">
                     <button onClick={() => setShowFinancials(true)} className="bg-white p-3 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2">
                       <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center text-white shadow-sm shadow-teal-500/30">
                         <i className="fa-solid fa-chart-pie text-lg"></i>
