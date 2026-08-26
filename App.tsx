@@ -958,6 +958,8 @@ const App: React.FC = () => {
   const [newCategoryName, setNewCategoryName] = useState('');
   const [newCategoryIcon, setNewCategoryIcon] = useState('fa-box');
   const [newCategoryCoverImage, setNewCategoryCoverImage] = useState<string>('');
+  /** Carpeta que se está editando. Sin esto, guardar siempre creaba una nueva. */
+  const [editingCategory, setEditingCategory] = useState<ProductCategory | null>(null);
   const [catalogView, setCatalogView] = useState<'folders' | 'products'>('folders');
   const [viewingImage, setViewingImage] = useState<string | null>(null);
   const [viewingImageIndex, setViewingImageIndex] = useState<number>(0);
@@ -1683,20 +1685,29 @@ const App: React.FC = () => {
     const colors = ['#ef4444', '#3b82f6', '#22c55e', '#eab308', '#a855f7', '#ec4899', '#6366f1', '#14b8a6'];
     const randomColor = colors[Math.floor(Math.random() * colors.length)];
 
+    // Al editar se conservan id y color: son los que ya usa la carpeta en la
+    // pantalla y en los productos que cuelgan de ella.
     const newCategory: ProductCategory = {
-      id: newId(),
+      id: editingCategory?.id ?? newId(),
       name: newCategoryName,
       icon: newCategoryIcon,
-      color: randomColor,
+      color: editingCategory?.color ?? randomColor,
       coverImage: newCategoryCoverImage || undefined
     };
 
+    const guardarEnPantalla = () =>
+      setCategories(prev =>
+        editingCategory
+          ? prev.map(c => (c.id === newCategory.id ? newCategory : c))
+          : [...prev, newCategory],
+      );
+
     try {
       await saveCategory(newCategory);
-      setCategories(prev => [...prev, newCategory]);
+      guardarEnPantalla();
     } catch (error) {
       console.error('Error guardando categoría:', error);
-      setCategories(prev => [...prev, newCategory]);
+      guardarEnPantalla();
       const detalle = describeError(error);
       alert(`La carpeta no se pudo guardar en el servidor y se perderá al recargar.\n\nDetalle: ${detalle}`);
     }
@@ -1704,7 +1715,17 @@ const App: React.FC = () => {
     setNewCategoryName('');
     setNewCategoryIcon('fa-box');
     setNewCategoryCoverImage('');
+    setEditingCategory(null);
     setShowCategoryForm(false);
+  };
+
+  /** Abre el formulario con los datos de la carpeta, para cambiarla. */
+  const handleEditCategory = (category: ProductCategory) => {
+    setEditingCategory(category);
+    setNewCategoryName(category.name);
+    setNewCategoryIcon(category.icon || 'fa-box');
+    setNewCategoryCoverImage(category.coverImage || '');
+    setShowCategoryForm(true);
   };
 
   const handleCategoryCoverImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -2723,7 +2744,7 @@ const App: React.FC = () => {
                               className="bg-purple-600 text-white px-6 rounded-lg hover:bg-purple-700 transition disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
                             >
                               <i className="fa-solid fa-check mr-2"></i>
-                              Crear
+                              {editingCategory ? 'Guardar' : 'Crear'}
                             </button>
                           </div>
 
@@ -2843,6 +2864,19 @@ const App: React.FC = () => {
                               <i className="fa-solid fa-plus"></i>
                             </button>
 
+                            {/* Editar carpeta: hasta ahora no había forma de
+                                cambiarle el nombre ni la portada una vez creada. */}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEditCategory(category);
+                              }}
+                              className="absolute top-12 left-2 w-8 h-8 bg-blue-500 text-white rounded-full shadow-lg opacity-100 md:opacity-0 md:group-hover:opacity-100 transition flex items-center justify-center hover:bg-blue-600"
+                              title="Editar carpeta"
+                            >
+                              <i className="fa-solid fa-pen text-xs"></i>
+                            </button>
+
                             {/* Delete Folder Button */}
                             <button
                               onClick={(e) => {
@@ -2917,7 +2951,10 @@ const App: React.FC = () => {
                           <select
                             value={newProductCategory}
                             onChange={e => setNewProductCategory(e.target.value)}
-                            className="bg-white p-3 rounded-lg border border-slate-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-100 outline-none w-full"
+                            // appearance-none: iOS pintaba su propio indicador encima
+                            // del icono de la carpeta, y quedaban dos cosas
+                            // superpuestas. La flecha se dibuja aquí abajo.
+                            className="bg-white p-3 pr-16 rounded-lg border border-slate-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-100 outline-none w-full appearance-none"
                             style={newProductCategory ? {
                               backgroundColor: categories.find(c => c.id === newProductCategory)?.color + '20',
                               borderColor: categories.find(c => c.id === newProductCategory)?.color,
@@ -2929,14 +2966,15 @@ const App: React.FC = () => {
                               <option key={cat.id} value={cat.id}>{cat.name}</option>
                             ))}
                           </select>
-                          {newProductCategory && (
-                            <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
+                          <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2 pointer-events-none">
+                            {newProductCategory && (
                               <i
-                                className={`${categories.find(c => c.id === newProductCategory)?.icon} mr-2`}
+                                className={categories.find(c => c.id === newProductCategory)?.icon}
                                 style={{ color: categories.find(c => c.id === newProductCategory)?.color }}
                               ></i>
-                            </div>
-                          )}
+                            )}
+                            <i className="fa-solid fa-chevron-down text-slate-400 text-xs"></i>
+                          </div>
                         </div>
                       </div>
 
