@@ -2186,7 +2186,15 @@ const App: React.FC = () => {
                 <div>
                   <h3 className="text-slate-400 text-[11px] font-bold uppercase tracking-wider mb-3">Acciones rápidas</h3>
                   <div className="grid grid-cols-2 gap-2.5">
-                    {/* El chat vivía solo en la barra de abajo, donde se perdía. */}
+                    {/* Perfil y chat: los dos estaban solo en menús, donde no se
+                        encuentran. Aquí son lo primero que se ve al entrar. */}
+                    <button onClick={() => setShowProfileEditor(true)} className="bg-white p-3.5 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2.5">
+                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-slate-600 to-slate-700 flex items-center justify-center text-white shadow-md shadow-slate-500/30">
+                        <i className="fa-solid fa-id-card text-xl"></i>
+                      </div>
+                      <span className="text-slate-700 text-[12.5px] font-semibold">Mi perfil</span>
+                    </button>
+
                     <button onClick={() => { setSelectedContactId(null); setMobileTab('chats'); }} className="bg-white p-3.5 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2.5 relative">
                       <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center text-white shadow-md shadow-green-500/30">
                         <i className="fa-solid fa-comments text-xl"></i>
