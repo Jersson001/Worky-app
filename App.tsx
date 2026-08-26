@@ -1105,10 +1105,22 @@ const App: React.FC = () => {
 
       setContacts(prev => prev.map(c => c.id === selectedContactId ? { ...c, lastMessage: lastMessageText, lastMessageTime: new Date() } : c));
     } catch (error) {
+      // Antes se añadía a la pantalla como si se hubiera enviado. El mensaje
+      // aguantaba hasta que recargabas y entonces desaparecía, porque nunca
+      // llegó a guardarse: es lo que pasa con los contactos creados a mano,
+      // que no existen como usuarios y la base rechaza la fila.
       console.error('Error enviando mensaje:', error);
-      // Fallback: agregar localmente si falla Firebase
-      const newMessage: Message = { id: Date.now().toString(), ...messageData };
-      setMessages(prev => ({ ...prev, [selectedContactId]: [...(prev[selectedContactId] || []), newMessage] }));
+      const esDocumento = type !== 'text' && type !== 'image' && type !== 'file';
+      alert(
+        `${esDocumento ? 'El documento' : 'El mensaje'} no se pudo enviar y no se ha guardado.
+
+` +
+        `${describeError(error)}
+
+` +
+        'Si es un contacto que creaste a mano, todavía no puede recibir mensajes por el chat: ' +
+        'compártelo por WhatsApp desde el propio documento.'
+      );
     }
   };
 
