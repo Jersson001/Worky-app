@@ -34,23 +34,38 @@ reintenta la próxima vez que entre.
 Ojo: el botón viaja dentro de la instantánea, así que **los catálogos
 publicados antes de esto hay que republicarlos** para que lo tengan.
 
-## 3. Que el cliente pueda responder con las imágenes del catálogo
+## 3. Que el cliente pueda responder con las imágenes del catálogo — HECHO
 
-Que quien recibe el catálogo pueda **escoger imágenes de productos, ponerles una
-nota y enviárselas** al vendedor. Es la forma natural de decir "quiero este y
-este, pero en azul".
+Confirmado con el usuario: marcar fotos del catálogo y que le lleguen al chat.
 
-> Este punto quedó a medio explicar y conviene confirmarlo antes de diseñarlo:
-> entendí *seleccionar varias imágenes del catálogo + añadir una nota + mandarlas
-> al chat del vendedor*. Si era otra cosa, corregir aquí antes de empezar.
+Sobre el catálogo hay un botón «Me interesan». Abre un selector con los
+productos, se marcan los que interesan, se escribe una nota y se manda. Como
+quien lo hace todavía no tiene cuenta, la selección se guarda igual que el
+vendedor y sale sola al entrar: primero un mensaje de texto con la lista y la
+nota, y detrás cada foto como imagen del chat.
 
-## Qué falta probar del 1 y el 2
+Detalles que conviene no deshacer sin querer:
 
-Lo que necesita sesión, que no se pudo verificar solo: que al terminar de
-registrarse aparezca la conversación con el vendedor abierta, y que el botón
-«Chatear» salga en un catálogo recién republicado.
+- Los productos se leen **de la propia instantánea**, con `DOMParser`, no de la
+  base: el visitante no tiene sesión. De paso, funciona con los catálogos
+  publicados antes de esto.
+- El selector lo dibuja la app, fuera del iframe, para no tener que darle
+  `allow-scripts` a contenido publicado por un usuario.
+- El pedido **se olvida antes de mandarse**: más vale que llegue incompleto a
+  que le llegue repetido al vendedor cada vez que el cliente abra la app.
+- Tope de seis productos por pedido, porque las fotos viajan como data URL por
+  el almacenamiento del navegador. Si no caben, se guarda sin fotos antes que
+  perder el pedido entero.
 
-Verificado sin sesión: la barra de compartir sobre el catálogo, que el enlace
-`?vendedor=` se guarda y limpia la URL, que la pantalla de acceso saluda con el
-nombre real sacado de `public_info`, y que el botón del catálogo se genera
-apuntando a `?vendedor=<userId>`.
+## Qué falta probar
+
+Todo lo que necesita sesión, que no se puede verificar solo: que al terminar de
+registrarse aparezca la conversación con el vendedor abierta, que el pedido le
+llegue al vendedor (texto y fotos), y que el botón «Chatear» salga en un
+catálogo recién republicado.
+
+Verificado sin sesión, en el navegador: la barra sobre el catálogo con sus tres
+botones; el selector, que lee los productos reales de la instantánea; que al
+marcar uno el botón pasa a «Enviar 1 a <negocio>»; que al mandarlo se guarda el
+pedido con la nota y la foto; que la URL queda limpia; y que la pantalla de
+acceso saluda con el nombre real sacado de `public_info`.

@@ -146,6 +146,55 @@ export const vendedorPendiente = (): string | null => {
   }
 };
 
+/** Lo que el cliente marcó en el catálogo antes de tener cuenta. */
+export interface PedidoPendiente {
+  vendedor: string;
+  nota: string;
+  productos: { nombre: string; imagen?: string }[];
+}
+
+const PEDIDO_KEY = 'worky:pedido-pendiente';
+
+/**
+ * Guarda la selección hecha en el catálogo para mandarla al entrar.
+ *
+ * Quien marca los productos todavía no tiene cuenta, y los mensajes necesitan
+ * sesión: la selección tiene que sobrevivir al registro igual que el vendedor.
+ *
+ * Las fotos van como data URL y ocupan; si no caben, se guarda el pedido sin
+ * ellas antes que perderlo entero — con los nombres y la nota el vendedor ya
+ * entiende qué le están pidiendo.
+ */
+export const guardarPedidoPendiente = (pedido: PedidoPendiente): void => {
+  try {
+    localStorage.setItem(PEDIDO_KEY, JSON.stringify(pedido));
+  } catch {
+    try {
+      const sinFotos = { ...pedido, productos: pedido.productos.map(({ nombre }) => ({ nombre })) };
+      localStorage.setItem(PEDIDO_KEY, JSON.stringify(sinFotos));
+    } catch {
+      /* sin sitio: se pierde la selección, no la vinculación */
+    }
+  }
+};
+
+export const pedidoPendiente = (): PedidoPendiente | null => {
+  try {
+    const crudo = localStorage.getItem(PEDIDO_KEY);
+    return crudo ? (JSON.parse(crudo) as PedidoPendiente) : null;
+  } catch {
+    return null;
+  }
+};
+
+export const olvidarPedidoPendiente = (): void => {
+  try {
+    localStorage.removeItem(PEDIDO_KEY);
+  } catch {
+    /* nada que olvidar */
+  }
+};
+
 export const olvidarVendedorPendiente = (): void => {
   try {
     localStorage.removeItem(VENDEDOR_KEY);

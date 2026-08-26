@@ -7,7 +7,8 @@ import ProFeatureGuard from './components/ProFeatureGuard';
 import AdminPanel from './components/AdminPanel';
 import { generateProductDescription } from './services/geminiService';
 import CatalogShareModal from './components/CatalogShareModal';
-import { recordarVendedorDeLaUrl, vendedorPendiente, olvidarVendedorPendiente } from './services/catalogShareService';
+import { recordarVendedorDeLaUrl, vendedorPendiente, olvidarVendedorPendiente, pedidoPendiente, olvidarPedidoPendiente } from './services/catalogShareService';
+import { uploadFileForChat } from './services/storageService';
 import { describeError } from './utils/errorMessage';
 import { newId } from './utils/id';
 import { StatusView } from './components/StatusView';
@@ -173,6 +174,62 @@ const App: React.FC = () => {
   }, []);
 
   /**
+   * Manda lo que el cliente marcó en el catálogo antes de tener cuenta.
+   *
+   * Va después de la vinculación porque hasta entonces no hay conversación a
+   * la que mandarlo, ni sesión con la que subir las fotos. Primero la nota,
+   * para que el vendedor lea qué le piden antes de ver las imágenes.
+   */
+  const enviarPedidoPendiente = async (vendedor: string) => {
+    const pedido = pedidoPendiente();
+    if (!pedido || pedido.vendedor !== vendedor) return;
+
+    // Se olvida antes de mandar: si algo falla a mitad, es preferible que el
+    // vendedor reciba el pedido incompleto a que le llegue repetido cada vez
+    // que el cliente abra la app.
+    olvidarPedidoPendiente();
+
+    const lista = pedido.productos.map(p => `• ${p.nombre}`).join('\n');
+    const texto = ['Hola, me interesan estos productos:', lista, pedido.nota]
+      .filter(Boolean)
+      .join('\n\n');
+
+    try {
+      await sendMessageToFirebase(vendedor, {
+        text: texto,
+        sender: 'me',
+        timestamp: new Date(),
+        type: 'text',
+      });
+
+      for (const producto of pedido.productos) {
+        if (!producto.imagen) continue;
+        try {
+          // La foto viene como data URL dentro de la instantánea; para mandarla
+          // por el chat hay que subirla como archivo, igual que cualquier otra.
+          const blob = await (await fetch(producto.imagen)).blob();
+          const archivo = new File([blob], `${producto.nombre}.jpg`, { type: blob.type || 'image/jpeg' });
+          const subida = await uploadFileForChat(archivo, vendedor);
+
+          await sendMessageToFirebase(vendedor, {
+            text: producto.nombre,
+            sender: 'me',
+            timestamp: new Date(),
+            type: 'image',
+            mediaUrl: subida.url,
+            mediaType: subida.fileType,
+          });
+        } catch (e) {
+          // Una foto que no sube no debe tumbar el resto del pedido.
+          console.warn(`No se pudo mandar la foto de ${producto.nombre}:`, e);
+        }
+      }
+    } catch (e) {
+      console.error('No se pudo mandar el pedido del catálogo:', e);
+    }
+  };
+
+  /**
    * Cierra el recorrido del QR: al terminar de entrar, el cliente se encuentra
    * la conversación con quien le mandó el catálogo ya abierta.
    *
@@ -221,6 +278,8 @@ const App: React.FC = () => {
         setMessages(prev => ({ ...prev, [vendedor]: prev[vendedor] || [] }));
         setSelectedContactId(vendedor);
         olvidarVendedorPendiente();
+
+        await enviarPedidoPendiente(vendedor);
       } catch (e) {
         // Si falla se deja pendiente: lo volverá a intentar la próxima vez que
         // entre, en vez de perder la vinculación en silencio.
