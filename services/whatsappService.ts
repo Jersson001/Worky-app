@@ -49,11 +49,44 @@ export const generateWhatsAppLink = (phone: string, message: string): string => 
  * se comía el `window.open` sin decir nada —el botón parecía muerto—. Quien
  * comparte abre la pestaña en el clic y aquí solo se le pone la dirección.
  */
+/** Escapa lo que entra en el HTML de la pestaña puente. */
+const escHtml = (v: string): string =>
+  v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+/**
+ * Página de paso para la pestaña que se abrió al pulsar.
+ *
+ * No basta con asignarle la dirección: la pestaña se queda en `about:blank` a
+ * la vista y hay que recargarla para que vaya a WhatsApp. Así que se le escribe
+ * una página que redirige sola y que, si no lo consigue, deja el enlace a mano.
+ * Lleva vuelta a Worky porque desde WhatsApp no había forma de regresar.
+ */
+const paginaPuente = (url: string): string => `<!DOCTYPE html>
+<html lang="es"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="refresh" content="0;url=${escHtml(url)}">
+<title>Abriendo WhatsApp…</title>
+<style>
+  body{font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;background:#f1f5f9;color:#0f172a;
+       display:flex;min-height:100vh;align-items:center;justify-content:center;margin:0;padding:24px}
+  .caja{background:#fff;padding:28px;border-radius:16px;box-shadow:0 1px 4px rgba(15,23,42,.12);text-align:center;max-width:360px}
+  p{color:#64748b;font-size:.9rem;margin:0 0 18px}
+  a{display:block;text-decoration:none;font-weight:700;padding:12px 20px;border-radius:10px;font-size:.9rem}
+  .wa{background:#22c55e;color:#fff;margin-bottom:10px}
+  .volver{color:#2563eb}
+</style></head>
+<body><div class="caja">
+  <p>Abriendo WhatsApp con tu documento…</p>
+  <a class="wa" href="${escHtml(url)}">Abrir WhatsApp</a>
+  <a class="volver" href="${escHtml(WORKY_APP_URL)}">Volver a Worky</a>
+</div></body></html>`;
+
 export const openWhatsApp = (phone: string, message: string, ventana?: Window | null): void => {
   const url = generateWhatsAppLink(phone, message);
 
   if (ventana && !ventana.closed) {
-    ventana.location.href = url;
+    ventana.document.write(paginaPuente(url));
+    ventana.document.close();
     return;
   }
 

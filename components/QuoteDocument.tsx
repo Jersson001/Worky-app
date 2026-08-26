@@ -64,6 +64,19 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({ type, data, onCl
     // navegador ya no ve un gesto del usuario, así que el bloqueador de
     // emergentes descartaba la apertura y el botón no hacía nada.
     const ventana = window.open('', '_blank');
+    // Mientras se publica y se sube, la pestaña se queda en blanco y parece
+    // rota. Se le pone algo que explique la espera.
+    if (ventana) {
+      ventana.document.write(
+        '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">' +
+        '<meta name="viewport" content="width=device-width,initial-scale=1">' +
+        '<title>Preparando tu documento…</title></head>' +
+        '<body style="font-family:system-ui,-apple-system,sans-serif;background:#f1f5f9;color:#64748b;' +
+        'display:flex;min-height:100vh;align-items:center;justify-content:center;margin:0">' +
+        '<p>Preparando tu documento…</p></body></html>',
+      );
+      ventana.document.close();
+    }
 
     try {
       await compartirPorWhatsApp(ventana);
