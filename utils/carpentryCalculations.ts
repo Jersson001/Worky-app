@@ -22,15 +22,19 @@ export const computeLineSubtotal = (item: CarpentryLineItem): number => {
 };
 
 /**
- * Una línea cuenta cuando el usuario la ha tocado.
+ * Una línea cuenta cuando el usuario la ha tocado y suma algo.
  *
  * Las plantillas nacen con nombre, cantidad y costo de ejemplo —para que se vea
  * cómo se rellena— y `isTemplate` se limpia en cuanto se edita cualquier campo.
- * Sin este criterio, un grupo que solo se abrió y no se llenó llegaba al
- * documento del cliente con sus valores de ejemplo.
+ * Sin eso, un grupo que solo se abrió y no se llenó llegaba al documento del
+ * cliente con sus valores de ejemplo.
+ *
+ * Y se pide además que sume: una línea a cero es una que se empezó y se dejó a
+ * medias —falta el precio, la cantidad o la medida—, y en el documento salía
+ * como «$0», que al cliente le dice algo que no es.
  */
 export const esLineaUsada = (item: CarpentryLineItem): boolean =>
-  !!item.description && !item.isTemplate;
+  !!item.description && !item.isTemplate && computeLineSubtotal(item) > 0;
 
 /**
  * Las secciones tal como deben salir en el documento: sin líneas de plantilla,
