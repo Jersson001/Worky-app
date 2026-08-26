@@ -7,7 +7,7 @@ import ProFeatureGuard from './components/ProFeatureGuard';
 import AdminPanel from './components/AdminPanel';
 import { generateProductDescription } from './services/geminiService';
 import CatalogShareModal from './components/CatalogShareModal';
-import { recordarVendedorDeLaUrl, vendedorPendiente, olvidarVendedorPendiente, pedidoPendiente, olvidarPedidoPendiente } from './services/catalogShareService';
+import { recordarVendedorDeLaUrl, vendedorPendiente, olvidarVendedorPendiente, pedidoPendiente, olvidarPedidoPendiente, llegoInvitado, olvidarLlegadaInvitada } from './services/catalogShareService';
 import { uploadFileForChat } from './services/storageService';
 import { describeError } from './utils/errorMessage';
 import { newId } from './utils/id';
@@ -553,31 +553,53 @@ const App: React.FC = () => {
    * al chat; lo demás lo puede completar después si algún día vende.
    */
   useEffect(() => {
-    if (!needsOnboarding || altaExpres || !vendedorPendiente()) return;
+    // Se mira la marca de llegada, no el vendedor pendiente: ese se borra al
+    // crear el contacto, que puede pasar antes de llegar aquí.
+    if (!needsOnboarding || altaExpres || !llegoInvitado()) return;
 
-    const { email, phone, fullName } = registrationData;
-    if (!fullName && !email) return; // sin datos no hay perfil que guardar
+    let cancelado = false;
 
-    setAltaExpres(true);
-    handleOnboardingComplete({
-      businessName: fullName || email,
-      ownerName: fullName || '',
-      phone,
-      businessType: '',
-      businessLogo: '',
-      username: '',
-      password: '',
-      email,
-      nit: '',
-      address: '',
-      city: '',
-      country: 'Colombia',
-    }).catch(e => {
-      // Si no se puede guardar, se le enseña el formulario de siempre en vez
-      // de dejarle atascado en una pantalla de espera.
-      console.warn('No se pudo dar de alta sin formulario:', e);
-      setAltaExpres(false);
-    });
+    (async () => {
+      let { email, phone, fullName } = registrationData;
+
+      // Si volvió después de confirmar el correo, los datos del registro ya no
+      // están en memoria: se recuperan de la metadata que guardó el alta.
+      if (!fullName && !email) {
+        const { data } = await supabase.auth.getUser();
+        const usuario = data?.user;
+        if (!usuario) return;
+        email = usuario.email || '';
+        fullName = (usuario.user_metadata?.full_name as string) || '';
+        phone = (usuario.user_metadata?.phone as string) || '';
+      }
+
+      if (cancelado || (!fullName && !email)) return;
+
+      setAltaExpres(true);
+      handleOnboardingComplete({
+        businessName: fullName || email,
+        ownerName: fullName || '',
+        phone,
+        businessType: '',
+        businessLogo: '',
+        username: '',
+        password: '',
+        email,
+        nit: '',
+        address: '',
+        city: '',
+        country: 'Colombia',
+      }).then(() => {
+        olvidarLlegadaInvitada();
+      }).catch(e => {
+        // Si no se puede guardar, se le enseña el formulario de siempre en vez
+        // de dejarle atascado en una pantalla de espera.
+        console.warn('No se pudo dar de alta sin formulario:', e);
+        setAltaExpres(false);
+      });
+    })();
+
+    return () => { cancelado = true; };
   }, [needsOnboarding, altaExpres, registrationData]);
 
   // Manejar el registro (mostrar onboarding)

@@ -128,6 +128,7 @@ export const recordarVendedorDeLaUrl = (): string | null => {
     const vendedor = url.searchParams.get('vendedor');
     if (vendedor) {
       localStorage.setItem(VENDEDOR_KEY, vendedor);
+      localStorage.setItem(INVITADO_KEY, '1');
       // La URL se limpia para que recargar no reviva una invitación ya usada.
       url.searchParams.delete('vendedor');
       window.history.replaceState({}, '', url.toString());
@@ -135,6 +136,32 @@ export const recordarVendedorDeLaUrl = (): string | null => {
     return vendedor || localStorage.getItem(VENDEDOR_KEY);
   } catch {
     return null;
+  }
+};
+
+/**
+ * Marca de "esta persona llegó invitada", aparte del vendedor pendiente.
+ *
+ * Hace falta porque el vendedor pendiente se borra en cuanto se crea el
+ * contacto, y eso pasa *antes* de que se decida si hay que enseñarle el
+ * formulario de negocio: sin esta marca, el alta exprés no se enteraba de que
+ * venía invitada y le sacaba el formulario igual.
+ */
+const INVITADO_KEY = 'worky:llego-invitado';
+
+export const llegoInvitado = (): boolean => {
+  try {
+    return localStorage.getItem(INVITADO_KEY) === '1';
+  } catch {
+    return false;
+  }
+};
+
+export const olvidarLlegadaInvitada = (): void => {
+  try {
+    localStorage.removeItem(INVITADO_KEY);
+  } catch {
+    /* nada que olvidar */
   }
 };
 
