@@ -70,9 +70,11 @@ const selector = (userId: string, productos: ProductoDelCatalogo[], negocio: str
     `justify-content:center;font-family:${FUENTE}`;
 
   const panel = document.createElement('div');
+  // El color se fija a mano: index.html le pone al body un gris casi blanco
+  // pensado para el fondo oscuro de la app, y aquí el panel es blanco.
   panel.style.cssText =
-    'background:#fff;width:100%;max-width:640px;max-height:88vh;overflow-y:auto;' +
-    'border-radius:20px 20px 0 0;padding:20px';
+    'background:#fff;color:#0f172a;width:100%;max-width:640px;max-height:88vh;overflow-y:auto;' +
+    'border-radius:20px 20px 0 0;padding:20px;color-scheme:light';
 
   const titulo = document.createElement('h2');
   titulo.textContent = '¿Qué te interesa?';
@@ -91,6 +93,7 @@ const selector = (userId: string, productos: ProductoDelCatalogo[], negocio: str
   nota.rows = 3;
   nota.style.cssText =
     'width:100%;border:1px solid #e2e8f0;border-radius:12px;padding:10px;font-size:.9rem;' +
+    'color:#0f172a;background:#fff;' +
     `font-family:${FUENTE};resize:vertical;margin-bottom:14px`;
 
   const enviar = boton('Enviar', '#2563eb', () => {
@@ -209,6 +212,12 @@ const barra = (userId: string, productos: ProductoDelCatalogo[], negocio: string
  * Así que la bajamos y la pintamos aquí, en un iframe aislado.
  */
 export const mostrarCatalogo = async (userId: string): Promise<void> => {
+  // El body de la app es oscuro con letra clara (ver index.html), pensado para
+  // las pantallas de dentro. Esta página es de un visitante y es clara: sin
+  // esto, los avisos salen en gris sobre casi negro.
+  document.body.style.background = '#f1f5f9';
+  document.body.style.color = '#0f172a';
+
   aviso('Cargando catálogo…');
   const html = await fetchCatalogHtml(userId);
 
