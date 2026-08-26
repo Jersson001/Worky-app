@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { supabase } from '../services/supabaseConfig';
 import { setCurrentUserId } from '../services/messagingService';
 
@@ -73,7 +73,20 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister, i
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [authMode, setAuthMode] = useState<AuthMode>('login');
+  // Quien llega invitado desde un catálogo casi nunca tiene cuenta: se le abre
+  // directamente en «Registrarse», que si no acaba mirando un formulario de
+  // acceso que no puede rellenar.
+  const [authMode, setAuthMode] = useState<AuthMode>(invitadoPor ? 'register' : 'login');
+
+  // El nombre del invitador se consulta al servidor, así que suele llegar
+  // después del primer pintado: por eso no basta con el valor inicial de
+  // arriba. Se ajusta una sola vez, para no pisar al que cambie de pestaña.
+  const pestanaAjustada = useRef(false);
+  useEffect(() => {
+    if (!invitadoPor || pestanaAjustada.current) return;
+    pestanaAjustada.current = true;
+    setAuthMode('register');
+  }, [invitadoPor]);
   // Se acaba de registrar pero Supabase exige confirmar el correo antes de
   // dar sesión (signUp devuelve session: null). No se puede hacer nada más
   // hasta que haga clic en el enlace del email.
