@@ -955,6 +955,7 @@ const App: React.FC = () => {
   const [fotosProcesando, setFotosProcesando] = useState(0);
   /** Guardando el producto: subir las fotos tarda, y el botón debe decirlo. */
   const [guardandoProducto, setGuardandoProducto] = useState(false);
+  const [aligerando, setAligerando] = useState(false);
   const [imageEnhancementSuggestions, setImageEnhancementSuggestions] = useState<string>('');
   const [detectedFeatures, setDetectedFeatures] = useState<string[]>([]);
   const [showCategoryForm, setShowCategoryForm] = useState(false);
@@ -1681,15 +1682,70 @@ ${describeError(error)}
 
   const handleDeleteProduct = async (id: string) => {
     if (confirm('¿Eliminar este producto?')) {
+      // Se quita de la pantalla en el acto. Antes se esperaba al aviso del
+      // servidor, que llega cuando termina de recargar la lista entera: el
+      // producto seguía a la vista un buen rato después de borrarlo.
+      const antes = products;
+      setProducts(prev => prev.filter(p => p.id !== id));
+
       try {
         await deleteProduct(id);
-        // El listener de Firebase actualizará el estado automáticamente
-        // No actualizamos el estado local aquí para evitar duplicados
       } catch (error) {
+        // Si no se pudo borrar, vuelve a su sitio: peor es que parezca
+        // borrado y reaparezca al recargar.
+        setProducts(antes);
         console.error('Error eliminando producto:', error);
-        // Solo en caso de error, actualizamos el estado local como fallback
-        setProducts(prev => prev.filter(p => p.id !== id));
+        alert(`No se pudo eliminar el producto: ${describeError(error)}`);
       }
+    }
+  };
+
+  /**
+   * Productos que todavía llevan las fotos dentro del dato, en base64.
+   *
+   * Son los que hacen lenta la carga del catálogo: la app se baja la fila
+   * entera de cada uno antes de pintar nada. Los nuevos ya guardan solo el
+   * enlace, así que esto se vacía a medida que se aligeran.
+   */
+  const productosPesados = products.filter(
+    p => p.image?.startsWith('data:') || p.images?.some(i => i.startsWith('data:')),
+  );
+
+  /** Sube a Storage las fotos de los productos antiguos y deja solo el enlace. */
+  const handleAligerarFotos = async () => {
+    setAligerando(true);
+    let hechos = 0;
+
+    try {
+      for (const producto of productosPesados) {
+        const images = producto.images
+          ? await Promise.all(
+              producto.images.map(f => (f.startsWith('data:') ? uploadProductPhoto(f) : f)),
+            )
+          : undefined;
+
+        const image = images?.[0]
+          ?? (producto.image?.startsWith('data:') ? await uploadProductPhoto(producto.image) : producto.image);
+
+        const aligerado = { ...producto, image, images };
+        await saveProduct(aligerado);
+        setProducts(prev => prev.map(p => (p.id === producto.id ? aligerado : p)));
+        hechos++;
+      }
+
+      alert(`Listo. Se aligeraron ${hechos} ${hechos === 1 ? 'producto' : 'productos'}.`);
+    } catch (error) {
+      console.error('Error aligerando las fotos:', error);
+      alert(
+        `Se aligeraron ${hechos} y falló el siguiente.
+
+${describeError(error)}
+
+` +
+        'Los que ya se aligeraron se quedan así; puedes volver a intentarlo con el resto.',
+      );
+    } finally {
+      setAligerando(false);
     }
   };
 
@@ -2737,6 +2793,32 @@ ${describeError(error)}
             </div>
 
             <div className="flex-1 overflow-y-auto p-6">
+
+              {/* Productos que aún llevan las fotos dentro del dato: son los
+                  que hacen que el catálogo tarde en abrir. Se ofrece pasarlas
+                  a Storage, que es lo que ya hacen los nuevos. */}
+              {productosPesados.length > 0 && (
+                <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-3 flex-wrap">
+                  <i className="fa-solid fa-gauge-high text-amber-500 text-lg"></i>
+                  <div className="flex-1 min-w-[180px]">
+                    <p className="text-sm font-semibold text-amber-900">
+                      {productosPesados.length} {productosPesados.length === 1 ? 'producto guarda sus fotos' : 'productos guardan sus fotos'} dentro del dato
+                    </p>
+                    <p className="text-xs text-amber-700">
+                      Por eso el catálogo tarda en abrir. Aligerarlos las mueve a la nube y no cambia nada de lo que ves.
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleAligerarFotos}
+                    disabled={aligerando}
+                    className="bg-amber-500 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-amber-600 transition disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {aligerando ? (
+                      <><i className="fa-solid fa-circle-notch fa-spin mr-2"></i>Aligerando…</>
+                    ) : 'Aligerar'}
+                  </button>
+                </div>
+              )}
 
               {/* View Toggle - Only show when in products view */}
               {catalogView === 'products' && (
