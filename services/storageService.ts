@@ -88,11 +88,11 @@ export const uploadFileForChat = async (
  * Recibe la foto como data URL —es lo que produce el formulario tras
  * reducirla— y la convierte en archivo para subirla.
  */
-export const uploadProductPhoto = async (dataUrl: string): Promise<string> => {
+export const uploadPhoto = async (dataUrl: string, carpeta: string): Promise<string> => {
   const userId = getCurrentUserId();
   const blob = await (await fetch(dataUrl)).blob();
   const extension = blob.type === 'image/png' ? 'png' : 'jpg';
-  const filePath = `${userId}/productos/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${extension}`;
+  const filePath = `${userId}/${carpeta}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${extension}`;
 
   const { error } = await supabase.storage
     .from('chat_media')
@@ -103,6 +103,21 @@ export const uploadProductPhoto = async (dataUrl: string): Promise<string> => {
   const { data } = supabase.storage.from('chat_media').getPublicUrl(filePath);
   return data.publicUrl;
 };
+
+/** Foto de producto del catálogo. */
+export const uploadProductPhoto = (dataUrl: string): Promise<string> =>
+  uploadPhoto(dataUrl, 'productos');
+
+/**
+ * Deja listas para enviar las fotos de una línea de cotización.
+ *
+ * Las que ya son un enlace se dejan: al reenviar o editar no hay que volver a
+ * subir lo que ya está subido.
+ */
+export const uploadQuotePhotos = async (imagenes?: string[]): Promise<string[] | undefined> =>
+  imagenes?.length
+    ? Promise.all(imagenes.map(foto => (foto.startsWith('data:') ? uploadPhoto(foto, 'cotizaciones') : foto)))
+    : imagenes;
 
 /**
  * Eliminar un archivo de Supabase Storage

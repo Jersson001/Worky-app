@@ -52,6 +52,8 @@ interface QuoteModalProps {
   onSetClientAddress: (value: string) => void;
   onSetClientPhone: (value: string) => void;
   onSend: () => void;
+  /** Subiendo las fotos antes de mandar: el botón lo dice y no deja repetir. */
+  enviando?: boolean;
   // Personalizada (carpintería) — función Pro
   isPro?: boolean;
   trialEndsAt?: string | null;
@@ -247,7 +249,7 @@ export const QuoteModal: React.FC<QuoteModalProps> = React.memo(({
   onImageUpload, onRemoveImage, onUpdateItemImage,
   onSetValidDays, onSetTaxType, onSetTaxPercentage,
   onSetAIUAdmin, onSetAIUImprevistos, onSetAIUUtilidad, onSetAIUIva,
-  onSetClientAddress, onSetClientPhone, onSend,
+  onSetClientAddress, onSetClientPhone, onSend, enviando,
   isPro, trialEndsAt, mode, sections, onSetMode, onAddSection, onRemoveSection,
   onAddCarpentryItem, onUpdateCarpentryItem, onRemoveCarpentryItem,
 }) => {
@@ -893,10 +895,14 @@ export const QuoteModal: React.FC<QuoteModalProps> = React.memo(({
 
         <button
           onClick={onSend}
-          disabled={!canSend}
+          disabled={!canSend || enviando}
           className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 rounded-xl font-bold shadow-lg shadow-blue-500/25 hover:shadow-xl transition active:scale-[0.99] disabled:opacity-50 disabled:shadow-none disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
-          <i className="fa-solid fa-paper-plane"></i> {contactRole === 'supplier' ? 'Enviar Cotización' : 'Crear Cotización'}
+          {enviando ? (
+            <><i className="fa-solid fa-circle-notch fa-spin"></i> Subiendo las fotos…</>
+          ) : (
+            <><i className="fa-solid fa-paper-plane"></i> {contactRole === 'supplier' ? 'Enviar Cotización' : 'Crear Cotización'}</>
+          )}
         </button>
       </div>
     </ModalWrapper>

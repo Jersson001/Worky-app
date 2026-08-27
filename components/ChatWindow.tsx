@@ -12,6 +12,7 @@ import { calculateTax } from '../utils/taxCalculations';
 import { flattenSectionsToQuoteItems, computeGrandTotal } from '../utils/carpentryCalculations';
 import { useChatFormState } from '../hooks/useChatFormState';
 import { useFileUpload } from '../hooks/useFileUpload';
+import { uploadQuotePhotos } from '../services/storageService';
 
 // Sub-components
 import { ChatHeader } from './chat/ChatHeader';
@@ -80,6 +81,8 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
 
   // ── Document viewer ──
   const [viewingDocument, setViewingDocument] = useState<{ type: 'quote' | 'invoice' | 'receipt' | 'collection_account', data: any } | null>(null);
+  /** Subiendo las fotos de la cotización antes de mandarla. */
+  const [enviandoCotizacion, setEnviandoCotizacion] = useState(false);
 
   // ── Hooks ──
   const forms = useChatFormState(
@@ -203,12 +206,50 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
     forms.closeModal('invoice');
   }, [forms.invoice, contact, onSendMessage]);
 
-  const handleSendQuote = useCallback(() => {
+  const handleSendQuote = useCallback(async () => {
+    if (enviandoCotizacion) return;
     const { items, taxType, taxPercentage, aiuAdmin, aiuImprevistos, aiuUtilidad, aiuIva, clientAddress, clientPhone, validDays, mode, sections } = forms.quote;
 
     const isPersonalizada = mode === 'personalizada';
-    const validItems = isPersonalizada ? flattenSectionsToQuoteItems(sections) : items.filter(i => i.description && i.price > 0);
-    if (validItems.length === 0) return;
+    const validItemsSinSubir = isPersonalizada ? flattenSectionsToQuoteItems(sections) : items.filter(i => i.description && i.price > 0);
+    if (validItemsSinSubir.length === 0) return;
+
+    // Las fotos van a Storage y en la cotización queda su dirección. Antes
+    // viajaban en base64 dentro del mensaje: cada cotización con fotos pesaba
+    // megas, y eso se carga entero cada vez que se abre el chat.
+    let validItems = validItemsSinSubir;
+    let sectionsSubidas = sections;
+
+    setEnviandoCotizacion(true);
+    try {
+      validItems = await Promise.all(
+        validItemsSinSubir.map(async item => ({ ...item, images: await uploadQuotePhotos(item.images) })),
+      );
+
+      if (isPersonalizada) {
+        sectionsSubidas = await Promise.all(
+          sections.map(async section => ({
+            ...section,
+            groups: await Promise.all(
+              section.groups.map(async group => ({
+                ...group,
+                items: await Promise.all(
+                  group.items.map(async item => ({ ...item, images: await uploadQuotePhotos(item.images) })),
+                ),
+              })),
+            ),
+          })),
+        );
+      }
+    } catch (error) {
+      // No se manda a medias: sin las fotos, el cliente recibe una cotización
+      // distinta de la que se preparó.
+      console.error('Error subiendo las fotos de la cotización:', error);
+      alert('No se pudieron subir las fotos, así que la cotización no se envió. Revisa la conexión y vuelve a intentarlo.');
+      return;
+    } finally {
+      setEnviandoCotizacion(false);
+    }
 
     const subtotal = isPersonalizada ? computeGrandTotal(sections) : validItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
     const result = calculateTax(subtotal, taxType, {
@@ -226,7 +267,7 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
       clientAddress: clientAddress.trim() || undefined,
       clientPhone: clientPhone.trim() || undefined,
       items: validItems, subtotal, total: result.total,
-      mode, sections: isPersonalizada ? sections : undefined,
+      mode, sections: isPersonalizada ? sectionsSubidas : undefined,
       taxType, taxPercentage: taxType === 'percentage' ? parseFloat(taxPercentage) : undefined,
       taxAmount: (taxType !== 'none') ? result.taxAmount : undefined,
       aiuAdmin: taxType === 'aiu' ? parseFloat(aiuAdmin) : undefined,
@@ -238,7 +279,7 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
 
     forms.resetQuote(contact.phone || '');
     forms.closeModal('quote');
-  }, [forms.quote, contact, onSendMessage]);
+  }, [forms.quote, contact, onSendMessage, enviandoCotizacion]);
 
   const handleSendCollection = useCallback(() => {
     const { amount, concept, directedTo, nit, selectedAccount, selectedProject } = forms.collection;
@@ -466,6 +507,7 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
           onSetAIUAdmin={(v) => forms.setQuoteField('aiuAdmin', v)} onSetAIUImprevistos={(v) => forms.setQuoteField('aiuImprevistos', v)} onSetAIUUtilidad={(v) => forms.setQuoteField('aiuUtilidad', v)} onSetAIUIva={(v) => forms.setQuoteField('aiuIva', v)}
           onSetClientAddress={(v) => forms.setQuoteField('clientAddress', v)} onSetClientPhone={(v) => forms.setQuoteField('clientPhone', v)}
           onSend={handleSendQuote}
+          enviando={enviandoCotizacion}
           isPro={userProfile?.isPro} trialEndsAt={userProfile?.trialEndsAt}
           mode={forms.quote.mode} sections={forms.quote.sections}
           onSetMode={forms.setQuoteMode} onAddSection={forms.addCarpentrySection} onRemoveSection={forms.removeCarpentrySection}
