@@ -40,12 +40,21 @@ export const reducirImagen = (src: string): Promise<string> =>
         // transparente sale negro. Se le respeta el formato: lo que importa
         // aquí es el tamaño, y reducirlo ya quita el grueso del peso.
         const esPng = src.startsWith('data:image/png');
-        resolve(esPng ? canvas.toDataURL('image/png') : canvas.toDataURL('image/jpeg', CALIDAD));
+        const reducida = esPng ? canvas.toDataURL('image/png') : canvas.toDataURL('image/jpeg', CALIDAD);
+
+        // En iOS, con poca memoria, el lienzo puede devolver una imagen vacía
+        // sin lanzar ningún error. Antes que entregar eso, se devuelve la
+        // original: pesa, pero es la foto del usuario y no se pierde.
+        const salioBien = reducida.startsWith('data:image') && reducida.length > 1000;
+        resolve(salioBien ? reducida : src);
       } catch {
         resolve(src);
       }
     };
-    img.onerror = () => resolve('');
+    // Si no se puede decodificar —un formato que este navegador no entiende—
+    // se devuelve tal cual. Devolver vacío, como se hacía antes, borraba la
+    // foto del usuario sin decir nada.
+    img.onerror = () => resolve(src);
     img.src = src;
   });
 

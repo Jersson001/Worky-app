@@ -1801,13 +1801,20 @@ const App: React.FC = () => {
   const handleProductMultipleImagesUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files) {
-      const fileArray = Array.from(files);
+      // El tipo se anota a mano: sin DOM.Iterable en tsconfig, Array.from sobre
+      // un FileList devuelve unknown[].
+      const fileArray: File[] = Array.from(files);
       setFotosProcesando(n => n + fileArray.length);
 
       fileArray.forEach((file, idx) => {
         void leerImagenReducida(file).then(async result => {
           setFotosProcesando(n => Math.max(0, n - 1));
-          if (!result) return;
+          if (!result) {
+            // Solo llega aquí si ni siquiera se pudo leer el archivo. Se avisa:
+            // descartarla en silencio hacía que la foto "desapareciera".
+            alert(`No se pudo leer la foto "${file.name}". Prueba con otra.`);
+            return;
+          }
           setNewProductImages(prev => [...prev, result]);
 
           // Analizar la primera imagen con IA
