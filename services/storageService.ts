@@ -75,6 +75,36 @@ export const uploadFileForChat = async (
 };
 
 /**
+ * Sube una foto de producto y devuelve su URL pública.
+ *
+ * Las fotos se guardaban dentro de la fila del producto, en base64: seis
+ * productos eran 7,5 MB que la app se bajaba enteros antes de pintar el
+ * catálogo, y por eso las miniaturas tardaban en aparecer. Aquí la foto pasa a
+ * ser un archivo y en la fila queda solo su dirección, unos cien bytes.
+ *
+ * Va al mismo bucket que las imágenes del chat, que ya tiene subida para
+ * usuarios autenticados y lectura pública: no hace falta tocar la base.
+ *
+ * Recibe la foto como data URL —es lo que produce el formulario tras
+ * reducirla— y la convierte en archivo para subirla.
+ */
+export const uploadProductPhoto = async (dataUrl: string): Promise<string> => {
+  const userId = getCurrentUserId();
+  const blob = await (await fetch(dataUrl)).blob();
+  const extension = blob.type === 'image/png' ? 'png' : 'jpg';
+  const filePath = `${userId}/productos/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${extension}`;
+
+  const { error } = await supabase.storage
+    .from('chat_media')
+    .upload(filePath, blob, { contentType: blob.type || 'image/jpeg' });
+
+  if (error) throw error;
+
+  const { data } = supabase.storage.from('chat_media').getPublicUrl(filePath);
+  return data.publicUrl;
+};
+
+/**
  * Eliminar un archivo de Supabase Storage
  */
 export const deleteFile = async (fileUrl: string): Promise<void> => {

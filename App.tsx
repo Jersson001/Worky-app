@@ -11,6 +11,7 @@ import { recordarVendedorDeLaUrl, vendedorPendiente, olvidarVendedorPendiente, p
 import { uploadFileForChat } from './services/storageService';
 import { describeError } from './utils/errorMessage';
 import { leerImagenReducida } from './utils/imagen';
+import { uploadProductPhoto } from './services/storageService';
 import { newId } from './utils/id';
 import { StatusView } from './components/StatusView';
 import { WalletModal } from './components/WalletModal';
@@ -952,6 +953,8 @@ const App: React.FC = () => {
   const [isEnhancingImage, setIsEnhancingImage] = useState(false);
   /** Cuántas fotos se están reduciendo ahora mismo, para no parecer colgado. */
   const [fotosProcesando, setFotosProcesando] = useState(0);
+  /** Guardando el producto: subir las fotos tarda, y el botón debe decirlo. */
+  const [guardandoProducto, setGuardandoProducto] = useState(false);
   const [imageEnhancementSuggestions, setImageEnhancementSuggestions] = useState<string>('');
   const [detectedFeatures, setDetectedFeatures] = useState<string[]>([]);
   const [showCategoryForm, setShowCategoryForm] = useState(false);
@@ -1579,7 +1582,35 @@ const App: React.FC = () => {
       return;
     }
 
-    const productImages = newProductImages.length > 0 ? newProductImages : undefined;
+    // Las fotos van a Storage y en el producto queda solo su dirección. Antes
+    // se guardaban aquí mismo en base64: seis productos eran 7,5 MB que la app
+    // se bajaba enteros antes de pintar el catálogo.
+    //
+    // Las que ya son un enlace se dejan como están: al editar un producto no
+    // hay que volver a subir lo que ya estaba subido.
+    let productImages = newProductImages.length > 0 ? newProductImages : undefined;
+
+    if (productImages) {
+      setGuardandoProducto(true);
+      try {
+        productImages = await Promise.all(
+          productImages.map(foto => (foto.startsWith('data:') ? uploadProductPhoto(foto) : foto)),
+        );
+      } catch (error) {
+        setGuardandoProducto(false);
+        console.error('Error subiendo las fotos del producto:', error);
+        alert(
+          `No se pudieron subir las fotos, así que el producto no se guardó.
+
+${describeError(error)}
+
+` +
+          'Revisa la conexión y vuelve a intentarlo.',
+        );
+        return;
+      }
+    }
+
     const mainImage = productImages?.[0] || 'https://placehold.co/100x100/e2e8f0/64748b?text=' + newProductName.substring(0, 1);
 
     let productToSave: Product;
@@ -1613,6 +1644,7 @@ const App: React.FC = () => {
 
     try {
       await saveProduct(productToSave);
+      setGuardandoProducto(false);
       // El listener de Firebase actualizará el estado automáticamente
       if (editingProduct) {
         setProducts(prev => prev.map(p => p.id === editingProduct.id ? productToSave : p));
@@ -1620,6 +1652,7 @@ const App: React.FC = () => {
         setProducts(prev => [...prev, productToSave]);
       }
     } catch (error) {
+      setGuardandoProducto(false);
       console.error('Error guardando producto:', error);
       // Se muestra en pantalla igual para no perder lo escrito, pero hay que
       // avisar: antes se actualizaba en silencio y el producto parecía
@@ -3148,10 +3181,14 @@ const App: React.FC = () => {
 
                       <button
                         onClick={handleSaveProduct}
-                        className="w-full bg-purple-600 text-white py-3 rounded-lg font-bold hover:bg-purple-700 transition shadow-lg"
+                        disabled={guardandoProducto || fotosProcesando > 0}
+                        className="w-full bg-purple-600 text-white py-3 rounded-lg font-bold hover:bg-purple-700 transition shadow-lg disabled:opacity-60 disabled:cursor-not-allowed"
                       >
-                        <i className="fa-solid fa-save mr-2"></i>
-                        {editingProduct ? 'Actualizar Producto' : 'Guardar Producto'}
+                        {guardandoProducto ? (
+                          <><i className="fa-solid fa-circle-notch fa-spin mr-2"></i>Guardando las fotos…</>
+                        ) : (
+                          <><i className="fa-solid fa-save mr-2"></i>{editingProduct ? 'Actualizar Producto' : 'Guardar Producto'}</>
+                        )}
                       </button>
 
                       {editingProduct && (
@@ -3204,7 +3241,16 @@ const App: React.FC = () => {
                             }
                           }}
                         >
-                          <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
+                          {/* loading="lazy": las miniaturas se piden solo cuando entran en
+                              pantalla, en vez de todas de golpe. El fondo gris hace de hueco
+                              mientras llega, para que no parezca que la foto se perdió. */}
+                          <img
+                            src={product.image}
+                            alt={product.name}
+                            loading="lazy"
+                            decoding="async"
+                            className="w-full h-full object-cover bg-slate-100"
+                          />
 
                           {/* Hover Overlay */}
                           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition flex flex-col justify-end p-3">
