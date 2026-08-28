@@ -5,7 +5,6 @@ import { FinancialReport } from './components/FinancialReport';
 import ContractGenerator from './components/ContractGenerator';
 import ProFeatureGuard from './components/ProFeatureGuard';
 import AdminPanel from './components/AdminPanel';
-import { generateProductDescription } from './services/geminiService';
 import CatalogShareModal from './components/CatalogShareModal';
 import { recordarVendedorDeLaUrl, vendedorPendiente, olvidarVendedorPendiente, pedidoPendiente, olvidarPedidoPendiente, llegoInvitado, olvidarLlegadaInvitada } from './services/catalogShareService';
 import { uploadFileForChat } from './services/storageService';
@@ -950,14 +949,11 @@ const App: React.FC = () => {
   const [newProductImage, setNewProductImage] = useState('');
   const [newProductImages, setNewProductImages] = useState<string[]>([]);
   const [newProductCategory, setNewProductCategory] = useState('');
-  const [isEnhancingImage, setIsEnhancingImage] = useState(false);
   /** Cuántas fotos se están reduciendo ahora mismo, para no parecer colgado. */
   const [fotosProcesando, setFotosProcesando] = useState(0);
   /** Guardando el producto: subir las fotos tarda, y el botón debe decirlo. */
   const [guardandoProducto, setGuardandoProducto] = useState(false);
   const [aligerando, setAligerando] = useState(false);
-  const [imageEnhancementSuggestions, setImageEnhancementSuggestions] = useState<string>('');
-  const [detectedFeatures, setDetectedFeatures] = useState<string[]>([]);
   const [showCategoryForm, setShowCategoryForm] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [newCategoryIcon, setNewCategoryIcon] = useState('fa-box');
@@ -1674,8 +1670,6 @@ ${describeError(error)}
     setNewProductImage('');
     setNewProductImages([]);
     setNewProductCategory('');
-    setImageEnhancementSuggestions('');
-    setDetectedFeatures([]);
     setEditingProduct(null);
     setShowProductForm(false);
   };
@@ -1849,27 +1843,8 @@ ${describeError(error)}
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onload = async (event) => {
-        const imageData = event.target?.result as string;
-        setNewProductImage(imageData);
-
-        // Analizar imagen con Gemini AI
-        setIsEnhancingImage(true);
-        try {
-          const analysis = await generateProductDescription(imageData, newProductName);
-
-          // Si no hay descripción aún, usar la generada por la IA
-          if (!newProductDescription) {
-            setNewProductDescription(analysis.description);
-          }
-
-          setImageEnhancementSuggestions(analysis.suggestions);
-          setDetectedFeatures(analysis.detectedFeatures);
-        } catch (error) {
-          console.error('Error al analizar imagen:', error);
-        } finally {
-          setIsEnhancingImage(false);
-        }
+      reader.onload = (event) => {
+        setNewProductImage(event.target?.result as string);
       };
       reader.readAsDataURL(file);
     }
@@ -1881,8 +1856,7 @@ ${describeError(error)}
    * Se reducen antes de guardarlas: una foto de móvil son unos 10 MB en base64
    * y van dentro de la fila del producto, así que con dos o tres la escritura
    * se pasaba del tiempo máximo y Supabase la abortaba —el error 57014, "no se
-   * pudo guardar y se perderá al recargar"—. Reducirlas también acelera el
-   * análisis con IA, que hasta ahora recibía la imagen entera.
+   * pudo guardar y se perderá al recargar"—.
    *
    * Mientras se procesan se avisa en pantalla: sin eso, el formulario parece
    * colgado y da la sensación de que el botón no responde.
@@ -1895,8 +1869,8 @@ ${describeError(error)}
       const fileArray: File[] = Array.from(files);
       setFotosProcesando(n => n + fileArray.length);
 
-      fileArray.forEach((file, idx) => {
-        void leerImagenReducida(file).then(async result => {
+      fileArray.forEach(file => {
+        void leerImagenReducida(file).then(result => {
           setFotosProcesando(n => Math.max(0, n - 1));
           if (!result) {
             // Solo llega aquí si ni siquiera se pudo leer el archivo. Se avisa:
@@ -1905,21 +1879,6 @@ ${describeError(error)}
             return;
           }
           setNewProductImages(prev => [...prev, result]);
-
-          // Analizar la primera imagen con IA
-          if (idx === 0 && !newProductDescription) {
-            setIsEnhancingImage(true);
-            try {
-              const analysis = await generateProductDescription(result, newProductName);
-              setNewProductDescription(analysis.description);
-              setImageEnhancementSuggestions(analysis.suggestions);
-              setDetectedFeatures(analysis.detectedFeatures);
-            } catch (error) {
-              console.error('Error al analizar imagen:', error);
-            } finally {
-              setIsEnhancingImage(false);
-            }
-          }
         });
       });
     }
@@ -2786,7 +2745,7 @@ ${describeError(error)}
                   <i className="fa-solid fa-qrcode"></i>
                   <span className="hidden sm:inline">Compartir</span>
                 </button>
-              <button onClick={() => { setShowCatalogManager(false); setCatalogView('folders'); setSelectedCategory(null); setEditingProduct(null); setNewProductName(''); setNewProductPrice(''); setNewProductStock(''); setNewProductDescription(''); setNewProductImage(''); setNewProductImages([]); setNewProductCategory(''); setImageEnhancementSuggestions(''); setDetectedFeatures([]); setNewCategoryName(''); setNewCategoryIcon('fa-box'); setNewCategoryCoverImage(''); setShowCategoryForm(false); }} className="text-white/80 hover:text-white text-2xl">
+              <button onClick={() => { setShowCatalogManager(false); setCatalogView('folders'); setSelectedCategory(null); setEditingProduct(null); setNewProductName(''); setNewProductPrice(''); setNewProductStock(''); setNewProductDescription(''); setNewProductImage(''); setNewProductImages([]); setNewProductCategory(''); setNewCategoryName(''); setNewCategoryIcon('fa-box'); setNewCategoryCoverImage(''); setShowCategoryForm(false); }} className="text-white/80 hover:text-white text-2xl">
                 <i className="fa-solid fa-times"></i>
               </button>
               </div>
@@ -2823,7 +2782,7 @@ ${describeError(error)}
               {/* View Toggle - Only show when in products view */}
               {catalogView === 'products' && (
                 <button
-                  onClick={() => { setCatalogView('folders'); setShowProductForm(false); setEditingProduct(null); setNewProductName(''); setNewProductPrice(''); setNewProductStock(''); setNewProductDescription(''); setNewProductImage(''); setNewProductImages([]); setImageEnhancementSuggestions(''); setDetectedFeatures([]); }}
+                  onClick={() => { setCatalogView('folders'); setShowProductForm(false); setEditingProduct(null); setNewProductName(''); setNewProductPrice(''); setNewProductStock(''); setNewProductDescription(''); setNewProductImage(''); setNewProductImages([]);}}
                   className="mb-4 text-purple-600 hover:text-purple-700 font-semibold flex items-center gap-2"
                 >
                   <i className="fa-solid fa-arrow-left"></i>
@@ -3035,8 +2994,6 @@ ${describeError(error)}
                             setNewProductDescription('');
                             setNewProductImage('');
                             setNewProductImages([]);
-                            setImageEnhancementSuggestions('');
-                            setDetectedFeatures([]);
                           }}
                           className="text-slate-400 hover:text-slate-600 text-xl"
                         >
@@ -3073,10 +3030,10 @@ ${describeError(error)}
                           <select
                             value={newProductCategory}
                             onChange={e => setNewProductCategory(e.target.value)}
-                            // appearance-none: iOS pintaba su propio indicador encima
-                            // del icono de la carpeta, y quedaban dos cosas
-                            // superpuestas. La flecha se dibuja aquí abajo.
-                            className="bg-white p-3 pr-16 rounded-lg border border-slate-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-100 outline-none w-full appearance-none"
+                            // appearance-none: iOS pintaba su propio indicador
+                            // encima del nuestro y quedaban dos superpuestos.
+                            // La flecha se dibuja aquí abajo.
+                            className="bg-white p-3 pr-10 rounded-lg border border-slate-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-100 outline-none w-full appearance-none"
                             style={newProductCategory ? {
                               backgroundColor: categories.find(c => c.id === newProductCategory)?.color + '20',
                               borderColor: categories.find(c => c.id === newProductCategory)?.color,
@@ -3088,13 +3045,13 @@ ${describeError(error)}
                               <option key={cat.id} value={cat.id}>{cat.name}</option>
                             ))}
                           </select>
-                          <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2 pointer-events-none">
-                            {newProductCategory && (
-                              <i
-                                className={categories.find(c => c.id === newProductCategory)?.icon}
-                                style={{ color: categories.find(c => c.id === newProductCategory)?.color }}
-                              ></i>
-                            )}
+                          {/* Solo la flecha. El icono de la carpeta se pintaba
+                              también aquí, pero es una fuente de iconos que el
+                              teléfono no siempre trae: en iOS salían unas rayas
+                              y en Android un cuadrado vacío al lado de la
+                              flecha. El nombre de la carpeta ya se lee dentro
+                              del propio campo. */}
+                          <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
                             <i className="fa-solid fa-chevron-down text-slate-400 text-xs"></i>
                           </div>
                         </div>
@@ -3207,60 +3164,6 @@ ${describeError(error)}
                         </div>
                       )}
 
-                      {/* AI Enhancement Status & Suggestions */}
-                      {isEnhancingImage && (
-                        <div className="mb-4 p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg border border-purple-200 animate-pulse">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-purple-500 flex items-center justify-center">
-                              <i className="fa-solid fa-wand-magic-sparkles text-white text-sm animate-spin"></i>
-                            </div>
-                            <div className="flex-1">
-                              <p className="text-sm font-semibold text-purple-700">Analizando imagen con IA...</p>
-                              <p className="text-xs text-purple-600">Generando descripción profesional y sugerencias</p>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {imageEnhancementSuggestions && !isEnhancingImage && (
-                        <div className="mb-4 space-y-3">
-                          {/* Sugerencias de mejora */}
-                          <div className="p-4 bg-gradient-to-br from-amber-50 to-orange-50 rounded-lg border border-amber-200">
-                            <div className="flex items-start gap-3">
-                              <div className="w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center flex-shrink-0 mt-0.5">
-                                <i className="fa-solid fa-lightbulb text-white text-sm"></i>
-                              </div>
-                              <div className="flex-1">
-                                <p className="text-sm font-semibold text-amber-900 mb-1">Sugerencias para mejorar tu foto</p>
-                                <p className="text-xs text-amber-700 leading-relaxed">{imageEnhancementSuggestions}</p>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Características detectadas */}
-                          {detectedFeatures.length > 0 && (
-                            <div className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
-                              <div className="flex items-start gap-3">
-                                <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0 mt-0.5">
-                                  <i className="fa-solid fa-eye text-white text-sm"></i>
-                                </div>
-                                <div className="flex-1">
-                                  <p className="text-sm font-semibold text-blue-900 mb-2">Características detectadas</p>
-                                  <div className="flex flex-wrap gap-2">
-                                    {detectedFeatures.map((feature, idx) => (
-                                      <span key={idx} className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full border border-blue-200 font-medium">
-                                        <i className="fa-solid fa-check mr-1"></i>
-                                        {feature}
-                                      </span>
-                                    ))}
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      )}
-
                       <button
                         onClick={handleSaveProduct}
                         disabled={guardandoProducto || fotosProcesando > 0}
@@ -3275,7 +3178,7 @@ ${describeError(error)}
 
                       {editingProduct && (
                         <button
-                          onClick={() => { setEditingProduct(null); setNewProductName(''); setNewProductPrice(''); setNewProductStock(''); setNewProductDescription(''); setNewProductImage(''); setNewProductImages([]); setImageEnhancementSuggestions(''); setDetectedFeatures([]); setShowProductForm(false); }}
+                          onClick={() => { setEditingProduct(null); setNewProductName(''); setNewProductPrice(''); setNewProductStock(''); setNewProductDescription(''); setNewProductImage(''); setNewProductImages([]);setShowProductForm(false); }}
                           className="w-full bg-slate-200 text-slate-600 py-2 rounded-lg font-semibold hover:bg-slate-300 transition mt-2"
                         >
                           Cancelar Edición
@@ -3294,9 +3197,14 @@ ${describeError(error)}
                   </h3>
 
                   <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                    {/* Add Product Button */}
+                    {/* Add Product Button.
+                        La carpeta abierta entra ya elegida en el formulario. Sin
+                        eso el producto se guardaba sin categoría —el campo se
+                        vacía después de cada guardado— y desaparecía de la
+                        carpeta donde se acababa de subir, para reaparecer en el
+                        listado general. */}
                     <button
-                      onClick={() => { setShowProductForm(true); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                      onClick={() => { setNewProductCategory(selectedCategory || ''); setShowProductForm(true); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
                       className="aspect-square bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl border-2 border-dashed border-purple-300 hover:border-purple-500 hover:from-purple-100 hover:to-pink-100 transition flex flex-col items-center justify-center gap-2 group"
                     >
                       <div className="w-16 h-16 rounded-full bg-purple-500 group-hover:bg-purple-600 transition flex items-center justify-center">

@@ -217,6 +217,12 @@
 
       /* Printing Rules */
       @media print {
+        /* Márgenes propios y no los del navegador, que son de media pulgada
+           por lado y dejan el papel demasiado angosto para la hoja. */
+        @page {
+          size: A4;
+          margin: 8mm;
+        }
         body * {
           visibility: hidden;
         }
@@ -227,19 +233,32 @@
           position: absolute;
           left: 0;
           top: 0;
-          width: 100%;
           margin: 0;
           padding: 0;
           box-shadow: none !important;
-          /* En pantalla la hoja se reduce para caber en ventanas estrechas.
-             Al imprimir manda el papel, así que vuelve a su tamaño real. */
-          zoom: 1 !important;
+          /* El documento está maquetado para una hoja de 850px y hay que
+             respetarlo. Antes se estiraba a `width:100%`, o sea al ancho del
+             papel —unos 730px en A4—, y el interior se reacomodaba a esa
+             medida: columnas más angostas, descripciones partidas, todo
+             apretado. Ese era el "se encoge" al imprimir.
+
+             Se conserva el ancho real y se reduce la hoja completa con zoom,
+             que es lo que mantiene la proporción. 0.86 sale de dividir los
+             194mm útiles de un A4 con estos márgenes entre los 850px de la
+             hoja; en Carta, que es más ancho, sobra sitio. */
+          width: 850px !important;
+          max-width: none !important;
+          zoom: 0.86;
           /* Y tiene que poder crecer: con el alto fijo y el desbordamiento
              oculto de la pantalla, lo que no cabía en la primera página no
              pasaba a la segunda, se perdía. */
           overflow: visible !important;
           min-height: 0 !important;
           height: auto !important;
+          /* Sin esto el navegador descarta los fondos y la cabecera azul del
+             documento sale en blanco. */
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
         }
         /* El documento se muestra en una capa fija a pantalla completa, y lo
            fijo no pagina: al imprimir vuelve a ser flujo normal. */

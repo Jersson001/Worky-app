@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { supabase } from '../services/supabaseConfig';
 import { setCurrentUserId } from '../services/messagingService';
+import { llegoInvitado } from '../services/catalogShareService';
 
 interface LoginScreenProps {
   onLogin: () => void;
@@ -78,6 +79,22 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister, i
   // acceso que no puede rellenar.
   const [authMode, setAuthMode] = useState<AuthMode>(invitadoPor ? 'register' : 'login');
 
+  /**
+   * Quien llega escaneando un QR ve un registro corto: nombre, correo, celular
+   * y contraseña. Nada más.
+   *
+   * Viene a escribirle a alguien, no a darse de alta en una plataforma: cada
+   * campo de más es un sitio donde abandona. Apellidos y país los aporta el
+   * onboarding exprés (apellidos van dentro del nombre; el país se asume +57,
+   * que es de donde llega todo el mundo hoy).
+   *
+   * Se lee de localStorage y no de `invitadoPor` porque el nombre del vendedor
+   * se consulta al servidor y tarda: sin esto el visitante ve el formulario
+   * largo durante un instante y luego le cambia debajo de las manos.
+   */
+  const [llegaPorCatalogo] = useState(() => llegoInvitado());
+  const formularioCorto = llegaPorCatalogo || !!invitadoPor;
+
   // El nombre del invitador se consulta al servidor, así que suele llegar
   // después del primer pintado: por eso no basta con el valor inicial de
   // arriba. Se ajusta una sola vez, para no pisar al que cambie de pestaña.
@@ -100,13 +117,15 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister, i
     try {
       if (authMode === 'register') {
         // ── Validation ──
-        if (!firstName || !lastName || !email || !phone || !password) {
+        // En el formulario corto no hay apellidos: el nombre completo se
+        // escribe entero en un solo campo.
+        if (!firstName || (!formularioCorto && !lastName) || !email || !phone || !password) {
           setError('Completa todos los campos requeridos.');
           setLoading(false);
           return;
         }
 
-        const fullName = `${firstName} ${lastName}`;
+        const fullName = formularioCorto ? firstName.trim() : `${firstName} ${lastName}`;
         // E.164 estricto (sin espacios): Supabase rechaza el envío de SMS si el
         // número no matchea ese formato exacto.
         const fullPhone = `${countryCode}${phone.replace(/\s+/g, '')}`;
@@ -360,23 +379,25 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister, i
                     <input
                       type="text"
                       className="w-full p-3.5 bg-slate-50 border border-slate-200 text-slate-900 font-semibold rounded-xl outline-none focus:border-blue-600 focus:bg-white transition placeholder-slate-400 text-sm"
-                      placeholder="Ej. Juan"
+                      placeholder={formularioCorto ? 'Ej. Juan Pérez' : 'Ej. Juan'}
                       value={firstName}
                       onChange={e => setFirstName(e.target.value)}
                       required
                     />
                   </div>
-                  <div>
-                    <label className="text-xs text-slate-700 font-bold uppercase mb-1.5 block tracking-wide">Apellidos *</label>
-                    <input
-                      type="text"
-                      className="w-full p-3.5 bg-slate-50 border border-slate-200 text-slate-900 font-semibold rounded-xl outline-none focus:border-blue-600 focus:bg-white transition placeholder-slate-400 text-sm"
-                      placeholder="Ej. Pérez"
-                      value={lastName}
-                      onChange={e => setLastName(e.target.value)}
-                      required
-                    />
-                  </div>
+                  {!formularioCorto && (
+                    <div>
+                      <label className="text-xs text-slate-700 font-bold uppercase mb-1.5 block tracking-wide">Apellidos *</label>
+                      <input
+                        type="text"
+                        className="w-full p-3.5 bg-slate-50 border border-slate-200 text-slate-900 font-semibold rounded-xl outline-none focus:border-blue-600 focus:bg-white transition placeholder-slate-400 text-sm"
+                        placeholder="Ej. Pérez"
+                        value={lastName}
+                        onChange={e => setLastName(e.target.value)}
+                        required
+                      />
+                    </div>
+                  )}
                   <div>
                     <label className="text-xs text-slate-700 font-bold uppercase mb-1.5 block tracking-wide">Correo electrónico *</label>
                     <input
@@ -389,26 +410,30 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister, i
                     />
                   </div>
                   <div className="flex gap-2">
-                    <div className="w-1/3">
-                      <label className="text-xs text-slate-700 font-bold uppercase mb-1.5 block tracking-wide">País</label>
-                      <select
-                        className="w-full p-3.5 bg-slate-50 border border-slate-200 text-slate-900 font-semibold rounded-xl outline-none focus:border-blue-600 focus:bg-white transition text-sm"
-                        value={countryCode}
-                        onChange={e => setCountryCode(e.target.value)}
-                        required
-                      >
-                        <option value="+57">🇨🇴 +57</option>
-                        <option value="+34">🇪🇸 +34</option>
-                        <option value="+55">🇧🇷 +55</option>
-                        <option value="+1">🇺🇸 +1</option>
-                      </select>
-                    </div>
-                    <div className="w-2/3">
+                    {/* El selector de país se cae del formulario corto: el
+                        indicativo se queda en el que ya trae por defecto. */}
+                    {!formularioCorto && (
+                      <div className="w-1/3">
+                        <label className="text-xs text-slate-700 font-bold uppercase mb-1.5 block tracking-wide">País</label>
+                        <select
+                          className="w-full p-3.5 bg-slate-50 border border-slate-200 text-slate-900 font-semibold rounded-xl outline-none focus:border-blue-600 focus:bg-white transition text-sm"
+                          value={countryCode}
+                          onChange={e => setCountryCode(e.target.value)}
+                          required
+                        >
+                          <option value="+57">🇨🇴 +57</option>
+                          <option value="+34">🇪🇸 +34</option>
+                          <option value="+55">🇧🇷 +55</option>
+                          <option value="+1">🇺🇸 +1</option>
+                        </select>
+                      </div>
+                    )}
+                    <div className={formularioCorto ? 'w-full' : 'w-2/3'}>
                       <label className="text-xs text-slate-700 font-bold uppercase mb-1.5 block tracking-wide">Celular *</label>
                       <input
                         type="tel"
                         className="w-full p-3.5 bg-slate-50 border border-slate-200 text-slate-900 font-semibold rounded-xl outline-none focus:border-blue-600 focus:bg-white transition placeholder-slate-400 text-sm"
-                        placeholder="3001234567"
+                        placeholder={formularioCorto ? `${countryCode} 300 123 4567` : '3001234567'}
                         value={phone}
                         onChange={e => setPhone(e.target.value)}
                         required
