@@ -14,8 +14,45 @@ import { reducirImagen } from '../utils/imagen';
 import { getCurrentUserId } from './messagingService';
 import { Product, UserProfileData } from '../types';
 
-/** Dónde vive la app en la web; a donde va quien quiera registrarse. */
-export const WORKY_APP_URL = 'https://worky-app-khaki.vercel.app';
+/** La app publicada. El destino por defecto de todo lo que se comparte. */
+const APP_PUBLICADA = 'https://worky-app-khaki.vercel.app';
+
+/**
+ * El origen actual, si sirve para compartirlo con alguien.
+ *
+ * No sirve en dos sitios, y son justo donde más se generan enlaces:
+ *
+ * - En el APK. Capacitor no carga la app de un servidor sino del propio
+ *   teléfono, así que el origen es `localhost` y apunta al aparato de quien
+ *   escanea. Un QR así no lleva a ninguna parte.
+ * - Desarrollando en local, por lo mismo.
+ *
+ * Fuera de esos casos el origen es una URL de verdad —producción o el preview
+ * que Vercel levanta por cada rama— y es mejor que la fija: así los enlaces
+ * generados en un preview se quedan dentro del preview y se puede probar el
+ * recorrido completo del QR antes de publicar. Con la URL fija, un QR hecho en
+ * el preview llevaba a producción y parecía que el cambio no funcionaba.
+ */
+const origenCompartible = (): string | null => {
+  try {
+    const { protocol, hostname, origin } = window.location;
+    if (protocol !== 'http:' && protocol !== 'https:') return null;
+    const local = hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1' || hostname.endsWith('.local');
+    return local ? null : origin;
+  } catch {
+    // Sin `window` —cualquier ejecución fuera del navegador— manda la publicada.
+    return null;
+  }
+};
+
+/**
+ * Dónde vive la app; a donde va quien quiera registrarse.
+ *
+ * Se resuelve una sola vez al cargar: el origen no cambia mientras la página
+ * está abierta, y así todos los sitios que ya lo usaban siguen leyendo una
+ * constante.
+ */
+export const WORKY_APP_URL = origenCompartible() ?? APP_PUBLICADA;
 
 const CATALOG_DIR = 'shared_catalogs';
 
@@ -80,9 +117,6 @@ const ultimaInstantanea = async (userId: string): Promise<string | null> => {
 /**
  * URL que se comparte: la del QR y la del enlace. Estable por usuario, así que
  * el QR impreso sigue sirviendo después de republicar.
- *
- * Apunta a la app publicada y no a `window.location.origin` a propósito: un QR
- * generado mientras se desarrolla en localhost no le serviría a nadie.
  */
 export const catalogPageUrl = (userId: string): string =>
   `${WORKY_APP_URL}/?catalogo=${userId}`;
