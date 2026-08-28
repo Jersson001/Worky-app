@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { supabase } from '../services/supabaseConfig';
 import { setCurrentUserId } from '../services/messagingService';
-import { llegoInvitado } from '../services/catalogShareService';
+import { llegoInvitado, vendedorPendiente } from '../services/catalogShareService';
 
 interface LoginScreenProps {
   onLogin: () => void;
@@ -135,11 +135,18 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister, i
         // full_name y phone viajan como metadata: el trigger
         // on_auth_user_created los lee para espejar el usuario en
         // user_profiles y public_info sin depender del cliente.
+        //
+        // El vendedor va con ellos por otro motivo: hasta ahora solo vivía en
+        // el localStorage de este navegador, y quien confirma el correo suele
+        // abrir el enlace en el navegador de su app de correo, que es otro.
+        // Allí no había ni rastro de a quién iba a escribirle y aterrizaba en
+        // una app vacía. Prendido de la cuenta, el dato le sigue a donde entre.
+        const vendedor = vendedorPendiente();
         const { data, error: signUpError } = await supabase.auth.signUp({
           email: normalizedEmail,
           password,
           options: {
-            data: { full_name: fullName, phone: fullPhone },
+            data: { full_name: fullName, phone: fullPhone, ...(vendedor ? { vendedor } : {}) },
           },
         });
 

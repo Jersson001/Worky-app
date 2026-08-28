@@ -252,12 +252,21 @@ const App: React.FC = () => {
   useEffect(() => {
     if (!uidSesion || needsOnboarding) return;
 
-    const vendedor = vendedorPendiente();
-    if (!vendedor) return;
-
     let cancelado = false;
 
     (async () => {
+      // El navegador es la primera fuente porque no cuesta nada mirarlo. Si no
+      // sabe nada —caso típico de quien confirmó el correo desde la app de
+      // correo, que abre su propio navegador y llega sin el localStorage de
+      // antes— se recurre a la metadata de la cuenta, donde el registro dejó
+      // copia justo para esto.
+      let vendedor = vendedorPendiente();
+      if (!vendedor) {
+        const { data } = await supabase.auth.getUser();
+        vendedor = (data?.user?.user_metadata?.vendedor as string) || null;
+      }
+      if (cancelado || !vendedor) return;
+
       // Su propio catálogo: no hay nada que vincular.
       if (vendedor === uidSesion) {
         olvidarVendedorPendiente();
@@ -290,6 +299,12 @@ const App: React.FC = () => {
         setMessages(prev => ({ ...prev, [vendedor]: prev[vendedor] || [] }));
         setSelectedContactId(vendedor);
         olvidarVendedorPendiente();
+
+        // La copia de la cuenta también se gasta al usarla. A diferencia del
+        // localStorage, esta sobrevive a cerrar sesión: sin borrarla, cada vez
+        // que el cliente volviera a entrar se le abriría de golpe el chat de
+        // aquel vendedor, meses después.
+        void supabase.auth.updateUser({ data: { vendedor: null } });
 
         await enviarPedidoPendiente(vendedor);
       } catch (e) {
@@ -555,27 +570,36 @@ const App: React.FC = () => {
    * al chat; lo demás lo puede completar después si algún día vende.
    */
   useEffect(() => {
-    // Se mira la marca de llegada, no el vendedor pendiente: ese se borra al
-    // crear el contacto, que puede pasar antes de llegar aquí.
-    if (!needsOnboarding || altaExpres || !llegoInvitado()) return;
+    if (!needsOnboarding || altaExpres) return;
 
     let cancelado = false;
 
     (async () => {
       let { email, phone, fullName } = registrationData;
 
+      // La marca del navegador es la vía rápida —no el vendedor pendiente, que
+      // se borra al crear el contacto y eso puede pasar antes de llegar aquí—,
+      // pero no basta: quien confirma el correo desde su app de correo llega en
+      // otro navegador, sin marca, y le salía el formulario largo de negocio,
+      // justo lo que este atajo existe para evitarle. La metadata de la cuenta
+      // lo delata igual.
+      let invitado = llegoInvitado();
+
       // Si volvió después de confirmar el correo, los datos del registro ya no
       // están en memoria: se recuperan de la metadata que guardó el alta.
-      if (!fullName && !email) {
+      if (!invitado || (!fullName && !email)) {
         const { data } = await supabase.auth.getUser();
         const usuario = data?.user;
         if (!usuario) return;
-        email = usuario.email || '';
-        fullName = (usuario.user_metadata?.full_name as string) || '';
-        phone = (usuario.user_metadata?.phone as string) || '';
+        invitado = invitado || !!usuario.user_metadata?.vendedor;
+        if (!fullName && !email) {
+          email = usuario.email || '';
+          fullName = (usuario.user_metadata?.full_name as string) || '';
+          phone = (usuario.user_metadata?.phone as string) || '';
+        }
       }
 
-      if (cancelado || (!fullName && !email)) return;
+      if (cancelado || !invitado || (!fullName && !email)) return;
 
       setAltaExpres(true);
       handleOnboardingComplete({
