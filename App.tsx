@@ -26,7 +26,6 @@ import { GroupChatWindow } from './components/GroupChatWindow';
 import { Contact, Message, UserStatus, ProjectStage, Product, Expense, Story, PaymentAccount, ThirdPartyAccount, ContactRole, Project, ProductCategory, UserProfileData, ChatGroup, GroupMessage } from './types';
 import { LoginScreen } from './components/LoginScreen';
 import { WelcomeOnboarding } from './components/WelcomeOnboarding';
-import { authService } from './services/authService';
 import { sendMessage as sendMessageToFirebase, listenToMessages, listenToContacts, addContact, deleteContact, saveUserProfile, getUserProfile, initializeUserId, setCurrentUserId, getCurrentUserId, searchUserByPhoneOrEmail, addContactFromSearch, deleteMessage, updateMessage, listenToGlobalIncomingMessages, markChatAsRead, markMessagesAsDelivered, markMessagesAsRead, getPublicInfoById } from './services/messagingService';
 import { saveProduct, deleteProduct, listenToProducts, saveCategory, deleteCategory, listenToCategories, saveProject, updateProject, addExpenseToProject, updateContactWithProjects, listenToPaymentAccounts, savePaymentAccount, deletePaymentAccount, PaymentAccountData, fetchProjectsForContact, listenToProjects } from './services/dataService';
 import { supabase } from './services/supabaseConfig';

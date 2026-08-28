@@ -41,7 +41,6 @@ Los siguientes 9 SQL files necesitan ejecutarse en **Supabase SQL Editor** para 
 | Archivo | Propósito |
 |---------|-----------|
 | `components/ContractGenerator.tsx` | Generación automática de contratos |
-| `components/PhoneVerification.tsx` | Verificación de teléfono |
 | `utils/carpentryCalculations.ts` | Cálculos para cotizaciones carpintería |
 | `supabase/functions/view-doc/index.ts` | Edge function para ver documentos |
 
