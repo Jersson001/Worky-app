@@ -51,6 +51,14 @@ interface ChatWindowProps {
   digitalSignature?: string;
   userProfile?: UserProfileData | null;
   onOpenGantt?: (projectId?: string) => void;
+  /**
+   * Aviso que se pinta pegado encima del campo de escribir.
+   *
+   * Va en el flujo normal y no flotando: una banda fija abajo tapaba el propio
+   * campo y los botones de enviar. Así empuja el compositor hacia arriba y todo
+   * sigue alcanzable.
+   */
+  avisoSobreElInput?: React.ReactNode;
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -73,6 +81,7 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
   contact, allContacts, messages, onSendMessage, onUpdateStage, onAddExpense,
   onUpdateProjectInfo, products, paymentAccounts, onBack, activeAction, onClearAction,
   onUpdateMessage, businessLogo, digitalSignature, userProfile, onOpenGantt, onDeleteMessage,
+  avisoSobreElInput,
 }) => {
   // ── UI Toggles ──
   const [showInfo, setShowInfo] = useState(false);
@@ -462,6 +471,8 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
           onCopyPaymentInfo={handleCopyPaymentInfo}
           onShowQR={handleShowQR}
         />
+
+        {avisoSobreElInput}
 
         <ChatFooter
           contactRole={contact.role}

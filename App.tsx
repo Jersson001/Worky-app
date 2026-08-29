@@ -160,7 +160,6 @@ const App: React.FC = () => {
    * complete el registro, que no bloquea nada.
    */
   const [esAnonimo, setEsAnonimo] = useState(false);
-  const [avisoCuentaOculto, setAvisoCuentaOculto] = useState(false);
   /** Alta exprés: quien llega invitado desde un catálogo se salta el perfil de negocio. */
   const [altaExpres, setAltaExpres] = useState(false);
 
@@ -2224,32 +2223,6 @@ ${describeError(error)}
   return (
     <div className="flex h-screen w-screen overflow-hidden relative font-sans text-slate-900 bg-slate-50">
 
-      {/* Quien entró solo con un alias no tiene forma de recuperar su cuenta:
-          si cambia de teléfono o borra los datos, pierde la conversación. Se le
-          avisa, pero sin bloquearle nada —entró para escribir, no para
-          rellenar formularios— y se puede cerrar. */}
-      {esAnonimo && !avisoCuentaOculto && (
-        <div className="fixed bottom-0 inset-x-0 z-40 bg-amber-50 border-t-2 border-amber-300 px-4 py-3 flex items-center gap-3 shadow-lg">
-          <i className="fa-solid fa-triangle-exclamation text-amber-500 text-lg flex-shrink-0"></i>
-          <p className="text-amber-900 text-xs sm:text-sm font-semibold flex-1 leading-snug">
-            <button
-              onClick={() => setShowProfileEditor(true)}
-              className="underline font-bold hover:text-amber-700"
-            >
-              Completa el registro
-            </button>
-            {' '}para no perder la conversación.
-          </p>
-          <button
-            onClick={() => setAvisoCuentaOculto(true)}
-            aria-label="Ocultar aviso"
-            className="text-amber-500 hover:text-amber-700 text-lg flex-shrink-0 px-1"
-          >
-            <i className="fa-solid fa-xmark"></i>
-          </button>
-        </div>
-      )}
-
       {/* Alerta Visual (Toast) para Mensajes Recibidos en Tiempo Real */}
       {incomingToast && (
         <div 
@@ -2329,6 +2302,25 @@ ${describeError(error)}
           <FinancialReport contacts={contacts} onClose={() => setShowFinancials(false)} />
         ) : selectedContactId ? (
           <ChatWindow
+            /* Quien entró solo con un alias no puede recuperar su cuenta: si
+               cambia de teléfono o borra los datos, pierde la conversación. El
+               aviso se queda hasta que complete el registro —no se puede
+               cerrar— pero va encima del campo de escribir y no flotando, para
+               no taparle el sitio donde escribe ni el botón de enviar. */
+            avisoSobreElInput={esAnonimo ? (
+              <div className="bg-amber-50 border-t-2 border-amber-300 px-4 py-2.5 flex items-center gap-2.5">
+                <i className="fa-solid fa-triangle-exclamation text-amber-500 flex-shrink-0"></i>
+                <p className="text-amber-900 text-xs sm:text-sm font-semibold leading-snug">
+                  <button
+                    onClick={() => setShowProfileEditor(true)}
+                    className="underline font-bold hover:text-amber-700"
+                  >
+                    Completa el registro
+                  </button>
+                  {' '}para no perder la conversación.
+                </p>
+              </div>
+            ) : null}
             contact={contacts.find(c => c.id === selectedContactId) as Contact}
             allContacts={contacts}
             messages={messages[selectedContactId] || []}
