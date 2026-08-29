@@ -6,7 +6,7 @@ import { describeError } from '../utils/errorMessage';
 import { shareQuoteViaWhatsApp, shareInvoiceViaWhatsApp, openWhatsApp, generateDocumentId, saveSharedDocument, generateDocumentViewLink } from '../services/whatsappService';
 import { publishCatalogForCurrentUser, catalogPageUrl, qrImageUrl, WORKY_APP_URL } from '../services/catalogShareService';
 import { getCurrentUserId } from '../services/messagingService';
-import { computeLineSubtotal, computeGroupSubtotal, computeSectionSubtotal, seccionesConContenido, usaMedida } from '../utils/carpentryCalculations';
+import { computeLineSubtotal, computeGroupSubtotal, computeSectionSubtotal, seccionesConContenido, describeCantidad } from '../utils/carpentryCalculations';
 
 interface DocumentViewerProps {
   type: 'quote' | 'invoice' | 'receipt' | 'collection_account' | 'expense_receipt';
@@ -359,7 +359,7 @@ const QuoteTemplate = ({ data, businessLogo, userProfile, signature, scale, posi
                                                                 </div>
                                                             )}
                                                         </td>
-                                                        <td className="py-2 px-2 text-center text-xs text-gray-500 w-20">{item.quantity} {item.unit}{usaMedida(item.unit) && item.measure ? ` × ${item.measure}` : ''}</td>
+                                                        <td className="py-2 px-2 text-center text-xs text-gray-500 w-20">{describeCantidad(item)}</td>
                                                         <td className="py-2 px-3 text-right text-sm text-gray-700 w-28">{formatCurrency(item.unitCost)}</td>
                                                         <td className="py-2 px-3 text-right text-sm font-bold text-gray-900 w-28">{formatCurrency(computeLineSubtotal(item))}</td>
                                                     </tr>

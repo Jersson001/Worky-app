@@ -12,7 +12,7 @@ import { QuoteItem, Product, ContactRole, QuoteMode, CarpentrySection, Carpentry
 import { formatCurrency } from '../../../utils/currency';
 import { leerImagenReducida } from '../../../utils/imagen';
 import { calculateTax } from '../../../utils/taxCalculations';
-import { CARPENTRY_CATEGORIES, GREMIOS, CarpentryCategoryConfig, computeGrandTotal, computeSectionSubtotal, computeGroupSubtotal, computeLineSubtotal } from '../../../utils/carpentryCalculations';
+import { CARPENTRY_CATEGORIES, GREMIOS, CarpentryCategoryConfig, computeGrandTotal, computeSectionSubtotal, computeGroupSubtotal, computeLineSubtotal, usaMedida } from '../../../utils/carpentryCalculations';
 
 interface QuoteModalProps {
   show: boolean;
@@ -390,9 +390,13 @@ export const QuoteModal: React.FC<QuoteModalProps> = React.memo(({
                                               }`}
                                             />
                                             <div className="flex flex-wrap gap-1.5 items-end">
-                                              {item.unit === 'ML' && (
+                                              {/* Cualquier unidad que multiplique, no solo ML: los grupos
+                                                  con plantilla eran solo los de cocina —ML y UND— y por eso
+                                                  bastaba. Obra civil es casi toda m², y sin este campo no
+                                                  había dónde escribir el área. */}
+                                              {usaMedida(item.unit) && (
                                                 <div className="w-16">
-                                                  <label className="text-[9px] text-slate-400 font-semibold uppercase block mb-0.5">ML</label>
+                                                  <label className="text-[9px] text-slate-400 font-semibold uppercase block mb-0.5">{item.unit}</label>
                                                   <DecimalInput
                                                     value={isTemplate ? undefined : item.measure}
                                                     placeholder={isTemplate ? String(item.measure ?? '') : undefined}
