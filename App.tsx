@@ -2232,13 +2232,13 @@ ${describeError(error)}
         <div className="fixed bottom-0 inset-x-0 z-40 bg-amber-50 border-t-2 border-amber-300 px-4 py-3 flex items-center gap-3 shadow-lg">
           <i className="fa-solid fa-triangle-exclamation text-amber-500 text-lg flex-shrink-0"></i>
           <p className="text-amber-900 text-xs sm:text-sm font-semibold flex-1 leading-snug">
-            Entraste sin correo. Si cambias de teléfono perderás esta conversación.
             <button
               onClick={() => setShowProfileEditor(true)}
-              className="underline font-bold ml-1 hover:text-amber-700"
+              className="underline font-bold hover:text-amber-700"
             >
-              Añade tu correo
+              Completa el registro
             </button>
+            {' '}para no perder la conversación.
           </p>
           <button
             onClick={() => setAvisoCuentaOculto(true)}
