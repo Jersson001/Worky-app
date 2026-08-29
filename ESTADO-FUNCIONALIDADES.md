@@ -1,6 +1,6 @@
 # Estado de funcionalidades — Worky
 
-Última revisión: 28 de agosto de 2026.
+Última revisión: 29 de agosto de 2026.
 
 > Este documento describía el proyecto cuando corría sobre Firebase y decía que
 > los clientes no podían tener cuenta, que Storage no estaba implementado y que
@@ -113,8 +113,92 @@ Cotizaciones, facturas, recibos de caja, cuentas de cobro y comprobantes de
 gasto. Se comparten por WhatsApp como HTML maquetado, con QR del catálogo al pie.
 
 **Impresión.** La hoja se maqueta a 850 px y al imprimir se reduce entera con
-zoom, conservando la proporción. Antes se estiraba al ancho del papel y el
-interior salía apretado.
+zoom al 80 %, conservando la proporción. Ese `zoom` **necesita `!important`**:
+la hoja lleva otro en línea desde React —el que la encoge para caber en
+pantalla— y un estilo en línea gana a la hoja de estilos. Sin eso se imprime a
+sus 850 px reales y se corta por la derecha. El 80 % tampoco es la cuenta
+exacta: da 180 mm sobre los 190 útiles de un A4, y esa holgura es a propósito,
+porque casi ninguna impresora llega al borde del papel.
+
+---
+
+## Cotización por capítulos
+
+El modo **Personalizada** arma la cotización por capítulos, cada uno con sus
+grupos y sus líneas, con fotos y comentarios por línea. El documento sale
+desglosado igual en los tres sitios donde se pinta: la app, el enlace compartido
+y el HTML que se sube.
+
+Toda línea calcula igual: `cantidad × costo × (medida || 1)`. Así m², ml, m³,
+puntos, viajes y global comparten la misma fórmula sin casos especiales. Qué
+unidades multiplican por la medida lo decide `usaMedida()`, en un solo sitio.
+
+### A cada oficio, sus capítulos
+
+Worky no es solo para gente de obra: sirve a cualquiera que le lleve cuentas
+claras a sus clientes. A un abogado la cotización básica le basta, y enseñarle
+un capítulo de «Drywall y Cielorrasos» solo le hace dudar de si la app es para
+él.
+
+| Tipo de negocio | Capítulos |
+|---|---|
+| `carpinteria`, `muebles` | Carpintería |
+| `decoracion` | Las dos |
+| `construccion`, `reformas`, `pintura`, `plomeria`, `electricidad` | Obra blanca |
+| `otro` | Ninguno: solo cotización básica |
+| *(vacío o desconocido)* | Todos |
+
+Sin oficio declarado se enseñan todos a propósito: eran 8 de 17 usuarios cuando
+se hizo, gente que ya usaba los capítulos. Quien se registra ahora sí elige.
+
+Cuando no hay capítulos, las pestañas Básica/Personalizada desaparecen enteras
+—una sola pestaña solo invita a buscar la otra— y el modo se fuerza a básica.
+
+Añadir una profesión son dos líneas: el `<option>` en `WelcomeOnboarding.tsx` y
+su entrada en `GREMIOS_POR_OFICIO`. **Las dos**: si falta la del mapeo, cae en
+el caso seguro y ve todo.
+
+### Los capítulos
+
+**Carpintería:** Cocinas Integrales, Clósets, Puertas, Gabinetes de Baño,
+Centros de Entretenimiento, Muebles Especiales.
+
+**Obra blanca:** Pintura y Estuco, Enchapes y Pisos, Drywall y Cielorrasos,
+Puntos e Instalaciones, Demolición y Aseo, Impermeabilización, y Aparatos y
+Materiales.
+
+Las plantillas nacen con los nombres de lo que se suele cobrar y **todos los
+costos en cero**: recuerdan qué va en cada capítulo, no sugieren precios.
+
+### Material por línea
+
+Cada línea de obra blanca lleva un interruptor de material, apagado por
+defecto —muchos maestros cobran solo la mano de obra—.
+
+El material **se compra por unidades de venta**, no en la unidad del trabajo: la
+pintura se cobra por m² de muro pero se compra por galones. Su subtotal es
+cantidad por precio, sin multiplicar por los metros.
+
+Y hace la cuenta de la ferretería. Cada plantilla trae el **rendimiento** de su
+material, así que 80 m² a 30 m² por galón proponen 3 galones, redondeando hacia
+arriba porque medio galón no se compra. El rendimiento queda a la vista y
+editable: cambia con el producto, las manos que se den y cómo esté la
+superficie, y esconder el número que hace la cuenta sería opaco.
+
+Rendimientos de partida: pintura 30 m²/galón · estuco 8 m²/bulto · masilla
+12 m²/bulto · pega 5 m²/bulto · cerámica 1,5 m²/caja · drywall 2,9 m²/lámina ·
+impermeabilizante 20 m²/cuñete · cemento 4 m²/bulto.
+
+Cuando el trabajo no se mide en metros —puntos, viajes— no hay nada que dividir
+y la cantidad la pone quien cotiza.
+
+En el documento, el material va sangrado bajo su trabajo y abajo se separan
+**Mano de obra** y **Materiales**. Ese desglose solo aparece si hay material: en
+una cotización de pura mano de obra sobra y confunde.
+
+`Aparatos y Materiales` —sanitarios, griferías, cerámica, iluminación— es para
+lo que no cuelga de ningún trabajo. Va marcado `soloMaterial`: sus líneas cuentan
+enteras del lado del material y no ofrecen el interruptor.
 
 ---
 
@@ -132,6 +216,12 @@ interior salía apretado.
 - **Convertir una cuenta anónima en permanente de verdad.** El aviso lleva al
   editor de perfil, que guarda el correo en el perfil pero no en la cuenta de
   autenticación. Falta llamar a `updateUser` con correo y contraseña.
+- **Capítulos para oficios que no son de obra.** Un abogado o un sastre usan la
+  cotización básica, que les sobra. Si algún día se quieren capítulos propios
+  —«Honorarios», «Confección»— el mecanismo ya está: una entrada en el selector
+  de tipo de negocio y otra en `GREMIOS_POR_OFICIO`.
+- **Presupuesto de materiales aparte.** Los materiales salen dentro de la
+  cotización, no como lista de compra independiente para la ferretería.
 
 ---
 

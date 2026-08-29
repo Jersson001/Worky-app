@@ -21,7 +21,7 @@ Las claves van en `.env.local`; hay una plantilla en
 
 | | |
 |---|---|
-| [ESTADO-FUNCIONALIDADES.md](ESTADO-FUNCIONALIDADES.md) | Qué funciona hoy y qué no. **Empieza por aquí.** |
+| [ESTADO-FUNCIONALIDADES.md](ESTADO-FUNCIONALIDADES.md) | Qué funciona hoy y qué no. **Empieza por aquí.** Incluye cómo se arman las cotizaciones por capítulos y qué ve cada oficio |
 | [SEGURIDAD.md](SEGURIDAD.md) | Auditoría de las políticas de la base, agujeros cerrados y cómo repetirla |
 | [COMO-FUNCIONA-EL-CHAT.md](COMO-FUNCIONA-EL-CHAT.md) | Mensajería, contactos manuales |
 | [PENDIENTE-CATALOGO-STORAGE.md](PENDIENTE-CATALOGO-STORAGE.md) | Por qué la página del catálogo la sirve la app y no Storage |
