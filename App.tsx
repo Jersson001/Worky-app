@@ -151,6 +151,16 @@ const App: React.FC = () => {
    * todavía lanza porque el id se asigna después, en onAuthStateChange.
    */
   const [uidSesion, setUidSesion] = useState<string | null>(null);
+  /**
+   * Entró solo con un alias, sin correo ni teléfono.
+   *
+   * Su cuenta es de verdad, pero no se puede recuperar: si cambia de teléfono o
+   * borra los datos de la app, pierde la conversación con el vendedor y el
+   * vendedor se queda sin forma de contactarle. De ahí el aviso para que
+   * complete el registro, que no bloquea nada.
+   */
+  const [esAnonimo, setEsAnonimo] = useState(false);
+  const [avisoCuentaOculto, setAvisoCuentaOculto] = useState(false);
   /** Alta exprés: quien llega invitado desde un catálogo se salta el perfil de negocio. */
   const [altaExpres, setAltaExpres] = useState(false);
 
@@ -335,9 +345,10 @@ const App: React.FC = () => {
 
         // User is signed in
         setIsLoadingProfile(true);
-        setCurrentUserId(user.id, user.email || user.phone || '');
+        setCurrentUserId(user.id, user.email || user.phone || (user.user_metadata?.alias as string) || '');
         await initializeUserId();
         setUidSesion(user.id);
+        setEsAnonimo(user.is_anonymous === true);
 
         // Try to load profile from Supabase
         unsubProfileRef?.();
@@ -362,6 +373,7 @@ const App: React.FC = () => {
         unsubProfileRef?.();
         unsubProfileRef = null;
         setUidSesion(null);
+        setEsAnonimo(false);
         setIsAuthenticated(false);
         setUserProfile(null);
         setNeedsOnboarding(false);
@@ -590,7 +602,12 @@ const App: React.FC = () => {
         const { data } = await supabase.auth.getUser();
         const usuario = data?.user;
         if (!usuario) return;
-        invitado = invitado || !!usuario.user_metadata?.vendedor;
+        // Quien entró solo con alias nunca quiere el formulario de negocio: no
+        // tiene negocio, tiene una conversación pendiente.
+        invitado = invitado || !!usuario.user_metadata?.vendedor || usuario.is_anonymous === true;
+        if (!fullName && usuario.user_metadata?.alias) {
+          fullName = usuario.user_metadata.alias as string;
+        }
         if (!fullName && !email) {
           email = usuario.email || '';
           fullName = (usuario.user_metadata?.full_name as string) || '';
@@ -2206,6 +2223,32 @@ ${describeError(error)}
 
   return (
     <div className="flex h-screen w-screen overflow-hidden relative font-sans text-slate-900 bg-slate-50">
+
+      {/* Quien entró solo con un alias no tiene forma de recuperar su cuenta:
+          si cambia de teléfono o borra los datos, pierde la conversación. Se le
+          avisa, pero sin bloquearle nada —entró para escribir, no para
+          rellenar formularios— y se puede cerrar. */}
+      {esAnonimo && !avisoCuentaOculto && (
+        <div className="fixed bottom-0 inset-x-0 z-40 bg-amber-50 border-t-2 border-amber-300 px-4 py-3 flex items-center gap-3 shadow-lg">
+          <i className="fa-solid fa-triangle-exclamation text-amber-500 text-lg flex-shrink-0"></i>
+          <p className="text-amber-900 text-xs sm:text-sm font-semibold flex-1 leading-snug">
+            Entraste sin correo. Si cambias de teléfono perderás esta conversación.
+            <button
+              onClick={() => setShowProfileEditor(true)}
+              className="underline font-bold ml-1 hover:text-amber-700"
+            >
+              Añade tu correo
+            </button>
+          </p>
+          <button
+            onClick={() => setAvisoCuentaOculto(true)}
+            aria-label="Ocultar aviso"
+            className="text-amber-500 hover:text-amber-700 text-lg flex-shrink-0 px-1"
+          >
+            <i className="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+      )}
 
       {/* Alerta Visual (Toast) para Mensajes Recibidos en Tiempo Real */}
       {incomingToast && (

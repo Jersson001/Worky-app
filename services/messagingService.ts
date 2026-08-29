@@ -684,15 +684,20 @@ export const saveUserProfile = async (profile: any): Promise<void> => {
 
   // Espeja nombre y avatar en public_info para que otros puedan encontrarte.
   // Si falla, se logguea pero no aborta: la tabla privada ya guardó.
-  const { error: publicError } = await supabase.from('public_info').upsert(
-    {
-      user_id: userId,
-      phone_or_email: (profile.email || profile.phone || '').toLowerCase(),
-      display_name: profile.businessName || profile.ownerName,
-      avatar_url: profile.businessLogo || profile.profilePhoto,
-    },
-    { onConflict: 'user_id' }
-  );
+  //
+  // `phone_or_email` solo se manda si trae algo. Es la columna por la que te
+  // buscan, y quien entró con un alias no tiene correo ni teléfono: mandarla
+  // vacía le borraba el alias que acababa de reservar y lo dejaba imposible de
+  // encontrar. Omitirla conserva lo que ya hubiera.
+  const publico: Record<string, unknown> = {
+    user_id: userId,
+    display_name: profile.businessName || profile.ownerName,
+    avatar_url: profile.businessLogo || profile.profilePhoto,
+  };
+  const contacto = (profile.email || profile.phone || '').toLowerCase();
+  if (contacto) publico.phone_or_email = contacto;
+
+  const { error: publicError } = await supabase.from('public_info').upsert(publico, { onConflict: 'user_id' });
   if (publicError) {
     console.warn('Fallo al actualizar public_info (no crítico):', publicError.message);
   }

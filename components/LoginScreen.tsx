@@ -109,6 +109,80 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister, i
   // hasta que haga clic en el enlace del email.
   const [pendingEmailConfirmation, setPendingEmailConfirmation] = useState<string | null>(null);
 
+  // ── Entrar solo con un alias ───────────────────────────────────────────────
+  //
+  // El camino por defecto para quien escanea un QR. Escribe su nombre, el
+  // servidor le ofrece tres aliases libres, elige uno y ya está en el chat: sin
+  // correo, sin celular y sin contraseña.
+  //
+  // La cuenta que hay debajo es una sesión anónima de Supabase, que es una
+  // cuenta de verdad y no un apaño. Lo que no tiene es forma de recuperarse: si
+  // cambia de teléfono o borra los datos, pierde la conversación. Por eso la app
+  // le pide el correo más tarde, ya dentro y sin bloquearle nada.
+  const [nombreParaAlias, setNombreParaAlias] = useState('');
+  const [sugerencias, setSugerencias] = useState<string[]>([]);
+  const [aliasElegido, setAliasElegido] = useState('');
+  const [buscandoAlias, setBuscandoAlias] = useState(false);
+  // Con correo también se puede: el atajo no cierra la puerta de siempre.
+  const [prefiereFormulario, setPrefiereFormulario] = useState(false);
+  const entradaPorAlias = formularioCorto && authMode === 'register' && !prefiereFormulario;
+
+  const pedirSugerencias = async () => {
+    const nombre = nombreParaAlias.trim();
+    if (!nombre) return;
+    setError('');
+    setBuscandoAlias(true);
+    try {
+      const { data, error: e } = await supabase.rpc('sugerir_alias', { p_nombre: nombre });
+      if (e) throw e;
+      const libres = (data as string[]) || [];
+      if (!libres.length) throw new Error('No se encontró ningún alias libre. Prueba con otro nombre.');
+      setSugerencias(libres);
+      setAliasElegido(libres[0]);
+    } catch (err: any) {
+      console.error('sugerir_alias:', err);
+      setError(err?.message || 'No se pudieron buscar aliases. Revisa tu conexión.');
+    } finally {
+      setBuscandoAlias(false);
+    }
+  };
+
+  const entrarConAlias = async () => {
+    if (!aliasElegido) return;
+    setError('');
+    setLoading(true);
+    try {
+      // El vendedor viaja también en la cuenta: quien llega por QR puede acabar
+      // entrando desde otro navegador, y ahí el localStorage no existe.
+      const vendedor = vendedorPendiente();
+      const { data, error: e } = await supabase.auth.signInAnonymously({
+        options: { data: { alias: aliasElegido, ...(vendedor ? { vendedor } : {}) } },
+      });
+      if (e) throw e;
+      if (!data.user) throw new Error('No se pudo crear la sesión.');
+
+      // Reservar va después de tener sesión: la función necesita saber quién
+      // pide el alias. Si otro se le adelantó en estos segundos, falla aquí y se
+      // le vuelven a ofrecer sugerencias en vez de dejarle a medias.
+      const { data: alias, error: e2 } = await supabase.rpc('reservar_alias', { p_alias: aliasElegido });
+      if (e2) {
+        await supabase.auth.signOut();
+        throw e2;
+      }
+
+      setCurrentUserId(data.user.id, alias as string);
+      // Sin correo ni teléfono: el alias hace de nombre para el resto del alta.
+      onRegister('', '', alias as string);
+    } catch (err: any) {
+      console.error('Entrada por alias:', err);
+      const tomado = /ya está tomado/i.test(err?.message || '');
+      setError(tomado ? 'Ese alias lo acaban de tomar. Elige otro.' : getAuthErrorMessage(err));
+      if (tomado) void pedirSugerencias();
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -378,6 +452,113 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister, i
               </button>
             </div>
 
+            {/* Entrada por alias: lo primero que ve quien llega de un QR. */}
+            {entradaPorAlias && (
+              <div className="space-y-4">
+                <div>
+                  <h2 className="text-slate-900 text-lg font-extrabold">¿Cómo te llamas?</h2>
+                  <p className="text-slate-500 text-sm mt-1">
+                    Con tu nombre basta para empezar a chatear
+                    {invitadoPor ? <> con <span className="font-bold text-slate-700">{invitadoPor.name}</span></> : null}.
+                  </p>
+                </div>
+
+                <div>
+                  <input
+                    type="text"
+                    className="w-full p-3.5 bg-slate-50 border border-slate-200 text-slate-900 font-semibold rounded-xl outline-none focus:border-blue-600 focus:bg-white transition placeholder-slate-400 text-sm"
+                    placeholder="Ej. Jersson Escobar"
+                    value={nombreParaAlias}
+                    onChange={e => { setNombreParaAlias(e.target.value); setSugerencias([]); setError(''); }}
+                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); void pedirSugerencias(); } }}
+                    autoFocus
+                  />
+                </div>
+
+                {!sugerencias.length ? (
+                  <button
+                    type="button"
+                    onClick={() => void pedirSugerencias()}
+                    disabled={!nombreParaAlias.trim() || buscandoAlias}
+                    className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3.5 rounded-xl font-bold text-base hover:shadow-xl transition-all shadow-lg shadow-blue-500/25 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.99]"
+                  >
+                    {buscandoAlias ? 'Buscando nombres libres…' : 'Continuar'}
+                  </button>
+                ) : (
+                  <>
+                    <div>
+                      <p className="text-xs text-slate-700 font-bold uppercase mb-2 tracking-wide">Elige tu nombre de usuario</p>
+                      <div className="space-y-2">
+                        {sugerencias.map(s => (
+                          <button
+                            type="button"
+                            key={s}
+                            onClick={() => { setAliasElegido(s); setError(''); }}
+                            className={`w-full text-left p-3.5 rounded-xl border-2 font-bold text-sm transition-all flex items-center justify-between ${
+                              aliasElegido === s
+                                ? 'border-blue-600 bg-blue-50 text-blue-700'
+                                : 'border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-300'
+                            }`}
+                          >
+                            <span>@{s}</span>
+                            {aliasElegido === s && <i className="fa-solid fa-circle-check text-blue-600"></i>}
+                          </button>
+                        ))}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => void pedirSugerencias()}
+                        disabled={buscandoAlias}
+                        className="text-blue-600 hover:text-blue-700 text-xs font-bold mt-2.5 disabled:opacity-50"
+                      >
+                        <i className="fa-solid fa-rotate mr-1"></i>
+                        Ninguno me gusta, sugiere otros
+                      </button>
+                    </div>
+
+                    {error && (
+                      <div className="text-red-600 text-xs font-semibold bg-red-50 p-3 rounded-xl border border-red-200 flex items-center gap-2">
+                        <i className="fa-solid fa-circle-exclamation text-sm"></i>
+                        <span>{error}</span>
+                      </div>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => void entrarConAlias()}
+                      disabled={loading || !aliasElegido}
+                      className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3.5 rounded-xl font-bold text-base hover:shadow-xl transition-all shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.99]"
+                    >
+                      {loading ? 'Entrando…' : <>Entrar como @{aliasElegido}</>}
+                    </button>
+                  </>
+                )}
+
+                {error && !sugerencias.length && (
+                  <div className="text-red-600 text-xs font-semibold bg-red-50 p-3 rounded-xl border border-red-200 flex items-center gap-2">
+                    <i className="fa-solid fa-circle-exclamation text-sm"></i>
+                    <span>{error}</span>
+                  </div>
+                )}
+
+                <p className="text-slate-400 text-[11px] leading-relaxed text-center">
+                  Podrás añadir tu correo más adelante para no perder la conversación
+                  si cambias de teléfono.
+                </p>
+
+                <div className="text-center pt-3 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => { setPrefiereFormulario(true); setError(''); }}
+                    className="text-slate-500 hover:text-slate-700 text-xs font-semibold"
+                  >
+                    Prefiero registrarme con correo
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {!entradaPorAlias && (
             <form className="space-y-4" onSubmit={handleSubmit}>
               {authMode === 'register' && (
                 <>
@@ -509,8 +690,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister, i
                 ) : authMode === 'login' ? 'Iniciar sesión' : 'Crear cuenta'}
               </button>
             </form>
+            )}
 
             {/* Footer */}
+            {!entradaPorAlias && (
             <div className="mt-6 text-center pt-4 border-t border-slate-100">
               <p className="text-slate-500 text-xs font-medium">
                 {authMode === 'login' ? '¿No tienes cuenta?' : '¿Ya tienes cuenta?'}{' '}
@@ -521,7 +704,19 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister, i
                   {authMode === 'login' ? 'Regístrate aquí' : 'Inicia sesión'}
                 </button>
               </p>
+              {/* Volver al atajo: quien pulsó "prefiero con correo" y se
+                  arrepiente no tiene por qué recargar la página. */}
+              {formularioCorto && prefiereFormulario && authMode === 'register' && (
+                <button
+                  onClick={() => { setPrefiereFormulario(false); setError(''); }}
+                  className="text-slate-500 hover:text-slate-700 text-xs font-semibold mt-3"
+                >
+                  <i className="fa-solid fa-arrow-left mr-1"></i>
+                  Entrar solo con un nombre de usuario
+                </button>
+              )}
             </div>
+            )}
           </div>
         </div>
       </div>

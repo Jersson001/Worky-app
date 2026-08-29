@@ -138,12 +138,17 @@ BEGIN
   -- Los coalesce protegen a quien ya tenía cuenta: si se pone un alias más
   -- tarde, no se le pisa el correo con el que le encuentran ni el nombre con
   -- el que aparece.
+  --
+  -- `nullif(..., '')` y no solo coalesce: la fila puede existir con la columna
+  -- en blanco —el guardado del perfil la escribía vacía cuando no hay correo ni
+  -- teléfono—, y una cadena vacía no es nula, así que el coalesce a secas la
+  -- daba por buena y dejaba al usuario sin forma de que le encontraran.
   INSERT INTO public.public_info (user_id, alias, display_name, phone_or_email)
   VALUES (v_me, v_alias, v_alias, v_alias)
   ON CONFLICT (user_id) DO UPDATE
     SET alias          = EXCLUDED.alias,
-        display_name   = coalesce(public_info.display_name, EXCLUDED.display_name),
-        phone_or_email = coalesce(public_info.phone_or_email, EXCLUDED.phone_or_email);
+        display_name   = coalesce(nullif(public_info.display_name, ''), EXCLUDED.display_name),
+        phone_or_email = coalesce(nullif(public_info.phone_or_email, ''), EXCLUDED.phone_or_email);
 
   RETURN v_alias;
 

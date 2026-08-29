@@ -160,6 +160,17 @@ ok('no le pisa el correo de quien ya lo tenía', rows[0].phone_or_email === 'ana
 ok('ni el nombre con el que aparece', rows[0].display_name === 'Ana Muebles', rows[0].display_name);
 ok('y aun así se queda con el alias', rows[0].alias === 'ana_muebles', rows[0].alias);
 
+// Una fila con la columna en blanco: pasó de verdad, porque el guardado del
+// perfil la escribía vacía cuando no había correo ni teléfono. Vacío no es
+// nulo, así que hay que repararlo o el usuario queda inencontrable.
+const D = '44444444-4444-4444-4444-444444444444';
+await db.query(`INSERT INTO public.public_info (user_id, phone_or_email, display_name) VALUES ($1,'','')`, [D]);
+await comoUsuario(D);
+await db.query(`SELECT public.reservar_alias('quedo_en_blanco')`);
+({ rows } = await db.query(`SELECT phone_or_email, display_name FROM public.public_info WHERE user_id=$1`, [D]));
+ok('repara una clave de búsqueda vacía', rows[0].phone_or_email === 'quedo_en_blanco', `"${rows[0].phone_or_email}"`);
+ok('y el nombre vacío también', rows[0].display_name === 'quedo_en_blanco', `"${rows[0].display_name}"`);
+
 for (const corto of ['ab', '']) {
   try {
     await db.query(`SELECT public.reservar_alias($1)`, [corto]);
