@@ -6,7 +6,7 @@ import { describeError } from '../utils/errorMessage';
 import { shareQuoteViaWhatsApp, shareInvoiceViaWhatsApp, openWhatsApp, generateDocumentId, saveSharedDocument, generateDocumentViewLink } from '../services/whatsappService';
 import { publishCatalogForCurrentUser, catalogPageUrl, qrImageUrl, WORKY_APP_URL } from '../services/catalogShareService';
 import { getCurrentUserId } from '../services/messagingService';
-import { computeLineSubtotal, computeMaterialSubtotal, computeManoDeObraTotal, computeMaterialesTotal, computeGroupSubtotal, computeSectionSubtotal, seccionesConContenido, describeCantidad } from '../utils/carpentryCalculations';
+import { computeLineSubtotal, computeMaterialSubtotal, computeManoDeObraTotal, computeMaterialesTotal, computeGroupSubtotal, computeSectionSubtotal, seccionesConContenido, describeCantidad, describeMaterial } from '../utils/carpentryCalculations';
 
 interface DocumentViewerProps {
   type: 'quote' | 'invoice' | 'receipt' | 'collection_account' | 'expense_receipt';
@@ -370,7 +370,7 @@ const QuoteTemplate = ({ data, businessLogo, userProfile, signature, scale, posi
                                                         <td className="py-1.5 px-3 pl-8 text-xs text-gray-600">
                                                             ↳ Material{item.material?.descripcion?.trim() ? `: ${item.material.descripcion}` : ''}
                                                         </td>
-                                                        <td className="py-1.5 px-2 text-center text-xs text-gray-500 w-20">{describeCantidad({ ...item, ...item.material })}</td>
+                                                        <td className="py-1.5 px-2 text-center text-xs text-gray-500 w-20">{describeMaterial(item.material)}</td>
                                                         <td className="py-1.5 px-3 text-right text-xs text-gray-600 w-28">{formatCurrency(item.material?.unitCost || 0)}</td>
                                                         <td className="py-1.5 px-3 text-right text-xs font-semibold text-gray-700 w-28">{formatCurrency(computeMaterialSubtotal(item))}</td>
                                                     </tr>

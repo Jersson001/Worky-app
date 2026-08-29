@@ -5,7 +5,7 @@
  * Así ML/M2 (que usan medida) y UND/GLOBAL (medida implícita 1) comparten
  * la misma lógica sin casos especiales por categoría.
  */
-import { CarpentryCategoryKey, CarpentryItemGroup, CarpentryLineItem, CarpentryMaterial, CarpentrySection, CarpentryUnit, GremioKey, QuoteItem } from '../types';
+import { CarpentryCategoryKey, CarpentryItemGroup, CarpentryLineItem, CarpentryMaterial, CarpentrySection, CarpentryUnit, GremioKey, MaterialUnit, QuoteItem } from '../types';
 
 // ─── Identificadores ─────────────────────────────────────────────────────────
 
@@ -45,6 +45,15 @@ export const describeCantidad = (item: Pick<CarpentryLineItem, 'unit' | 'quantit
   return item.unit === 'GLOBAL' ? cantidad : `${cantidad} ${item.unit}`;
 };
 
+/**
+ * Cómo se lee la cantidad de material en el documento: «3 GALON».
+ *
+ * No reutiliza describeCantidad porque el material no lleva medida ni comparte
+ * unidad con el trabajo: son 80 m² de muro, pero 3 galones de pintura.
+ */
+export const describeMaterial = (material?: CarpentryMaterial): string =>
+  material ? `${material.quantity ?? 1} ${material.unit || 'UND'}` : '';
+
 /** Solo la mano de obra de una línea. */
 export const computeLineSubtotal = (item: CarpentryLineItem): number => {
   if (item.isTemplate) return 0;
@@ -53,14 +62,35 @@ export const computeLineSubtotal = (item: CarpentryLineItem): number => {
 };
 
 /**
- * Solo el material de una línea. Misma fórmula y misma unidad que la mano de
- * obra: el material de 80 m² de pintura se mide en esos mismos 80 m².
+ * Solo el material de una línea.
+ *
+ * Cantidad por precio y nada más: el material se compra por unidades de venta
+ * —galones, bultos, cajas— y su precio ya es el de esa unidad. Multiplicarlo
+ * además por los metros del trabajo, como se hacía al principio, cobraba un
+ * galón por cada metro cuadrado.
  */
 export const computeMaterialSubtotal = (item: CarpentryLineItem): number => {
   const m = item.material;
   if (!m?.activo || item.isTemplate) return 0;
-  const measure = usaMedida(item.unit) ? (m.measure || 0) : 1;
-  return (m.quantity || 0) * (m.unitCost || 0) * measure;
+  return (m.quantity || 0) * (m.unitCost || 0);
+};
+
+/**
+ * Cuánto material hace falta para el trabajo de esta línea.
+ *
+ * Los metros del trabajo divididos por lo que cubre una unidad, redondeando
+ * hacia arriba: medio galón no se compra. Es la cuenta que el maestro hace de
+ * cabeza en la ferretería, y equivocarla es quedarse corto a mitad de obra.
+ *
+ * Devuelve null cuando no hay con qué calcular —falta el rendimiento, o el
+ * trabajo no se mide en metros— y entonces la cantidad la pone él.
+ */
+export const cantidadSugerida = (item: CarpentryLineItem, rendimiento?: number): number | null => {
+  const r = rendimiento ?? item.material?.rendimiento;
+  if (!r || r <= 0) return null;
+  const trabajo = (usaMedida(item.unit) ? (item.measure || 0) : 1) * (item.quantity || 0);
+  if (trabajo <= 0) return null;
+  return Math.ceil(trabajo / r);
 };
 
 /** Lo que cuesta la línea entera. Es lo que suman los grupos y el total. */
@@ -191,6 +221,15 @@ interface ItemTemplate {
   measure?: number;
   unitCost?: number;
   quantity: number;
+  /**
+   * Con qué material se hace este trabajo y cuánto cubre cada unidad.
+   *
+   * Los rendimientos son puntos de partida, no verdades: cambian con el
+   * producto, las manos que se den y cómo esté la superficie. Por eso el campo
+   * queda a la vista y editable en el formulario. Los costos siguen en 0: el
+   * precio lo pone cada quien.
+   */
+  material?: { descripcion?: string; unit: MaterialUnit; rendimiento?: number };
 }
 
 const emptyLineFromTemplate = (t: ItemTemplate): CarpentryLineItem => ({
@@ -203,6 +242,9 @@ const emptyLineFromTemplate = (t: ItemTemplate): CarpentryLineItem => ({
   isTemplate: true,
   images: [],
   comments: '',
+  // El material queda apagado pero con su unidad y su rendimiento puestos, para
+  // que al encender el interruptor ya sepa en qué se compra y cuánto cunde.
+  material: t.material ? { activo: false, ...t.material } : undefined,
 });
 
 export const COCINA_TEMPLATES: Record<string, ItemTemplate[]> = {
@@ -250,15 +292,15 @@ const OBRA_CIVIL: Partial<Record<CarpentryCategoryKey, GrupoPlantilla[]>> = {
     {
       label: 'Pintura',
       items: [
-        { description: 'Pintura en muros', unit: 'M2', measure: 1, quantity: 1 },
-        { description: 'Pintura en cielorraso / techo', unit: 'M2', measure: 1, quantity: 1 },
+        { description: 'Pintura en muros', unit: 'M2', measure: 1, quantity: 1, material: { descripcion: 'Pintura', unit: 'GALON', rendimiento: 30 } },
+        { description: 'Pintura en cielorraso / techo', unit: 'M2', measure: 1, quantity: 1, material: { descripcion: 'Pintura', unit: 'GALON', rendimiento: 30 } },
       ],
     },
     {
       label: 'Estuco y preparación',
       items: [
-        { description: 'Estucado y preparación de superficie', unit: 'M2', measure: 1, quantity: 1 },
-        { description: 'Resane y masillado de muros', unit: 'M2', measure: 1, quantity: 1 },
+        { description: 'Estucado y preparación de superficie', unit: 'M2', measure: 1, quantity: 1, material: { descripcion: 'Estuco', unit: 'BULTO', rendimiento: 8 } },
+        { description: 'Resane y masillado de muros', unit: 'M2', measure: 1, quantity: 1, material: { descripcion: 'Masilla', unit: 'BULTO', rendimiento: 12 } },
       ],
     },
   ],
@@ -267,20 +309,20 @@ const OBRA_CIVIL: Partial<Record<CarpentryCategoryKey, GrupoPlantilla[]>> = {
     {
       label: 'Pisos',
       items: [
-        { description: 'Enchape de piso en cerámica / porcelanato', unit: 'M2', measure: 1, quantity: 1 },
-        { description: 'Guardaescobas / zócalos', unit: 'ML', measure: 1, quantity: 1 },
+        { description: 'Enchape de piso en cerámica / porcelanato', unit: 'M2', measure: 1, quantity: 1, material: { descripcion: 'Cerámica', unit: 'CAJA', rendimiento: 1.5 } },
+        { description: 'Guardaescobas / zócalos', unit: 'ML', measure: 1, quantity: 1, material: { descripcion: 'Guardaescoba', unit: 'UND', rendimiento: 2.4 } },
       ],
     },
     {
       label: 'Paredes',
       items: [
-        { description: 'Enchape de pared en baño / cocina', unit: 'M2', measure: 1, quantity: 1 },
+        { description: 'Enchape de pared en baño / cocina', unit: 'M2', measure: 1, quantity: 1, material: { descripcion: 'Cerámica de pared', unit: 'CAJA', rendimiento: 1.5 } },
       ],
     },
     {
       label: 'Materiales',
       items: [
-        { description: 'Pega y boquilla', unit: 'M2', measure: 1, quantity: 1 },
+        { description: 'Pega y boquilla', unit: 'M2', measure: 1, quantity: 1, material: { descripcion: 'Pegante', unit: 'BULTO', rendimiento: 5 } },
       ],
     },
   ],
@@ -289,16 +331,16 @@ const OBRA_CIVIL: Partial<Record<CarpentryCategoryKey, GrupoPlantilla[]>> = {
     {
       label: 'Muros',
       items: [
-        { description: 'Muro en drywall, una cara', unit: 'M2', measure: 1, quantity: 1 },
-        { description: 'Muro en drywall, dos caras', unit: 'M2', measure: 1, quantity: 1 },
-        { description: 'Muro en superboard (zona húmeda)', unit: 'M2', measure: 1, quantity: 1 },
+        { description: 'Muro en drywall, una cara', unit: 'M2', measure: 1, quantity: 1, material: { descripcion: 'Lámina de drywall', unit: 'LAMINA', rendimiento: 2.9 } },
+        { description: 'Muro en drywall, dos caras', unit: 'M2', measure: 1, quantity: 1, material: { descripcion: 'Lámina de drywall', unit: 'LAMINA', rendimiento: 1.45 } },
+        { description: 'Muro en superboard (zona húmeda)', unit: 'M2', measure: 1, quantity: 1, material: { descripcion: 'Lámina de superboard', unit: 'LAMINA', rendimiento: 2.9 } },
       ],
     },
     {
       label: 'Cielorrasos',
       items: [
-        { description: 'Cielorraso en drywall', unit: 'M2', measure: 1, quantity: 1 },
-        { description: 'Cielorraso en PVC', unit: 'M2', measure: 1, quantity: 1 },
+        { description: 'Cielorraso en drywall', unit: 'M2', measure: 1, quantity: 1, material: { descripcion: 'Lámina de drywall', unit: 'LAMINA', rendimiento: 2.9 } },
+        { description: 'Cielorraso en PVC', unit: 'M2', measure: 1, quantity: 1, material: { descripcion: 'Lámina de PVC', unit: 'LAMINA', rendimiento: 1.2 } },
       ],
     },
     {
@@ -313,16 +355,16 @@ const OBRA_CIVIL: Partial<Record<CarpentryCategoryKey, GrupoPlantilla[]>> = {
     {
       label: 'Eléctricos',
       items: [
-        { description: 'Punto de toma corriente', unit: 'PUNTO', quantity: 1 },
-        { description: 'Punto de luz', unit: 'PUNTO', quantity: 1 },
-        { description: 'Punto de interruptor', unit: 'PUNTO', quantity: 1 },
+        { description: 'Punto de toma corriente', unit: 'PUNTO', quantity: 1, material: { descripcion: 'Toma y cableado', unit: 'UND', rendimiento: 1 } },
+        { description: 'Punto de luz', unit: 'PUNTO', quantity: 1, material: { descripcion: 'Roseta y cableado', unit: 'UND', rendimiento: 1 } },
+        { description: 'Punto de interruptor', unit: 'PUNTO', quantity: 1, material: { descripcion: 'Interruptor y cableado', unit: 'UND', rendimiento: 1 } },
       ],
     },
     {
       label: 'Hidrosanitarios',
       items: [
-        { description: 'Punto hidráulico', unit: 'PUNTO', quantity: 1 },
-        { description: 'Punto sanitario / desagüe', unit: 'PUNTO', quantity: 1 },
+        { description: 'Punto hidráulico', unit: 'PUNTO', quantity: 1, material: { descripcion: 'Tubería y accesorios', unit: 'UND', rendimiento: 1 } },
+        { description: 'Punto sanitario / desagüe', unit: 'PUNTO', quantity: 1, material: { descripcion: 'Tubería y accesorios', unit: 'UND', rendimiento: 1 } },
       ],
     },
   ],
@@ -384,15 +426,15 @@ const OBRA_CIVIL: Partial<Record<CarpentryCategoryKey, GrupoPlantilla[]>> = {
     {
       label: 'Impermeabilización',
       items: [
-        { description: 'Impermeabilización de placa / cubierta', unit: 'M2', measure: 1, quantity: 1 },
-        { description: 'Impermeabilización de muros', unit: 'M2', measure: 1, quantity: 1 },
+        { description: 'Impermeabilización de placa / cubierta', unit: 'M2', measure: 1, quantity: 1, material: { descripcion: 'Impermeabilizante', unit: 'CUÑETE', rendimiento: 20 } },
+        { description: 'Impermeabilización de muros', unit: 'M2', measure: 1, quantity: 1, material: { descripcion: 'Impermeabilizante', unit: 'CUÑETE', rendimiento: 25 } },
       ],
     },
     {
       label: 'Remates y masillado',
       items: [
         { description: 'Media caña / remate perimetral', unit: 'ML', measure: 1, quantity: 1 },
-        { description: 'Masillado y nivelación de piso', unit: 'M2', measure: 1, quantity: 1 },
+        { description: 'Masillado y nivelación de piso', unit: 'M2', measure: 1, quantity: 1, material: { descripcion: 'Cemento', unit: 'BULTO', rendimiento: 4 } },
       ],
     },
   ],
@@ -452,13 +494,18 @@ export const createCarpentrySection = (category: CarpentryCategoryKey): Carpentr
  * maestro tiene que buscar. Todo es editable después: a veces se compra de más
  * por desperdicio.
  */
-export const materialSugerido = (item: CarpentryLineItem): CarpentryMaterial => ({
-  activo: true,
-  measure: usaMedida(item.unit) ? (item.measure || 0) : undefined,
-  quantity: item.quantity || 1,
-  unitCost: 0,
-  descripcion: item.material?.descripcion,
-});
+export const materialSugerido = (item: CarpentryLineItem): CarpentryMaterial => {
+  const previo = item.material;
+  const rendimiento = previo?.rendimiento;
+  return {
+    activo: true,
+    descripcion: previo?.descripcion,
+    unit: previo?.unit || 'UND',
+    rendimiento,
+    quantity: cantidadSugerida(item, rendimiento) ?? previo?.quantity ?? 1,
+    unitCost: previo?.unitCost || 0,
+  };
+};
 
 /** Ítem en blanco para "+ Agregar ítem" dentro de un grupo ya existente. */
 export const createBlankCarpentryItem = (unit: CarpentryUnit = 'UND'): CarpentryLineItem => ({

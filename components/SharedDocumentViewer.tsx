@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { getSharedDocument, WORKY_PLAY_STORE_URL } from '../services/whatsappService';
-import { esLineaUsada, usaMedida, computeMaterialSubtotal, computeManoDeObraTotal, computeMaterialesTotal } from '../utils/carpentryCalculations';
+import { esLineaUsada, usaMedida, computeMaterialSubtotal, computeManoDeObraTotal, computeMaterialesTotal, describeMaterial } from '../utils/carpentryCalculations';
 
 interface SharedDocumentViewerProps {
   documentId: string;
@@ -265,8 +265,7 @@ export const SharedDocumentViewer: React.FC<SharedDocumentViewerProps> = ({ docu
                                           ↳ Material{item.material?.descripcion?.trim() ? `: ${item.material.descripcion}` : ''}
                                         </td>
                                         <td className="py-1.5 px-1 text-center text-xs text-slate-400">
-                                          {item.material?.quantity ?? 1} {item.unit}
-                                          {usaMedida(item.unit) && item.material?.measure ? ` (${item.material.measure} ${item.unit})` : ''}
+                                          {describeMaterial(item.material)}
                                         </td>
                                         <td className="py-1.5 px-1 text-right text-xs text-slate-500">{formatCurrency(item.material?.unitCost || 0)}</td>
                                         <td className="py-1.5 px-1 text-right text-xs font-semibold text-slate-700">{formatCurrency(material)}</td>

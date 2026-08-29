@@ -8,11 +8,11 @@ import { ModalWrapper } from './ModalWrapper';
 import { DecimalInput } from './DecimalInput';
 import { CurrencyInput } from './CurrencyInput';
 import ProFeatureGuard from '../../ProFeatureGuard';
-import { QuoteItem, Product, ContactRole, QuoteMode, CarpentrySection, CarpentryCategoryKey, CarpentryLineItem, CarpentryMaterial, CarpentryUnit } from '../../../types';
+import { QuoteItem, Product, ContactRole, QuoteMode, CarpentrySection, CarpentryCategoryKey, CarpentryLineItem, CarpentryMaterial, CarpentryUnit, MaterialUnit } from '../../../types';
 import { formatCurrency } from '../../../utils/currency';
 import { leerImagenReducida } from '../../../utils/imagen';
 import { calculateTax } from '../../../utils/taxCalculations';
-import { CARPENTRY_CATEGORIES, GREMIOS, CarpentryCategoryConfig, computeGrandTotal, computeSectionSubtotal, computeGroupSubtotal, computeLineSubtotal, computeMaterialSubtotal, materialSugerido, usaMedida } from '../../../utils/carpentryCalculations';
+import { CARPENTRY_CATEGORIES, GREMIOS, CarpentryCategoryConfig, computeGrandTotal, computeSectionSubtotal, computeGroupSubtotal, computeLineSubtotal, computeMaterialSubtotal, materialSugerido, cantidadSugerida, usaMedida } from '../../../utils/carpentryCalculations';
 
 interface QuoteModalProps {
   show: boolean;
@@ -67,6 +67,9 @@ interface QuoteModalProps {
   onRemoveCarpentryItem: (sectionId: string, groupId: string, itemId: string) => void;
 }
 
+/** En qué se compran los materiales. Del más común al más raro. */
+const MATERIAL_UNITS: MaterialUnit[] = ['UND', 'GALON', 'CUÑETE', 'BULTO', 'CAJA', 'LAMINA', 'ROLLO', 'M2', 'ML', 'KG', 'LITRO'];
+
 const UNIT_LABEL: Record<CarpentryUnit, string> = {
   ML: 'Metro lineal',
   M2: 'Metro cuadrado',
@@ -94,6 +97,7 @@ const MaterialDeLaLinea: React.FC<{
   const m = item.material;
   const activo = !!m?.activo;
   const subtotal = computeMaterialSubtotal(item);
+  const sugerida = cantidadSugerida(item);
   const set = (campo: keyof CarpentryMaterial, valor: unknown) =>
     onChange({ ...(m || { activo: true }), [campo]: valor } as CarpentryMaterial);
 
@@ -117,35 +121,53 @@ const MaterialDeLaLinea: React.FC<{
 
       {activo && (
         <div className="px-2 pb-2.5">
-          <input
-            type="text"
-            value={m?.descripcion || ''}
-            onChange={e => set('descripcion', e.target.value)}
-            placeholder="Qué material (ej. Vinilo Tipo 1)"
-            className="w-full bg-white p-1.5 rounded-lg text-[11px] text-slate-900 placeholder-slate-400 outline-none border border-emerald-200 focus:border-emerald-500 transition mb-1.5"
-          />
+          <div className="flex gap-1.5 mb-1.5">
+            <input
+              type="text"
+              value={m?.descripcion || ''}
+              onChange={e => set('descripcion', e.target.value)}
+              placeholder="Qué material (ej. Vinilo Tipo 1)"
+              className="flex-1 min-w-0 bg-white p-1.5 rounded-lg text-[11px] text-slate-900 placeholder-slate-400 outline-none border border-emerald-200 focus:border-emerald-500 transition"
+            />
+            <select
+              value={m?.unit || 'UND'}
+              onChange={e => set('unit', e.target.value as MaterialUnit)}
+              className="w-24 bg-white p-1.5 rounded-lg text-[11px] font-semibold text-slate-900 outline-none border border-emerald-200 focus:border-emerald-500 transition"
+            >
+              {MATERIAL_UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+            </select>
+          </div>
+
           <div className="flex flex-wrap gap-1.5 items-end">
+            {/* El rendimiento va a la vista, no escondido: es lo que hace la
+                cuenta, y cambia con el producto y las manos que se den. Al
+                cambiarlo se vuelve a sugerir la cantidad. */}
             {usaMedida(item.unit) && (
-              <div className="w-16">
-                <label className="text-[9px] text-slate-400 font-semibold uppercase block mb-0.5">{item.unit}</label>
+              <div className="w-[72px]">
+                <label className="text-[9px] text-slate-400 font-semibold uppercase block mb-0.5" title={`Cuántos ${item.unit} cubre cada ${m?.unit || 'UND'}`}>
+                  Rinde {item.unit}
+                </label>
                 <DecimalInput
-                  value={m?.measure}
-                  onCommit={value => set('measure', value)}
+                  value={m?.rendimiento}
+                  onCommit={value => {
+                    const sugerida = cantidadSugerida(item, value);
+                    onChange({ ...(m as CarpentryMaterial), rendimiento: value, ...(sugerida ? { quantity: sugerida } : {}) });
+                  }}
                   className="w-full bg-white p-1.5 rounded-lg text-[11px] text-slate-900 outline-none border border-emerald-200 focus:border-emerald-500 transition"
                 />
               </div>
             )}
-            <div className="w-14">
+            <div className="w-16">
               <label className="text-[9px] text-slate-400 font-semibold uppercase block mb-0.5">Cant.</label>
               <input
                 type="number"
                 value={m?.quantity ?? 1}
                 onChange={e => set('quantity', Number(e.target.value))}
-                className="w-full bg-white p-1.5 rounded-lg text-[11px] text-slate-900 text-center outline-none border border-emerald-200 focus:border-emerald-500 transition"
+                className="w-full bg-white p-1.5 rounded-lg text-[11px] text-slate-900 text-center font-bold outline-none border border-emerald-200 focus:border-emerald-500 transition"
               />
             </div>
             <div className="flex-1 min-w-[100px]">
-              <label className="text-[9px] text-slate-400 font-semibold uppercase block mb-0.5">Costo unitario</label>
+              <label className="text-[9px] text-slate-400 font-semibold uppercase block mb-0.5">Costo por {m?.unit || 'UND'}</label>
               <CurrencyInput
                 value={m?.unitCost || 0}
                 onCommit={value => set('unitCost', value)}
@@ -153,6 +175,14 @@ const MaterialDeLaLinea: React.FC<{
               />
             </div>
           </div>
+
+          {sugerida !== null && (
+            <p className="text-[9px] text-emerald-700/80 mt-1.5 leading-snug">
+              {sugerida === (m?.quantity ?? 0)
+                ? `Sugerido: ${sugerida} ${m?.unit || 'UND'} para ${(item.measure || 0) * (item.quantity || 0)} ${item.unit}. Ajústalo si compras de más.`
+                : `Para ${(item.measure || 0) * (item.quantity || 0)} ${item.unit} harían falta ${sugerida} ${m?.unit || 'UND'}.`}
+            </p>
+          )}
         </div>
       )}
     </div>

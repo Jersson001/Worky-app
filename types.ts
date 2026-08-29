@@ -182,11 +182,27 @@ export type CarpentryCategoryKey =
  * Nace apagado: muchos maestros cobran solo la mano de obra y el material lo
  * pone el cliente.
  */
+/**
+ * Cómo se compra un material. No es la unidad del trabajo: la pintura se cobra
+ * por m² de muro pero se compra por galones, y el cemento por bultos.
+ */
+export type MaterialUnit =
+  | 'UND' | 'GALON' | 'CUÑETE' | 'BULTO' | 'CAJA' | 'LAMINA' | 'ROLLO'
+  | 'M2' | 'ML' | 'KG' | 'LITRO';
+
 export interface CarpentryMaterial {
   activo: boolean;
   /** Qué material es: «Vinilo Tipo 1», «Porcelanato 60x60». Opcional. */
   descripcion?: string;
-  measure?: number;
+  /** En qué se compra. Por defecto, la del catálogo de plantillas. */
+  unit?: MaterialUnit;
+  /**
+   * Cuánto cubre una unidad, medido en la unidad del trabajo: un galón de
+   * vinilo rinde unos 30 m² de muro. Es lo que convierte los metros del trabajo
+   * en unidades de compra, y se deja editable porque cambia mucho según el
+   * producto, las manos que se den y cómo esté la superficie.
+   */
+  rendimiento?: number;
   quantity?: number;
   unitCost?: number;
 }
