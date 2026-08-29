@@ -1,5 +1,22 @@
 apply plugin: 'com.android.application'
 
+/**
+ * Contraseñas de firma, fuera del repositorio.
+ *
+ * Vivían escritas en este archivo, que sí se versiona, así que quedaron
+ * publicadas en el historial junto con el propio keystore. Es la clave de
+ * subida —la de firma la guarda Google, con Play App Signing activo— pero no
+ * hay razón para seguir publicándola en cada commit.
+ *
+ * No se usa `gradle.properties` porque ese también está en el repositorio.
+ * `keystore.properties` está en el .gitignore, y hay una plantilla al lado.
+ */
+def clavesFirma = new Properties()
+def archivoClaves = rootProject.file('keystore.properties')
+if (archivoClaves.exists()) {
+    archivoClaves.withInputStream { clavesFirma.load(it) }
+}
+
 android {
     namespace = "com.worky.app.v2"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -7,8 +24,10 @@ android {
         applicationId "com.worky.app.v2"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 13
-        versionName "2.0"
+        // El 14 (2.1) lo rechazó Google por faltar las credenciales de demo, y
+        // un versionCode no se reutiliza aunque la versión nunca se publicara.
+        versionCode 15
+        versionName "2.1"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
@@ -17,11 +36,17 @@ android {
 
     signingConfigs {
         release {
-            // Usamos project.file para asegurar la ruta de Ferry App SAS
+            // Sin el archivo, Gradle firmaría con nulos y fallaría con un error
+            // que no dice de qué va. Mejor decirlo aquí y en cristiano.
+            if (!archivoClaves.exists()) {
+                throw new GradleException(
+                    'Falta android/keystore.properties. Copia keystore.properties.example ' +
+                    'y pon las contraseñas del keystore.')
+            }
             storeFile project.file('worky-release.jks')
-            storePassword "worky123456"
-            keyAlias "worky-key"
-            keyPassword "worky123456"
+            storePassword clavesFirma['STORE_PASSWORD']
+            keyAlias clavesFirma['KEY_ALIAS']
+            keyPassword clavesFirma['KEY_PASSWORD']
         }
     }
 

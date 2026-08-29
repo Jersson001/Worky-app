@@ -42,3 +42,6 @@ android/app/build/
 android/build/
 android/.gradle/
 ios/build/
+
+# Contraseñas de firma (la plantilla .example sí se versiona)
+android/keystore.properties
