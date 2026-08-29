@@ -367,11 +367,11 @@ const QuoteTemplate = ({ data, businessLogo, userProfile, signature, scale, posi
                                                     {/* El material, sangrado bajo su trabajo. */}
                                                     {computeMaterialSubtotal(item) > 0 && (
                                                     <tr className="border-b border-gray-100">
-                                                        <td className="py-1.5 px-3 pl-8 text-xs text-gray-500">
+                                                        <td className="py-1.5 px-3 pl-8 text-xs text-gray-600">
                                                             ↳ Material{item.material?.descripcion?.trim() ? `: ${item.material.descripcion}` : ''}
                                                         </td>
-                                                        <td className="py-1.5 px-2 text-center text-xs text-gray-400 w-20">{describeCantidad({ ...item, ...item.material })}</td>
-                                                        <td className="py-1.5 px-3 text-right text-xs text-gray-500 w-28">{formatCurrency(item.material?.unitCost || 0)}</td>
+                                                        <td className="py-1.5 px-2 text-center text-xs text-gray-500 w-20">{describeCantidad({ ...item, ...item.material })}</td>
+                                                        <td className="py-1.5 px-3 text-right text-xs text-gray-600 w-28">{formatCurrency(item.material?.unitCost || 0)}</td>
                                                         <td className="py-1.5 px-3 text-right text-xs font-semibold text-gray-700 w-28">{formatCurrency(computeMaterialSubtotal(item))}</td>
                                                     </tr>
                                                     )}

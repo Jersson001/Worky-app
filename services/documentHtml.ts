@@ -218,7 +218,7 @@ export const buildDocumentHtml = (doc: DocumentoCompartido, pieCatalogo = ''): s
   .num{text-align:right;white-space:nowrap}
   .grupo td{background:#f8fafc;font-weight:700;font-size:.75rem;text-transform:uppercase;color:#64748b;letter-spacing:.03em}
   .detalle{display:block;color:#94a3b8;font-size:.78rem;margin-top:2px}
-  .material td{color:#64748b;font-size:.82rem;padding-top:2px;padding-bottom:9px}
+  .material td{color:#475569;font-size:.82rem;padding-top:2px;padding-bottom:9px}
   .material td:first-child{padding-left:22px}
   .totales{margin-top:18px;border-top:2px solid #e2e8f0;padding-top:12px}
   .tot{display:flex;justify-content:space-between;padding:5px 0;font-size:.9rem;color:#475569}

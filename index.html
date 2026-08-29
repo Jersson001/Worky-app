@@ -221,7 +221,7 @@
            por lado y dejan el papel demasiado angosto para la hoja. */
         @page {
           size: A4;
-          margin: 8mm;
+          margin: 10mm;
         }
         body * {
           visibility: hidden;
@@ -243,12 +243,20 @@
              apretado. Ese era el "se encoge" al imprimir.
 
              Se conserva el ancho real y se reduce la hoja completa con zoom,
-             que es lo que mantiene la proporción. 0.86 sale de dividir los
-             194mm útiles de un A4 con estos márgenes entre los 850px de la
-             hoja; en Carta, que es más ancho, sobra sitio. */
+             que es lo que mantiene la proporción.
+
+             0.80 y no el 0.86 que daría la cuenta exacta: 850px al 0.86 son
+             193,4mm y un A4 con estos márgenes deja 190mm, así que iba
+             rozando. Casi ninguna impresora imprime hasta el borde —tienen su
+             propio margen físico— y ese pelo de diferencia se comía la
+             columna de la derecha. Al 0.80 son 180mm y sobra un centímetro. */
           width: 850px !important;
           max-width: none !important;
-          zoom: 0.86;
+          /* `!important` obligatorio: la hoja lleva un `zoom` en línea desde
+             React —el que la encoge para caber en pantalla— y un estilo en
+             línea gana a la hoja de estilos. Sin esto se imprime a sus 850px
+             reales, más ancha que el papel, y se corta por la derecha. */
+          zoom: 0.80 !important;
           /* Y tiene que poder crecer: con el alto fijo y el desbordamiento
              oculto de la pantalla, lo que no cabía en la primera página no
              pasaba a la segunda, se perdía. */
