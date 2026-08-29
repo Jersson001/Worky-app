@@ -128,11 +128,22 @@ BEGIN
     RAISE EXCEPTION 'El alias debe tener entre 3 y 30 caracteres.';
   END IF;
 
-  -- Ya registrado: se crea o se actualiza su fila pública con el alias.
-  INSERT INTO public.public_info (user_id, alias, display_name)
-  VALUES (v_me, v_alias, v_alias)
+  -- Se crea o se actualiza su fila pública con el alias.
+  --
+  -- `phone_or_email` es NOT NULL y es la columna por la que busca
+  -- searchUserByPhoneOrEmail. Quien entra solo con alias no tiene ni correo ni
+  -- teléfono que poner ahí, así que va el alias: cumple la restricción y de
+  -- paso deja que lo encuentren tecleándolo, sin tocar el código de búsqueda.
+  --
+  -- Los coalesce protegen a quien ya tenía cuenta: si se pone un alias más
+  -- tarde, no se le pisa el correo con el que le encuentran ni el nombre con
+  -- el que aparece.
+  INSERT INTO public.public_info (user_id, alias, display_name, phone_or_email)
+  VALUES (v_me, v_alias, v_alias, v_alias)
   ON CONFLICT (user_id) DO UPDATE
-    SET alias = EXCLUDED.alias;
+    SET alias          = EXCLUDED.alias,
+        display_name   = coalesce(public_info.display_name, EXCLUDED.display_name),
+        phone_or_email = coalesce(public_info.phone_or_email, EXCLUDED.phone_or_email);
 
   RETURN v_alias;
 

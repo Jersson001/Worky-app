@@ -33,9 +33,15 @@ await db.exec(`
   CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$
     SELECT nullif(current_setting('worky.uid', true), '')::uuid;
   $$;
+  -- Copia fiel de la tabla real, restricciones incluidas. La primera versión
+  -- de esta prueba dejaba phone_or_email nullable y por eso dio verde a un
+  -- reservar_alias que en producción fallaba con "null value in column
+  -- phone_or_email violates not-null constraint".
   CREATE TABLE public.public_info (
-    user_id uuid PRIMARY KEY,
-    phone_or_email text,
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id uuid NOT NULL UNIQUE,
+    phone_or_email text NOT NULL,
+    registered_at timestamptz DEFAULT now(),
     display_name text,
     avatar_url text
   );
@@ -137,6 +143,22 @@ ok('B reserva uno libre', rows[0].a === 'otro_alias', rows[0].a);
 ok('B puede cambiar el suyo', rows[0].a === 'b_cambia', rows[0].a);
 ({ rows } = await db.query(`SELECT count(*)::int AS n FROM public.public_info WHERE user_id=$1`, [B]));
 ok('cambiar no le crea una fila nueva', rows[0].n === 1, `${rows[0].n} filas`);
+
+// phone_or_email es NOT NULL y es por donde busca la app. Quien entra solo con
+// alias no tiene otra cosa que poner ahí.
+({ rows } = await db.query(`SELECT phone_or_email FROM public.public_info WHERE user_id=$1`, [A]));
+ok('el alias sirve de clave de búsqueda', rows[0].phone_or_email === 'jersson_escobar', rows[0].phone_or_email);
+
+// A quien ya tenía correo no se le pisa al ponerse alias después.
+const C = '33333333-3333-3333-3333-333333333333';
+await db.query(
+  `INSERT INTO public.public_info (user_id, phone_or_email, display_name) VALUES ($1,'ana@correo.com','Ana Muebles')`, [C]);
+await comoUsuario(C);
+await db.query(`SELECT public.reservar_alias('ana_muebles')`);
+({ rows } = await db.query(`SELECT phone_or_email, display_name, alias FROM public.public_info WHERE user_id=$1`, [C]));
+ok('no le pisa el correo de quien ya lo tenía', rows[0].phone_or_email === 'ana@correo.com', rows[0].phone_or_email);
+ok('ni el nombre con el que aparece', rows[0].display_name === 'Ana Muebles', rows[0].display_name);
+ok('y aun así se queda con el alias', rows[0].alias === 'ana_muebles', rows[0].alias);
 
 for (const corto of ['ab', '']) {
   try {
