@@ -10,6 +10,12 @@ así que toda subida devolvía "new row violates row-level security policy". Se
 cambió a `chat_media`, que ya tenía lectura pública e INSERT para
 `authenticated` sin condición de carpeta.
 
+> **Nota del 28/08/2026.** Ese "sin condición de carpeta" era el problema: dejaba
+> a cualquier usuario con sesión sobrescribir el catálogo de otro, o sea
+> suplantarlo ante sus clientes. Ahora el INSERT exige que la carpeta sea la del
+> dueño y no hay política de UPDATE. El bucket `files` se cerró del todo. Ver
+> [SEGURIDAD.md](SEGURIDAD.md).
+
 Republicar seguía fallando, porque con `upsert` sobre una ruta fija la segunda
 publicación es un UPDATE y ese bucket tampoco tiene política de UPDATE. Se
 ejecutó una (`supabase_catalogo_storage.sql`) y **aun así siguió fallando**; en

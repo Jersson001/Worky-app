@@ -1,180 +1,149 @@
-# 📊 Estado de Funcionalidades - Worky App
+# Estado de funcionalidades — Worky
 
-## ✅ Lo que YA funciona (con los pasos dados)
+Última revisión: 28 de agosto de 2026.
 
-### 1. 💬 **Chatear entre Emprendedor y Clientes**
-✅ **FUNCIONA COMPLETAMENTE**
-
-- ✅ Mensajería en tiempo real con Firebase
-- ✅ Los mensajes se sincronizan automáticamente
-- ✅ Funciona en múltiples dispositivos
-- ✅ Historial de conversaciones guardado
-- ✅ Tipos de mensajes: texto, imágenes, cotizaciones, facturas, productos
-
-**Cómo funciona:**
-- El emprendedor tiene la app instalada
-- Agrega contactos (clientes) a su lista
-- Puede chatear con ellos en tiempo real
-- Los mensajes se guardan en Firebase y se sincronizan
-
-**Limitación actual:**
-- Los clientes NO necesitan tener la app instalada
-- Es como WhatsApp Business: solo el emprendedor usa la app
-- Los clientes reciben mensajes si también tienen la app (pero no es obligatorio)
+> Este documento describía el proyecto cuando corría sobre Firebase y decía que
+> los clientes no podían tener cuenta, que Storage no estaba implementado y que
+> los archivos viajaban en base64. Nada de eso sigue siendo cierto. Se reescribió
+> entero comprobando cada punto contra la base de datos y la app en marcha.
 
 ---
 
-### 2. 📤 **Transferir Archivos**
-⚠️ **PARCIALMENTE IMPLEMENTADO**
+## Cómo entra la gente
 
-#### ✅ Lo que SÍ funciona:
-- ✅ **Enviar imágenes** en el chat (se convierten a base64)
-- ✅ **Subir documentos PDF** para uso interno (RUT, Cámara de Comercio, etc.)
-- ✅ **Enviar productos** con imágenes desde el catálogo
-- ✅ **Enviar cotizaciones/facturas** como documentos
+### El vendedor
 
-#### ❌ Lo que NO funciona aún:
-- ❌ **Enviar archivos grandes** (PDFs, documentos) directamente en el chat
-- ❌ **Firebase Storage** no está implementado (los archivos se guardan como base64 en la base de datos)
-- ❌ **Descargar archivos** enviados por el cliente
-- ❌ **Compartir archivos** entre dispositivos de forma eficiente
+Correo y contraseña. Formulario de seis campos: nombre, apellidos, correo,
+país, celular y contraseña.
 
-**Problema actual:**
-- Las imágenes se guardan como base64 en Firebase Realtime Database
-- Esto funciona para imágenes pequeñas, pero no es eficiente para archivos grandes
-- Firebase Storage está configurado pero no se está usando
+`Confirm email` está **desactivado** en Supabase, así que al registrarse entra
+de una, sin pasar por su bandeja de correo.
 
----
+### El cliente que escanea un QR — sin correo ni celular
 
-### 3. 👥 **Conectar Emprendedores con Clientes**
-⚠️ **PARCIALMENTE IMPLEMENTADO**
+Escribe su nombre, el servidor le ofrece **tres aliases libres**, elige uno y
+aterriza directamente en el chat con el vendedor. Nada más.
 
-#### ✅ Lo que SÍ funciona:
-- ✅ El emprendedor puede agregar contactos (clientes)
-- ✅ Puede chatear con sus contactos
-- ✅ Cada emprendedor tiene su propia base de datos aislada
-- ✅ Los datos se sincronizan entre dispositivos del mismo emprendedor
-
-#### ❌ Lo que NO funciona aún:
-- ❌ **Los clientes no pueden tener su propia cuenta** en la app
-- ❌ **No hay sistema de registro para clientes**
-- ❌ **No hay notificaciones push** cuando llegan mensajes
-- ❌ **No hay modo "cliente"** donde puedan ver sus proyectos
-
-**Modelo actual:**
 ```
-Emprendedor (tiene app) → Agrega Contacto → Chatea con él
-                              ↓
-                        Cliente (puede o no tener app)
+"Lucía Torres"  →  @lucia_torres · @luciatorres · @l_torres  →  chat
 ```
 
-**Modelo ideal (futuro):**
-```
-Emprendedor (app) ←→ Cliente (app propia)
-     ↓                    ↓
-  Gestiona            Ve proyectos
-  proyectos           Recibe notificaciones
-```
+Debajo hay una **sesión anónima de Supabase**, que es una cuenta de verdad.
+Lo que no tiene es forma de recuperarse: si cambia de teléfono o borra los datos
+de la app, pierde la conversación. Por eso ve un aviso —que no bloquea nada—
+invitándole a completar el registro.
+
+Quien prefiera el registro clásico tiene el enlace a mano, y si se arrepiente
+puede volver al atajo sin recargar.
+
+Piezas: `sugerir_alias()` y `reservar_alias()` en
+[supabase_alias.sql](supabase_alias.sql), con sus pruebas en
+[supabase_alias.test.mjs](supabase_alias.test.mjs).
+
+### El cliente que llega por un enlace, con correo
+
+Formulario corto: nombre, correo, celular y contraseña. Sin apellidos ni
+selector de país. El vendedor que se registra por su cuenta sigue viendo el
+formulario largo.
 
 ---
 
-## 🚀 Para Hacerlo Completamente Funcional
+## Chat
 
-### Opción 1: Modo Actual (CRM Simple) ✅ LISTO
-**Funciona así:**
-- Solo el emprendedor usa la app
-- Gestiona sus contactos y proyectos
-- Chatea con clientes (si ellos también tienen la app)
-- **Ya está funcionando con los pasos dados**
+Funciona en tiempo real sobre Supabase (Realtime). Texto, imágenes, archivos,
+cotizaciones, facturas y productos.
 
-### Opción 2: Modo Completo (Necesita desarrollo adicional)
+**Contactos manuales.** Se puede crear la ficha de alguien que no usa Worky.
+Sus mensajes van con `recipient_contact` en vez de `recipient_id`, porque esa
+columna tiene clave foránea a `auth.users` y un contacto manual no existe ahí.
 
-#### A. Implementar Firebase Storage para Archivos
-**Qué falta:**
-1. Crear servicio de upload a Firebase Storage
-2. Modificar el chat para enviar archivos grandes
-3. Agregar descarga de archivos
-
-**Tiempo estimado:** 2-3 horas
-
-#### B. Sistema de Usuarios Dual (Emprendedor/Cliente)
-**Qué falta:**
-1. Modo "Cliente" en la app
-2. Registro diferenciado (emprendedor vs cliente)
-3. Vista de proyectos para clientes
-4. Notificaciones push
-
-**Tiempo estimado:** 1-2 días
+**Las dos fichas.** Al agregar a alguien se crean las fichas de los dos lados:
+la tuya y la suya. Esto estuvo roto durante un tiempo —la versión desplegada de
+`add_contact_mutual` con alias solo creaba la del que agrega, así que el otro no
+se enteraba— y se corrigió en
+[supabase_contactos_ficha_inversa.sql](supabase_contactos_ficha_inversa.sql).
 
 ---
 
-## ✅ Resumen: ¿Qué puedes hacer AHORA?
+## Archivos
 
-### Con los pasos dados, puedes:
+Todo vive en el bucket `chat_media` de Supabase Storage. **Ya no se usa base64
+para los adjuntos del chat.**
 
-1. ✅ **Chatear en tiempo real**
-   - Emprendedor → Cliente
-   - Mensajes sincronizados
-   - Historial guardado
+| Qué | Dónde |
+|---|---|
+| Fotos del chat | `<uid>/<contacto>/<archivo>` |
+| Fotos de producto | `<uid>/<carpeta>/<archivo>` |
+| Catálogos publicados | `shared_catalogs/<uid>/<fecha>.html` |
+| Documentos compartidos | `shared_docs/<id>.json` y `.html` |
 
-2. ✅ **Enviar imágenes pequeñas**
-   - Fotos de productos
-   - Imágenes en cotizaciones
-   - Fotos en el chat
+Las fotos se reducen antes de subirlas. Sin eso, una foto de móvil son unos
+10 MB y la escritura se pasaba del tiempo máximo (error 57014 de Postgres).
 
-3. ✅ **Gestionar proyectos**
-   - Crear proyectos por cliente
-   - Agregar gastos
-   - Enviar cotizaciones
-
-4. ✅ **Sincronizar datos**
-   - Entre dispositivos del emprendedor
-   - Todo guardado en Firebase
-
-### Lo que NO puedes hacer aún:
-
-1. ❌ Enviar archivos grandes (PDFs, documentos) en el chat
-2. ❌ Los clientes no tienen su propia cuenta
-3. ❌ Notificaciones push automáticas
-4. ❌ Descargar archivos compartidos
+El bucket `files` **está cerrado**: ya no se escribe ahí. Lo que quedó subido se
+sigue leyendo.
 
 ---
 
-## 🎯 Recomendación
+## Catálogo
 
-**Para empezar a usar la app ahora:**
-- ✅ Ya puedes conectar emprendedores con clientes para chatear
-- ✅ Ya puedes enviar imágenes y documentos pequeños
-- ✅ Ya funciona como un CRM básico
+El vendedor arma su catálogo por carpetas y lo publica. Se genera un **HTML
+autónomo** que se sube a Storage, y se comparte por QR o enlace.
 
-**Para funcionalidad completa:**
-- Necesitas implementar Firebase Storage (2-3 horas)
-- Opcional: Sistema de usuarios dual (1-2 días)
+Detalle importante: Supabase sirve el HTML de Storage como `text/plain` con
+`nosniff`, así que abrir el objeto directamente muestra el código fuente. **La
+página la sirve la app**, que baja la instantánea y la pinta. Ver
+[PENDIENTE-CATALOGO-STORAGE.md](PENDIENTE-CATALOGO-STORAGE.md).
+
+Cada publicación estrena nombre de archivo en vez de sobrescribir. El QR impreso
+sigue sirviendo porque apunta a la app (`?catalogo=<uid>`), no al objeto.
+
+Quien lo abre puede marcar productos y pulsar «Chatear». Si aún no tiene cuenta,
+la selección se guarda y se le manda al vendedor en cuanto entra.
+
+**Las URL se adaptan al sitio.** Un enlace generado desde un preview de Vercel
+apunta al preview; desde el APK o en local, a la app publicada — porque ahí el
+origen es `localhost` y un QR con esa dirección no llevaría a ninguna parte.
 
 ---
 
-## 📝 Conclusión
+## Documentos
 
-**SÍ, con los pasos dados puedes:**
-- ✅ Conectar emprendedores con clientes para chatear
-- ✅ Transferir imágenes y documentos pequeños
-- ✅ Gestionar proyectos en tiempo real
+Cotizaciones, facturas, recibos de caja, cuentas de cobro y comprobantes de
+gasto. Se comparten por WhatsApp como HTML maquetado, con QR del catálogo al pie.
 
-**NO puedes aún:**
-- ❌ Transferir archivos grandes eficientemente
-- ❌ Dar cuentas propias a los clientes
+**Impresión.** La hoja se maqueta a 850 px y al imprimir se reduce entera con
+zoom, conservando la proporción. Antes se estiraba al ancho del papel y el
+interior salía apretado.
 
-**¿Quieres que implemente Firebase Storage ahora para transferir archivos grandes?**
+---
 
+## Lo que NO hay
 
+- **Notificaciones push.** Ni en la app ni por correo.
+- **Verificación del teléfono.** El número se guarda como texto y sirve para
+  buscar, pero nadie comprueba que sea suyo. El código de SMS se retiró: no lo
+  llamaba nadie y hacía creer que agregar contactos por celular costaba una
+  suscripción de SMS. No cuesta nada.
+- **Descripciones de producto con IA.** Se retiró: cuando fallaba escribía
+  «Error al analizar la imagen» dentro del campo Descripción.
+- **Recuperación de las cuentas de alias.** Sin correo no hay forma. De ahí el
+  aviso.
+- **Convertir una cuenta anónima en permanente de verdad.** El aviso lleva al
+  editor de perfil, que guarda el correo en el perfil pero no en la cuenta de
+  autenticación. Falta llamar a `updateUser` con correo y contraseña.
 
+---
 
+## Seguridad
 
+Las políticas de la base se auditaron entera el 28 de agosto de 2026 y se
+cerraron tres agujeros. Está todo en [SEGURIDAD.md](SEGURIDAD.md).
 
+---
 
+## Publicación
 
-
-
-
-
-
+La versión 2.1 (`versionCode` 14) **fue rechazada** por Google Play: faltaban las
+credenciales de la cuenta de demostración. Ver
+[GUIA-GOOGLE-PLAY-STORE.md](GUIA-GOOGLE-PLAY-STORE.md).

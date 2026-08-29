@@ -4,14 +4,44 @@ Esta guía te llevará paso a paso para publicar tu aplicación Worky en Google 
 
 ---
 
-## ✅ Estado Actual del Proyecto
+## ⛔ La versión 2.1 fue rechazada — qué falta
 
-Tu proyecto ya tiene:
+Google Play rechazó el `versionCode` **14** (versión 2.1) en agosto de 2026. No
+fue por el contenido de la app:
+
+> **Faltan las credenciales de inicio de sesión.** No has proporcionado ninguna
+> información de inicio de sesión para que el equipo de revisión acceda al
+> contenido de la app.
+
+**Para volver a enviar hacen falta tres cosas:**
+
+1. **Una cuenta de demostración activa** con credenciales en Play Console →
+   *Prueba y lanzamiento* → **Detalles de inicio de sesión de la app**. Tienen
+   que seguir funcionando en cada envío.
+2. **Subir el icono de la ficha**: [assets/play-store-512.png](assets/play-store-512.png),
+   512×512. Va a mano en *Presencia en Store* → *Ficha principal* → **Icono de la
+   app**; no sale del bundle.
+3. **Subir el `versionCode`**. El 14 quedó marcado como rechazado, así que el
+   próximo envío va con el **15**.
+
+> Una idea para las credenciales: ahora se puede entrar solo con un alias, sin
+> correo ni celular. Puede ser la forma más simple de darle acceso al revisor —
+> pero hay que explicárselo en las instrucciones, porque no es un formulario de
+> usuario y contraseña como el que esperan.
+
+---
+
+## ✅ Estado actual del proyecto
+
 - ✅ Keystore configurado (`worky-release.jks`)
 - ✅ Configuración de firma en `build.gradle`
 - ✅ `google-services.json` configurado
-- ✅ VersionCode: 2, VersionName: "1.0"
 - ✅ App ID: `com.worky.app.v2`
+- ✅ **Icono de la app**: ya es el logo de Worky. Hasta agosto de 2026 el bundle
+  llevaba el icono de plantilla de Capacitor, porque nunca se reemplazó. Los
+  originales están en `assets/`; para regenerarlo todo:
+  `npx @capacitor/assets generate --android`
+- ⛔ VersionCode 14 (2.1) **rechazado**. Ver arriba.
 
 ---
 
