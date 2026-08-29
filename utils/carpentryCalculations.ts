@@ -5,7 +5,7 @@
  * Así ML/M2 (que usan medida) y UND/GLOBAL (medida implícita 1) comparten
  * la misma lógica sin casos especiales por categoría.
  */
-import { CarpentryCategoryKey, CarpentryItemGroup, CarpentryLineItem, CarpentrySection, CarpentryUnit, GremioKey, QuoteItem } from '../types';
+import { CarpentryCategoryKey, CarpentryItemGroup, CarpentryLineItem, CarpentryMaterial, CarpentrySection, CarpentryUnit, GremioKey, QuoteItem } from '../types';
 
 // ─── Identificadores ─────────────────────────────────────────────────────────
 
@@ -45,11 +45,49 @@ export const describeCantidad = (item: Pick<CarpentryLineItem, 'unit' | 'quantit
   return item.unit === 'GLOBAL' ? cantidad : `${cantidad} ${item.unit}`;
 };
 
+/** Solo la mano de obra de una línea. */
 export const computeLineSubtotal = (item: CarpentryLineItem): number => {
   if (item.isTemplate) return 0;
   const measure = usaMedida(item.unit) ? (item.measure || 0) : 1;
   return (item.quantity || 0) * (item.unitCost || 0) * measure;
 };
+
+/**
+ * Solo el material de una línea. Misma fórmula y misma unidad que la mano de
+ * obra: el material de 80 m² de pintura se mide en esos mismos 80 m².
+ */
+export const computeMaterialSubtotal = (item: CarpentryLineItem): number => {
+  const m = item.material;
+  if (!m?.activo || item.isTemplate) return 0;
+  const measure = usaMedida(item.unit) ? (m.measure || 0) : 1;
+  return (m.quantity || 0) * (m.unitCost || 0) * measure;
+};
+
+/** Lo que cuesta la línea entera. Es lo que suman los grupos y el total. */
+export const computeLineTotal = (item: CarpentryLineItem): number =>
+  computeLineSubtotal(item) + computeMaterialSubtotal(item);
+
+/**
+ * Los capítulos que son solo materiales —«Aparatos y Materiales»— no llevan
+ * mano de obra: sus líneas cuentan enteras del lado del material.
+ */
+export const esSeccionDeMateriales = (section: CarpentrySection): boolean =>
+  !!getCategoryConfig(section.category).soloMaterial;
+
+const sumarLineas = (section: CarpentrySection, f: (i: CarpentryLineItem) => number): number =>
+  section.groups.reduce((s, g) => s + g.items.reduce((n, i) => n + f(i), 0), 0);
+
+export const computeManoDeObraTotal = (sections: CarpentrySection[]): number =>
+  (sections || []).reduce(
+    (s, sec) => s + (esSeccionDeMateriales(sec) ? 0 : sumarLineas(sec, computeLineSubtotal)),
+    0,
+  );
+
+export const computeMaterialesTotal = (sections: CarpentrySection[]): number =>
+  (sections || []).reduce(
+    (s, sec) => s + sumarLineas(sec, esSeccionDeMateriales(sec) ? computeLineSubtotal : computeMaterialSubtotal),
+    0,
+  );
 
 /**
  * Una línea cuenta cuando el usuario la ha tocado y suma algo.
@@ -64,7 +102,7 @@ export const computeLineSubtotal = (item: CarpentryLineItem): number => {
  * como «$0», que al cliente le dice algo que no es.
  */
 export const esLineaUsada = (item: CarpentryLineItem): boolean =>
-  !!item.description && !item.isTemplate && computeLineSubtotal(item) > 0;
+  !!item.description && !item.isTemplate && computeLineTotal(item) > 0;
 
 /**
  * Las secciones tal como deben salir en el documento: sin líneas de plantilla,
@@ -84,7 +122,7 @@ export const seccionesConContenido = (sections: CarpentrySection[]): CarpentrySe
     .filter(section => section.groups.length > 0);
 
 export const computeGroupSubtotal = (group: CarpentryItemGroup): number =>
-  group.items.reduce((sum, item) => sum + computeLineSubtotal(item), 0);
+  group.items.reduce((sum, item) => sum + computeLineTotal(item), 0);
 
 export const computeSectionSubtotal = (section: CarpentrySection): number =>
   section.groups.reduce((sum, group) => sum + computeGroupSubtotal(group), 0);
@@ -109,6 +147,12 @@ export interface CarpentryCategoryConfig {
   defaultUnit: CarpentryUnit;
   /** true = nace con varios grupos sembrados de plantillas; false = un solo grupo flexible. */
   fixedGroups: boolean;
+  /**
+   * true = el capítulo entero es material, sin mano de obra. Sus líneas cuentan
+   * del lado de los materiales en el reparto del documento, y no ofrecen el
+   * interruptor de material —serían material dentro de material—.
+   */
+  soloMaterial?: boolean;
 }
 
 export const GREMIOS: { key: GremioKey; label: string }[] = [
@@ -132,6 +176,7 @@ export const CARPENTRY_CATEGORIES: CarpentryCategoryConfig[] = [
   { key: 'puntos_instalaciones', gremio: 'obra_civil', label: 'Puntos e Instalaciones', icon: 'fa-solid fa-plug-circle-bolt', colorFrom: 'from-yellow-500', colorTo: 'to-yellow-600', shadowColor: 'shadow-yellow-500/30', defaultUnit: 'PUNTO', fixedGroups: true },
   { key: 'demoliciones', gremio: 'obra_civil', label: 'Demolición y Aseo', icon: 'fa-solid fa-hammer', colorFrom: 'from-stone-500', colorTo: 'to-stone-600', shadowColor: 'shadow-stone-500/30', defaultUnit: 'M2', fixedGroups: true },
   { key: 'impermeabilizacion', gremio: 'obra_civil', label: 'Impermeabilización', icon: 'fa-solid fa-umbrella', colorFrom: 'from-indigo-500', colorTo: 'to-indigo-600', shadowColor: 'shadow-indigo-500/30', defaultUnit: 'M2', fixedGroups: true },
+  { key: 'aparatos_materiales', gremio: 'obra_civil', label: 'Aparatos y Materiales', icon: 'fa-solid fa-faucet', colorFrom: 'from-fuchsia-500', colorTo: 'to-fuchsia-600', shadowColor: 'shadow-fuchsia-500/30', defaultUnit: 'UND', fixedGroups: true, soloMaterial: true },
 ];
 
 export const getCategoryConfig = (key: CarpentryCategoryKey): CarpentryCategoryConfig =>
@@ -300,6 +345,41 @@ const OBRA_CIVIL: Partial<Record<CarpentryCategoryKey, GrupoPlantilla[]>> = {
     },
   ],
 
+  // Los que compra el cliente o pone el maestro, pero que no son mano de obra:
+  // van sueltos, sin trabajo asociado.
+  aparatos_materiales: [
+    {
+      label: 'Sanitarios',
+      items: [
+        { description: 'Sanitario / inodoro', unit: 'UND', quantity: 1 },
+        { description: 'Lavamanos', unit: 'UND', quantity: 1 },
+        { description: 'Ducha / cabina', unit: 'UND', quantity: 1 },
+      ],
+    },
+    {
+      label: 'Griferías',
+      items: [
+        { description: 'Grifería de lavamanos', unit: 'UND', quantity: 1 },
+        { description: 'Grifería de ducha', unit: 'UND', quantity: 1 },
+        { description: 'Grifería de cocina', unit: 'UND', quantity: 1 },
+      ],
+    },
+    {
+      label: 'Cerámica y enchapes',
+      items: [
+        { description: 'Cerámica / porcelanato de piso', unit: 'M2', measure: 1, quantity: 1 },
+        { description: 'Cerámica de pared', unit: 'M2', measure: 1, quantity: 1 },
+      ],
+    },
+    {
+      label: 'Iluminación y otros',
+      items: [
+        { description: 'Lámparas / luminarias', unit: 'UND', quantity: 1 },
+        { description: 'Accesorios de baño', unit: 'UND', quantity: 1 },
+      ],
+    },
+  ],
+
   impermeabilizacion: [
     {
       label: 'Impermeabilización',
@@ -364,6 +444,22 @@ export const createCarpentrySection = (category: CarpentryCategoryKey): Carpentr
   };
 };
 
+/**
+ * El material que se propone al encender el interruptor.
+ *
+ * Copia la medida y la cantidad de la mano de obra —los 80 m² de pintura son
+ * los mismos 80 m² de muro— y deja el costo en 0, que es el único dato que el
+ * maestro tiene que buscar. Todo es editable después: a veces se compra de más
+ * por desperdicio.
+ */
+export const materialSugerido = (item: CarpentryLineItem): CarpentryMaterial => ({
+  activo: true,
+  measure: usaMedida(item.unit) ? (item.measure || 0) : undefined,
+  quantity: item.quantity || 1,
+  unitCost: 0,
+  descripcion: item.material?.descripcion,
+});
+
 /** Ítem en blanco para "+ Agregar ítem" dentro de un grupo ya existente. */
 export const createBlankCarpentryItem = (unit: CarpentryUnit = 'UND'): CarpentryLineItem => ({
   id: nextId('item'),
@@ -390,13 +486,22 @@ export const flattenSectionsToQuoteItems = (sections: CarpentrySection[]): Quote
     section.groups.forEach(group => {
       group.items.forEach(item => {
         if (!item.description.trim()) return;
-        const subtotal = computeLineSubtotal(item);
-        if (subtotal <= 0) return;
-        flat.push({
-          description: `${section.name} · ${group.label} · ${item.description}`,
-          quantity: 1,
-          price: subtotal,
-        });
+        const base = `${section.name} · ${group.label} · ${item.description}`;
+        const manoDeObra = computeLineSubtotal(item);
+        if (manoDeObra > 0) {
+          flat.push({ description: base, quantity: 1, price: manoDeObra });
+        }
+        // El material va como línea propia: es lo que permite que el desglose
+        // plano cuadre con el total, y que se lea aparte de la mano de obra.
+        const material = computeMaterialSubtotal(item);
+        if (material > 0) {
+          const que = item.material?.descripcion?.trim();
+          flat.push({
+            description: `${base} — Material${que ? `: ${que}` : ''}`,
+            quantity: 1,
+            price: material,
+          });
+        }
       });
     });
   });

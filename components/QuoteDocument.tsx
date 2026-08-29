@@ -6,7 +6,7 @@ import { describeError } from '../utils/errorMessage';
 import { shareQuoteViaWhatsApp, shareInvoiceViaWhatsApp, openWhatsApp, generateDocumentId, saveSharedDocument, generateDocumentViewLink } from '../services/whatsappService';
 import { publishCatalogForCurrentUser, catalogPageUrl, qrImageUrl, WORKY_APP_URL } from '../services/catalogShareService';
 import { getCurrentUserId } from '../services/messagingService';
-import { computeLineSubtotal, computeGroupSubtotal, computeSectionSubtotal, seccionesConContenido, describeCantidad } from '../utils/carpentryCalculations';
+import { computeLineSubtotal, computeMaterialSubtotal, computeManoDeObraTotal, computeMaterialesTotal, computeGroupSubtotal, computeSectionSubtotal, seccionesConContenido, describeCantidad } from '../utils/carpentryCalculations';
 
 interface DocumentViewerProps {
   type: 'quote' | 'invoice' | 'receipt' | 'collection_account' | 'expense_receipt';
@@ -341,7 +341,8 @@ const QuoteTemplate = ({ data, businessLogo, userProfile, signature, scale, posi
                                         <table className="w-full">
                                             <tbody>
                                                 {group.items.map((item) => (
-                                                    <tr key={item.id} className="border-t border-gray-100">
+                                                    <React.Fragment key={item.id}>
+                                                    <tr className="border-t border-gray-100">
                                                         <td className="py-2 px-3 text-sm text-gray-800">
                                                             {item.description}
                                                             {/* Las fotos del ítem: se podían adjuntar en el
@@ -363,6 +364,18 @@ const QuoteTemplate = ({ data, businessLogo, userProfile, signature, scale, posi
                                                         <td className="py-2 px-3 text-right text-sm text-gray-700 w-28">{formatCurrency(item.unitCost)}</td>
                                                         <td className="py-2 px-3 text-right text-sm font-bold text-gray-900 w-28">{formatCurrency(computeLineSubtotal(item))}</td>
                                                     </tr>
+                                                    {/* El material, sangrado bajo su trabajo. */}
+                                                    {computeMaterialSubtotal(item) > 0 && (
+                                                    <tr className="border-b border-gray-100">
+                                                        <td className="py-1.5 px-3 pl-8 text-xs text-gray-500">
+                                                            ↳ Material{item.material?.descripcion?.trim() ? `: ${item.material.descripcion}` : ''}
+                                                        </td>
+                                                        <td className="py-1.5 px-2 text-center text-xs text-gray-400 w-20">{describeCantidad({ ...item, ...item.material })}</td>
+                                                        <td className="py-1.5 px-3 text-right text-xs text-gray-500 w-28">{formatCurrency(item.material?.unitCost || 0)}</td>
+                                                        <td className="py-1.5 px-3 text-right text-xs font-semibold text-gray-700 w-28">{formatCurrency(computeMaterialSubtotal(item))}</td>
+                                                    </tr>
+                                                    )}
+                                                    </React.Fragment>
                                                 ))}
                                             </tbody>
                                         </table>
@@ -423,6 +436,20 @@ const QuoteTemplate = ({ data, businessLogo, userProfile, signature, scale, posi
         {/* Total Section */}
         <div className="flex justify-end mb-12">
             <div className="w-96">
+                {/* Cuánto es trabajo y cuánto material. Solo si hay material:
+                    en una cotización de pura mano de obra el desglose confunde. */}
+                {computeMaterialesTotal(data.sections || []) > 0 && (
+                    <div className="bg-gray-50 p-4 rounded-lg mb-3 space-y-1.5">
+                        <div className="flex justify-between text-sm text-gray-700">
+                            <span>Mano de obra</span>
+                            <span className="font-semibold">{formatCurrency(computeManoDeObraTotal(data.sections || []))}</span>
+                        </div>
+                        <div className="flex justify-between text-sm text-gray-700">
+                            <span>Materiales</span>
+                            <span className="font-semibold">{formatCurrency(computeMaterialesTotal(data.sections || []))}</span>
+                        </div>
+                    </div>
+                )}
                 {(data.taxType && data.taxType !== 'none' && data.subtotal) && (
                     <div className="bg-gray-50 p-4 rounded-lg mb-3">
                         <div className="flex justify-between py-2 text-gray-700">

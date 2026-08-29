@@ -9,7 +9,7 @@
  * suelto en Storage y lo abre cualquiera, sin sesión y sin la app.
  */
 import { formatCurrency } from '../utils/currency';
-import { computeLineSubtotal, esLineaUsada, describeCantidad } from '../utils/carpentryCalculations';
+import { computeLineSubtotal, computeMaterialSubtotal, computeManoDeObraTotal, computeMaterialesTotal, esLineaUsada, describeCantidad } from '../utils/carpentryCalculations';
 
 type DocType = 'quote' | 'invoice' | 'receipt' | 'collection_account' | 'expense_receipt';
 
@@ -75,10 +75,26 @@ const tablaSecciones = (sections: any[]): string =>
         return `
         <tr class="grupo"><td colspan="3">${esc(g.label)}</td></tr>
         ${items.map((i: any) => {
-          return `<tr>
+          const manoDeObra = computeLineSubtotal(i);
+          const material = computeMaterialSubtotal(i);
+          // Si solo hay material —el cliente pone la mano de obra— no se pinta
+          // una fila de trabajo en cero.
+          const filaTrabajo = manoDeObra > 0 || material === 0
+            ? `<tr>
             <td>${esc(i.description)}<span class="detalle">${esc(describeCantidad(i))}</span>${fotos(i.images)}</td>
             <td class="num">${formatCurrency(i.unitCost || 0)}</td>
-            <td class="num">${formatCurrency(computeLineSubtotal(i))}</td>
+            <td class="num">${formatCurrency(manoDeObra)}</td>
+          </tr>`
+            : '';
+
+          // El material va sangrado bajo su trabajo, no en una lista aparte: así
+          // el cliente ve de un vistazo qué material lleva cada cosa.
+          if (material <= 0) return filaTrabajo;
+          const que = i.material?.descripcion?.trim();
+          return filaTrabajo + `<tr class="material">
+            <td>↳ Material${que ? `: ${esc(que)}` : ''}<span class="detalle">${esc(describeCantidad({ ...i, ...i.material }))}</span></td>
+            <td class="num">${formatCurrency(i.material?.unitCost || 0)}</td>
+            <td class="num">${formatCurrency(material)}</td>
           </tr>`;
         }).join('')}`;
       })
@@ -95,6 +111,17 @@ const tablaSecciones = (sections: any[]): string =>
 
 const totales = (d: any): string => {
   const filas: string[] = [];
+
+  // Cuánto es trabajo y cuánto es material. Solo cuando hay material: en una
+  // cotización de pura mano de obra el desglose sobra y confunde.
+  if (d.sections?.length) {
+    const material = computeMaterialesTotal(d.sections);
+    if (material > 0) {
+      filas.push(`<div class="tot"><span>Mano de obra</span><span>${formatCurrency(computeManoDeObraTotal(d.sections))}</span></div>`);
+      filas.push(`<div class="tot"><span>Materiales</span><span>${formatCurrency(material)}</span></div>`);
+    }
+  }
+
   if (d.subtotal != null && d.subtotal !== d.total) filas.push(`<div class="tot"><span>Subtotal</span><span>${formatCurrency(d.subtotal)}</span></div>`);
   if (d.taxType === 'percentage' && d.taxAmount) filas.push(`<div class="tot"><span>Impuesto (${d.taxPercentage || 0}%)</span><span>${formatCurrency(d.taxAmount)}</span></div>`);
   if (d.taxType === 'aiu' && d.taxAmount) filas.push(`<div class="tot"><span>AIU</span><span>${formatCurrency(d.taxAmount)}</span></div>`);
@@ -191,6 +218,8 @@ export const buildDocumentHtml = (doc: DocumentoCompartido, pieCatalogo = ''): s
   .num{text-align:right;white-space:nowrap}
   .grupo td{background:#f8fafc;font-weight:700;font-size:.75rem;text-transform:uppercase;color:#64748b;letter-spacing:.03em}
   .detalle{display:block;color:#94a3b8;font-size:.78rem;margin-top:2px}
+  .material td{color:#64748b;font-size:.82rem;padding-top:2px;padding-bottom:9px}
+  .material td:first-child{padding-left:22px}
   .totales{margin-top:18px;border-top:2px solid #e2e8f0;padding-top:12px}
   .tot{display:flex;justify-content:space-between;padding:5px 0;font-size:.9rem;color:#475569}
   .tot.total{font-size:1.15rem;font-weight:700;color:#2563eb;border-top:1px solid #e2e8f0;margin-top:6px;padding-top:10px}

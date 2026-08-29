@@ -694,7 +694,15 @@ export const saveUserProfile = async (profile: any): Promise<void> => {
     display_name: profile.businessName || profile.ownerName,
     avatar_url: profile.businessLogo || profile.profilePhoto,
   };
-  const contacto = (profile.email || profile.phone || '').toLowerCase();
+  // Si la fila aún no existe esto es un INSERT, y la columna es NOT NULL: hay
+  // que mandar algo. Para quien entró solo con alias, ese alias es lo único que
+  // tiene, y además es por lo que le buscarán. Se lee de la sesión porque el
+  // perfil no lo lleva.
+  let contacto = (profile.email || profile.phone || '').toLowerCase();
+  if (!contacto) {
+    const { data } = await supabase.auth.getUser();
+    contacto = ((data?.user?.user_metadata?.alias as string) || '').toLowerCase();
+  }
   if (contacto) publico.phone_or_email = contacto;
 
   const { error: publicError } = await supabase.from('public_info').upsert(publico, { onConflict: 'user_id' });

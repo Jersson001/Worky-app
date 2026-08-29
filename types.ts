@@ -168,12 +168,34 @@ export type CarpentryCategoryKey =
   | 'drywall'
   | 'puntos_instalaciones'
   | 'demoliciones'
-  | 'impermeabilizacion';
+  | 'impermeabilizacion'
+  | 'aparatos_materiales';
+
+/**
+ * El material que lleva una línea de mano de obra.
+ *
+ * Va dentro del ítem y no como línea aparte porque el material se cotiza
+ * *contra* un trabajo: los 80 m² de pintura son los mismos 80 m² de muro que se
+ * van a pintar. Colgarlo del ítem es lo que permite sugerir la medida y ver de
+ * un vistazo qué material lleva cada trabajo.
+ *
+ * Nace apagado: muchos maestros cobran solo la mano de obra y el material lo
+ * pone el cliente.
+ */
+export interface CarpentryMaterial {
+  activo: boolean;
+  /** Qué material es: «Vinilo Tipo 1», «Porcelanato 60x60». Opcional. */
+  descripcion?: string;
+  measure?: number;
+  quantity?: number;
+  unitCost?: number;
+}
 
 export interface CarpentryLineItem {
   id: string;
   description: string;
   unit: CarpentryUnit;
+  material?: CarpentryMaterial;
   measure?: number; // ML o M2 (para M2 se deriva de width*height en la UI)
   width?: number;   // solo unit === 'M2'
   height?: number;  // solo unit === 'M2'

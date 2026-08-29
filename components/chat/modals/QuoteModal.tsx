@@ -8,11 +8,11 @@ import { ModalWrapper } from './ModalWrapper';
 import { DecimalInput } from './DecimalInput';
 import { CurrencyInput } from './CurrencyInput';
 import ProFeatureGuard from '../../ProFeatureGuard';
-import { QuoteItem, Product, ContactRole, QuoteMode, CarpentrySection, CarpentryCategoryKey, CarpentryLineItem, CarpentryUnit } from '../../../types';
+import { QuoteItem, Product, ContactRole, QuoteMode, CarpentrySection, CarpentryCategoryKey, CarpentryLineItem, CarpentryMaterial, CarpentryUnit } from '../../../types';
 import { formatCurrency } from '../../../utils/currency';
 import { leerImagenReducida } from '../../../utils/imagen';
 import { calculateTax } from '../../../utils/taxCalculations';
-import { CARPENTRY_CATEGORIES, GREMIOS, CarpentryCategoryConfig, computeGrandTotal, computeSectionSubtotal, computeGroupSubtotal, computeLineSubtotal, usaMedida } from '../../../utils/carpentryCalculations';
+import { CARPENTRY_CATEGORIES, GREMIOS, CarpentryCategoryConfig, computeGrandTotal, computeSectionSubtotal, computeGroupSubtotal, computeLineSubtotal, computeMaterialSubtotal, materialSugerido, usaMedida } from '../../../utils/carpentryCalculations';
 
 interface QuoteModalProps {
   show: boolean;
@@ -75,6 +75,88 @@ const UNIT_LABEL: Record<CarpentryUnit, string> = {
   PUNTO: 'Punto',
   VIAJE: 'Viaje',
   GLOBAL: 'Global',
+};
+
+/**
+ * El material de una línea de mano de obra.
+ *
+ * Nace apagado: muchos maestros cobran solo la mano de obra y el material lo
+ * pone el cliente. Al encenderlo se propone la misma medida y cantidad que el
+ * trabajo —los 80 m² de pintura son los mismos 80 m² de muro— y el costo se
+ * deja en 0, que es el único dato que hay que buscar.
+ *
+ * Apagarlo conserva lo escrito por si vuelve a encenderse: solo deja de sumar.
+ */
+const MaterialDeLaLinea: React.FC<{
+  item: CarpentryLineItem;
+  onChange: (material: CarpentryMaterial) => void;
+}> = ({ item, onChange }) => {
+  const m = item.material;
+  const activo = !!m?.activo;
+  const subtotal = computeMaterialSubtotal(item);
+  const set = (campo: keyof CarpentryMaterial, valor: unknown) =>
+    onChange({ ...(m || { activo: true }), [campo]: valor } as CarpentryMaterial);
+
+  return (
+    <div className={`mt-2.5 rounded-lg border transition ${activo ? 'border-emerald-300 bg-emerald-50/60' : 'border-slate-200 bg-slate-50'}`}>
+      <button
+        type="button"
+        onClick={() => onChange(activo ? { ...(m as CarpentryMaterial), activo: false } : materialSugerido(item))}
+        className="w-full flex items-center gap-2 p-2"
+      >
+        <span className={`w-8 h-[18px] rounded-full flex items-center px-0.5 transition ${activo ? 'bg-emerald-500 justify-end' : 'bg-slate-300 justify-start'}`}>
+          <span className="w-3.5 h-3.5 rounded-full bg-white shadow-sm" />
+        </span>
+        <span className={`text-[10px] font-bold uppercase tracking-wide ${activo ? 'text-emerald-700' : 'text-slate-500'}`}>
+          Material
+        </span>
+        {activo && subtotal > 0 && (
+          <span className="ml-auto text-[11px] font-bold text-emerald-700">{formatCurrency(subtotal)}</span>
+        )}
+      </button>
+
+      {activo && (
+        <div className="px-2 pb-2.5">
+          <input
+            type="text"
+            value={m?.descripcion || ''}
+            onChange={e => set('descripcion', e.target.value)}
+            placeholder="Qué material (ej. Vinilo Tipo 1)"
+            className="w-full bg-white p-1.5 rounded-lg text-[11px] text-slate-900 placeholder-slate-400 outline-none border border-emerald-200 focus:border-emerald-500 transition mb-1.5"
+          />
+          <div className="flex flex-wrap gap-1.5 items-end">
+            {usaMedida(item.unit) && (
+              <div className="w-16">
+                <label className="text-[9px] text-slate-400 font-semibold uppercase block mb-0.5">{item.unit}</label>
+                <DecimalInput
+                  value={m?.measure}
+                  onCommit={value => set('measure', value)}
+                  className="w-full bg-white p-1.5 rounded-lg text-[11px] text-slate-900 outline-none border border-emerald-200 focus:border-emerald-500 transition"
+                />
+              </div>
+            )}
+            <div className="w-14">
+              <label className="text-[9px] text-slate-400 font-semibold uppercase block mb-0.5">Cant.</label>
+              <input
+                type="number"
+                value={m?.quantity ?? 1}
+                onChange={e => set('quantity', Number(e.target.value))}
+                className="w-full bg-white p-1.5 rounded-lg text-[11px] text-slate-900 text-center outline-none border border-emerald-200 focus:border-emerald-500 transition"
+              />
+            </div>
+            <div className="flex-1 min-w-[100px]">
+              <label className="text-[9px] text-slate-400 font-semibold uppercase block mb-0.5">Costo unitario</label>
+              <CurrencyInput
+                value={m?.unitCost || 0}
+                onCommit={value => set('unitCost', value)}
+                className="w-full bg-white p-1.5 rounded-lg text-[11px] text-slate-900 outline-none border border-emerald-200 focus:border-emerald-500 transition"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 };
 
 const CarpentryItemRow: React.FC<{
@@ -515,6 +597,15 @@ export const QuoteModal: React.FC<QuoteModalProps> = React.memo(({
                                                   rows={2}
                                                 />
                                               </div>
+
+                                              {/* El material de este trabajo. Solo en obra blanca, y no en
+                                                  el capítulo que ya es todo material. */}
+                                              {config.gremio === 'obra_civil' && !config.soloMaterial && (
+                                                <MaterialDeLaLinea
+                                                  item={item}
+                                                  onChange={material => onUpdateCarpentryItem(section.id, group.id, item.id, 'material', material)}
+                                                />
+                                              )}
                                             </div>
                                           </div>
                                         );

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { getSharedDocument, WORKY_PLAY_STORE_URL } from '../services/whatsappService';
-import { esLineaUsada, usaMedida } from '../utils/carpentryCalculations';
+import { esLineaUsada, usaMedida, computeMaterialSubtotal, computeManoDeObraTotal, computeMaterialesTotal } from '../utils/carpentryCalculations';
 
 interface SharedDocumentViewerProps {
   documentId: string;
@@ -235,8 +235,10 @@ export const SharedDocumentViewer: React.FC<SharedDocumentViewerProps> = ({ docu
                                 {activeItems.map((item: any, iIdx: number) => {
                                   const measureVal = usaMedida(item.unit) && item.measure ? item.measure : 1;
                                   const lineSubtotal = (item.quantity || 1) * (item.unitCost || 0) * measureVal;
+                                  const material = computeMaterialSubtotal(item);
                                   return (
-                                    <tr key={item.id || iIdx} className="border-b border-slate-100">
+                                    <React.Fragment key={item.id || iIdx}>
+                                    <tr className="border-b border-slate-100">
                                       <td className="py-2.5 px-1 font-semibold text-slate-800">
                                         {item.description}
                                         {item.images?.length > 0 && (
@@ -256,6 +258,21 @@ export const SharedDocumentViewer: React.FC<SharedDocumentViewerProps> = ({ docu
                                       <td className="py-2.5 px-1 text-right text-slate-600">{formatCurrency(item.unitCost)}</td>
                                       <td className="py-2.5 px-1 text-right font-bold text-slate-900">{formatCurrency(lineSubtotal)}</td>
                                     </tr>
+                                    {/* El material, sangrado bajo su trabajo. */}
+                                    {material > 0 && (
+                                      <tr className="border-b border-slate-100">
+                                        <td className="py-1.5 px-1 pl-5 text-xs text-slate-500">
+                                          ↳ Material{item.material?.descripcion?.trim() ? `: ${item.material.descripcion}` : ''}
+                                        </td>
+                                        <td className="py-1.5 px-1 text-center text-xs text-slate-400">
+                                          {item.material?.quantity ?? 1} {item.unit}
+                                          {usaMedida(item.unit) && item.material?.measure ? ` (${item.material.measure} ${item.unit})` : ''}
+                                        </td>
+                                        <td className="py-1.5 px-1 text-right text-xs text-slate-500">{formatCurrency(item.material?.unitCost || 0)}</td>
+                                        <td className="py-1.5 px-1 text-right text-xs font-semibold text-slate-700">{formatCurrency(material)}</td>
+                                      </tr>
+                                    )}
+                                    </React.Fragment>
                                   );
                                 })}
                               </tbody>
@@ -309,6 +326,19 @@ export const SharedDocumentViewer: React.FC<SharedDocumentViewerProps> = ({ docu
               )}
             </div>
             <div className="w-full sm:w-72 space-y-2">
+              {/* Cuánto es trabajo y cuánto material. Solo cuando hay material. */}
+              {computeMaterialesTotal(data.sections || []) > 0 && (
+                <>
+                  <div className="flex justify-between text-sm text-slate-600 font-medium">
+                    <span>Mano de obra:</span>
+                    <span>{formatCurrency(computeManoDeObraTotal(data.sections || []))}</span>
+                  </div>
+                  <div className="flex justify-between text-sm text-slate-600 font-medium">
+                    <span>Materiales:</span>
+                    <span>{formatCurrency(computeMaterialesTotal(data.sections || []))}</span>
+                  </div>
+                </>
+              )}
               {data.subtotal && data.subtotal !== data.total && (
                 <div className="flex justify-between text-sm text-slate-600 font-medium">
                   <span>Subtotal:</span>
