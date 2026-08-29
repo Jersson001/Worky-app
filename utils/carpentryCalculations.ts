@@ -190,6 +190,49 @@ export const GREMIOS: { key: GremioKey; label: string }[] = [
   { key: 'obra_civil', label: 'Obra blanca y remodelación' },
 ];
 
+/**
+ * Qué capítulos le tocan a cada oficio.
+ *
+ * Worky no es solo para gente de obra: sirve a cualquiera que le lleve cuentas
+ * claras a sus clientes —un abogado, un sastre— y a esos la cotización básica
+ * les basta y les sobra. Enseñarle a un abogado un capítulo de «Drywall y
+ * Cielorrasos» no es una opción de más, es ruido que le hace dudar de si la app
+ * es para él.
+ *
+ * Las claves son los `value` del selector de WelcomeOnboarding.
+ */
+const GREMIOS_POR_OFICIO: Record<string, GremioKey[]> = {
+  carpinteria: ['carpinteria'],
+  muebles: ['carpinteria'],
+  // Quien decora suele encargar tanto el mueble como la obra.
+  decoracion: ['carpinteria', 'obra_civil'],
+  construccion: ['obra_civil'],
+  reformas: ['obra_civil'],
+  pintura: ['obra_civil'],
+  plomeria: ['obra_civil'],
+  electricidad: ['obra_civil'],
+  // Aquí es donde cae quien no es de obra. Solo cotización básica.
+  otro: [],
+};
+
+/**
+ * Los gremios que debe ver alguien, según su tipo de negocio.
+ *
+ * Sin oficio declarado se enseñan todos, y no es un descuido: era casi la mitad
+ * de los usuarios cuando esto se escribió, gente que ya venía usando los
+ * capítulos. Esconderles de un día para otro algo que tenían se sentiría como
+ * que la app se rompió. Quien se registra ahora sí elige oficio, así que el
+ * hueco se cierra solo.
+ */
+export const gremiosVisibles = (businessType?: string | null): GremioKey[] => {
+  const oficio = (businessType || '').trim().toLowerCase();
+  if (!oficio) return GREMIOS.map(g => g.key);
+  const gremios = GREMIOS_POR_OFICIO[oficio];
+  // Un oficio que no esté en la tabla —escrito a mano, o añadido después sin
+  // pasar por aquí— ve todo antes que quedarse sin nada.
+  return gremios ?? GREMIOS.map(g => g.key);
+};
+
 export const CARPENTRY_CATEGORIES: CarpentryCategoryConfig[] = [
   // ── Carpintería ──
   { key: 'cocinas_integrales', gremio: 'carpinteria', label: 'Cocinas Integrales', icon: 'fa-solid fa-kitchen-set', colorFrom: 'from-blue-500', colorTo: 'to-blue-600', shadowColor: 'shadow-blue-500/30', defaultUnit: 'ML', fixedGroups: true },

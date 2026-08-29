@@ -12,7 +12,7 @@ import { QuoteItem, Product, ContactRole, QuoteMode, CarpentrySection, Carpentry
 import { formatCurrency } from '../../../utils/currency';
 import { leerImagenReducida } from '../../../utils/imagen';
 import { calculateTax } from '../../../utils/taxCalculations';
-import { CARPENTRY_CATEGORIES, GREMIOS, CarpentryCategoryConfig, computeGrandTotal, computeSectionSubtotal, computeGroupSubtotal, computeLineSubtotal, computeMaterialSubtotal, materialSugerido, cantidadSugerida, usaMedida } from '../../../utils/carpentryCalculations';
+import { CARPENTRY_CATEGORIES, GREMIOS, CarpentryCategoryConfig, computeGrandTotal, computeSectionSubtotal, computeGroupSubtotal, computeLineSubtotal, computeMaterialSubtotal, materialSugerido, cantidadSugerida, usaMedida, gremiosVisibles } from '../../../utils/carpentryCalculations';
 
 interface QuoteModalProps {
   show: boolean;
@@ -57,6 +57,8 @@ interface QuoteModalProps {
   // Personalizada (carpintería) — función Pro
   isPro?: boolean;
   trialEndsAt?: string | null;
+  /** El oficio del usuario. Decide qué capítulos de cotización ve. */
+  businessType?: string;
   mode: QuoteMode;
   sections: CarpentrySection[];
   onSetMode: (mode: QuoteMode) => void;
@@ -376,7 +378,7 @@ export const QuoteModal: React.FC<QuoteModalProps> = React.memo(({
   onSetValidDays, onSetTaxType, onSetTaxPercentage,
   onSetAIUAdmin, onSetAIUImprevistos, onSetAIUUtilidad, onSetAIUIva,
   onSetClientAddress, onSetClientPhone, onSend, enviando,
-  isPro, trialEndsAt, mode, sections, onSetMode, onAddSection, onRemoveSection,
+  isPro, trialEndsAt, businessType, mode, sections, onSetMode, onAddSection, onRemoveSection,
   onAddCarpentryItem, onUpdateCarpentryItem, onRemoveCarpentryItem,
 }) => {
   const [expandedSectionId, setExpandedSectionId] = useState<string | null>(null);
@@ -408,8 +410,20 @@ export const QuoteModal: React.FC<QuoteModalProps> = React.memo(({
   };
 
   const basicaSubtotal = items.reduce((acc, i) => acc + (i.price * i.quantity), 0);
+  // Qué capítulos le tocan a este usuario según su oficio. Vacío = ninguno, y
+  // entonces solo se le ofrece la cotización básica.
+  const gremios = gremiosVisibles(businessType);
+  /**
+   * Sin capítulos que enseñar, siempre básica.
+   *
+   * No basta con esconder las pestañas: el modo se guarda en el formulario y
+   * alguien pudo dejarlo en «personalizada» antes de que su oficio cambiara.
+   * Sin esto se quedaría mirando un selector de capítulos vacío y sin pestaña
+   * para volver.
+   */
+  const modo: QuoteMode = gremios.length ? mode : 'basica';
   const personalizadaSubtotal = computeGrandTotal(sections);
-  const subtotal = mode === 'personalizada' ? personalizadaSubtotal : basicaSubtotal;
+  const subtotal = modo === 'personalizada' ? personalizadaSubtotal : basicaSubtotal;
 
   const result = calculateTax(subtotal, taxType, {
     percentage: parseFloat(taxPercentage) || 19,
@@ -422,7 +436,7 @@ export const QuoteModal: React.FC<QuoteModalProps> = React.memo(({
   });
 
   const title = contactRole === 'supplier' ? 'Enviar Cotización' : 'Nueva Cotización';
-  const canSend = mode === 'personalizada' ? personalizadaSubtotal > 0 : items.some(i => i.description && i.price > 0);
+  const canSend = modo === 'personalizada' ? personalizadaSubtotal > 0 : items.some(i => i.description && i.price > 0);
 
   /**
    * Cuerpo editable de una sección. Se renderiza en el panel flotante, no
@@ -732,7 +746,9 @@ export const QuoteModal: React.FC<QuoteModalProps> = React.memo(({
       iconColor="text-blue-600"
       overlay={sectionEditor}
     >
-      {/* Mode tabs */}
+      {/* Las pestañas solo tienen sentido si hay capítulos que enseñar. Para un
+          abogado o un sastre, la cotización básica es toda la cotización. */}
+      {gremios.length > 0 && (
       <div className="flex bg-slate-100 p-1 rounded-xl mb-4">
         <button
           type="button"
@@ -750,6 +766,7 @@ export const QuoteModal: React.FC<QuoteModalProps> = React.memo(({
           {!isPro && <i className="fa-solid fa-crown text-amber-500 text-[10px]"></i>}
         </button>
       </div>
+      )}
 
       <div className="space-y-4">
         {/* Validity */}
@@ -785,7 +802,7 @@ export const QuoteModal: React.FC<QuoteModalProps> = React.memo(({
           />
         </div>
 
-        {mode === 'basica' ? (
+        {modo === 'basica' ? (
           <>
             {/* Items */}
             <div className="space-y-2.5">
@@ -923,7 +940,7 @@ export const QuoteModal: React.FC<QuoteModalProps> = React.memo(({
                   Van los dos juntos y no en pantallas separadas porque una
                   remodelación normal mezcla las dos cosas: se tumba un muro,
                   se pinta, y de paso se monta la cocina. */}
-              {GREMIOS.map(gremio => {
+              {GREMIOS.filter(g => gremios.includes(g.key)).map(gremio => {
                 const categorias = CARPENTRY_CATEGORIES.filter(c => c.gremio === gremio.key);
                 if (!categorias.length) return null;
                 return (

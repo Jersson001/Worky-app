@@ -520,6 +520,7 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
           onSend={handleSendQuote}
           enviando={enviandoCotizacion}
           isPro={userProfile?.isPro} trialEndsAt={userProfile?.trialEndsAt}
+          businessType={userProfile?.businessType}
           mode={forms.quote.mode} sections={forms.quote.sections}
           onSetMode={forms.setQuoteMode} onAddSection={forms.addCarpentrySection} onRemoveSection={forms.removeCarpentrySection}
           onAddCarpentryItem={forms.addCarpentryItem} onUpdateCarpentryItem={forms.updateCarpentryItem} onRemoveCarpentryItem={forms.removeCarpentryItem}
