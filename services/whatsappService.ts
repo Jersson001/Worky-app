@@ -2,6 +2,8 @@ import { supabase, PUBLIC_BUCKET } from './supabaseConfig';
 import { qrImageUrl, WORKY_APP_URL } from './catalogShareService';
 import { buildDocumentHtml } from './documentHtml';
 import { formatCurrency } from '../utils/currency';
+import { describeCantidad } from '../utils/carpentryCalculations';
+import { CarpentrySection } from '../types';
 
 /**
  * Pie del documento con el enlace y el QR del catálogo.
@@ -205,13 +207,9 @@ export const generateQuoteMessage = (quoteData: {
   clientName: string;
   total: number;
   items: Array<{ description: string; quantity: number; price: number }>;
-  sections?: Array<{
-    name: string;
-    groups: Array<{
-      label: string;
-      items: Array<{ description: string; quantity: number; unitCost: number; unit: string; measure?: number }>;
-    }>;
-  }>;
+  // El tipo real y no una copia a mano: la copia declaraba `unit: string` y con
+  // eso cualquier unidad inventada pasaba el compilador aquí dentro.
+  sections?: CarpentrySection[];
 }, documentLink?: string, catalogLink?: string): string => {
   let itemsText: string;
 
@@ -224,8 +222,7 @@ export const generateQuoteMessage = (quoteData: {
             const groupItemsText = group.items
               .filter(i => i.description)
               .map(item => {
-                const measureText = (item.unit === 'ML' || item.unit === 'M2') && item.measure ? ` × ${item.measure}${item.unit}` : '';
-                return `  • ${item.description} x${item.quantity}${measureText}`;
+                return `  • ${item.description} ${describeCantidad(item)}`;
               })
               .join('\n');
             return `_${group.label}_\n${groupItemsText}`;
@@ -340,13 +337,7 @@ export const shareQuoteViaWhatsApp = (
     clientName: string;
     total: number;
     items: Array<{ description: string; quantity: number; price: number }>;
-    sections?: Array<{
-      name: string;
-      groups: Array<{
-        label: string;
-        items: Array<{ description: string; quantity: number; unitCost: number; unit: string; measure?: number }>;
-      }>;
-    }>;
+    sections?: CarpentrySection[];
     pdfUrl?: string;
   },
   documentLink?: string,

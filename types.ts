@@ -142,15 +142,33 @@ export interface QuoteData {
 
 export type QuoteMode = 'basica' | 'personalizada';
 
-export type CarpentryUnit = 'ML' | 'M2' | 'UND' | 'GLOBAL';
+/**
+ * ML, M2 y M3 se multiplican por la medida; el resto vale 1.
+ * No mirar esto a ojo: usar `usaMedida()` de utils/carpentryCalculations.
+ *
+ * PUNTO y VIAJE se comportan igual que UND, pero salen escritos así en el
+ * documento del cliente: «12 PUNTOS» se entiende y «12 UND» no.
+ */
+export type CarpentryUnit = 'ML' | 'M2' | 'M3' | 'UND' | 'PUNTO' | 'VIAJE' | 'GLOBAL';
+
+/** A qué oficio pertenece una categoría. Agrupa el selector de la cotización. */
+export type GremioKey = 'carpinteria' | 'obra_civil';
 
 export type CarpentryCategoryKey =
+  // Carpintería
   | 'cocinas_integrales'
   | 'closets'
   | 'puertas'
   | 'gabinetes_bano'
   | 'centros_entretenimiento'
-  | 'muebles_especiales';
+  | 'muebles_especiales'
+  // Obra blanca y remodelación
+  | 'pintura_estuco'
+  | 'enchapes'
+  | 'drywall'
+  | 'puntos_instalaciones'
+  | 'demoliciones'
+  | 'impermeabilizacion';
 
 export interface CarpentryLineItem {
   id: string;

@@ -9,7 +9,7 @@
  * suelto en Storage y lo abre cualquiera, sin sesión y sin la app.
  */
 import { formatCurrency } from '../utils/currency';
-import { computeLineSubtotal, esLineaUsada } from '../utils/carpentryCalculations';
+import { computeLineSubtotal, esLineaUsada, describeCantidad } from '../utils/carpentryCalculations';
 
 type DocType = 'quote' | 'invoice' | 'receipt' | 'collection_account' | 'expense_receipt';
 
@@ -75,10 +75,8 @@ const tablaSecciones = (sections: any[]): string =>
         return `
         <tr class="grupo"><td colspan="3">${esc(g.label)}</td></tr>
         ${items.map((i: any) => {
-          const medida = (i.unit === 'ML' || i.unit === 'M2') && i.measure
-            ? ` · ${i.measure} ${i.unit}` : '';
           return `<tr>
-            <td>${esc(i.description)}<span class="detalle">x${i.quantity}${medida}</span>${fotos(i.images)}</td>
+            <td>${esc(i.description)}<span class="detalle">${esc(describeCantidad(i))}</span>${fotos(i.images)}</td>
             <td class="num">${formatCurrency(i.unitCost || 0)}</td>
             <td class="num">${formatCurrency(computeLineSubtotal(i))}</td>
           </tr>`;

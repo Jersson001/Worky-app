@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { getSharedDocument, WORKY_PLAY_STORE_URL } from '../services/whatsappService';
-import { esLineaUsada } from '../utils/carpentryCalculations';
+import { esLineaUsada, usaMedida } from '../utils/carpentryCalculations';
 
 interface SharedDocumentViewerProps {
   documentId: string;
@@ -233,7 +233,7 @@ export const SharedDocumentViewer: React.FC<SharedDocumentViewerProps> = ({ docu
                               </thead>
                               <tbody>
                                 {activeItems.map((item: any, iIdx: number) => {
-                                  const measureVal = (item.unit === 'ML' || item.unit === 'M2') && item.measure ? item.measure : 1;
+                                  const measureVal = usaMedida(item.unit) && item.measure ? item.measure : 1;
                                   const lineSubtotal = (item.quantity || 1) * (item.unitCost || 0) * measureVal;
                                   return (
                                     <tr key={item.id || iIdx} className="border-b border-slate-100">
@@ -248,7 +248,10 @@ export const SharedDocumentViewer: React.FC<SharedDocumentViewerProps> = ({ docu
                                         )}
                                       </td>
                                       <td className="py-2.5 px-1 text-center text-slate-600">
-                                        {item.quantity} {item.unit}{item.measure ? ` (${item.measure} ${item.unit})` : ''}
+                                        {/* La medida solo se enseña si multiplica. Sin este filtro, un
+                                            ítem que pasó de M2 a PUNTO arrastraba su medida vieja y salía
+                                            «12 PUNTO (1 PUNTO)». */}
+                                        {item.quantity} {item.unit}{usaMedida(item.unit) && item.measure ? ` (${item.measure} ${item.unit})` : ''}
                                       </td>
                                       <td className="py-2.5 px-1 text-right text-slate-600">{formatCurrency(item.unitCost)}</td>
                                       <td className="py-2.5 px-1 text-right font-bold text-slate-900">{formatCurrency(lineSubtotal)}</td>

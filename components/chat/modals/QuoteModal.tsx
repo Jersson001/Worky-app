@@ -12,7 +12,7 @@ import { QuoteItem, Product, ContactRole, QuoteMode, CarpentrySection, Carpentry
 import { formatCurrency } from '../../../utils/currency';
 import { leerImagenReducida } from '../../../utils/imagen';
 import { calculateTax } from '../../../utils/taxCalculations';
-import { CARPENTRY_CATEGORIES, CarpentryCategoryConfig, computeGrandTotal, computeSectionSubtotal, computeGroupSubtotal, computeLineSubtotal } from '../../../utils/carpentryCalculations';
+import { CARPENTRY_CATEGORIES, GREMIOS, CarpentryCategoryConfig, computeGrandTotal, computeSectionSubtotal, computeGroupSubtotal, computeLineSubtotal } from '../../../utils/carpentryCalculations';
 
 interface QuoteModalProps {
   show: boolean;
@@ -67,7 +67,15 @@ interface QuoteModalProps {
   onRemoveCarpentryItem: (sectionId: string, groupId: string, itemId: string) => void;
 }
 
-const UNIT_LABEL: Record<CarpentryUnit, string> = { ML: 'Metro lineal', M2: 'Metro cuadrado', UND: 'Unidad', GLOBAL: 'Global' };
+const UNIT_LABEL: Record<CarpentryUnit, string> = {
+  ML: 'Metro lineal',
+  M2: 'Metro cuadrado',
+  M3: 'Metro cúbico',
+  UND: 'Unidad',
+  PUNTO: 'Punto',
+  VIAJE: 'Viaje',
+  GLOBAL: 'Global',
+};
 
 const CarpentryItemRow: React.FC<{
   item: CarpentryLineItem;
@@ -123,17 +131,23 @@ const CarpentryItemRow: React.FC<{
                 className="w-full bg-slate-50 p-1.5 rounded-lg text-[11px] text-slate-900 outline-none border border-slate-200 focus:border-blue-500 focus:bg-white transition"
               />
             </div>
+            {/* El área se calcula de ancho × alto, pero también se puede
+                escribir directa: en obra el maestro suele llegar con «son 45
+                m² de pintura» y obligarle a inventarse dos lados para que
+                salga esa cifra es trabajo de más. */}
             <div className="w-16">
               <label className="text-[9px] text-slate-400 font-semibold uppercase block mb-0.5">M²</label>
-              <div className="w-full bg-slate-100 p-1.5 rounded-lg text-[11px] text-slate-600 font-bold text-center border border-slate-200">
-                {(item.measure || 0).toFixed(2).replace('.', ',')}
-              </div>
+              <DecimalInput
+                value={item.measure}
+                onCommit={value => onUpdate('measure', value)}
+                className="w-full bg-slate-50 p-1.5 rounded-lg text-[11px] text-slate-900 font-bold text-center outline-none border border-slate-200 focus:border-blue-500 focus:bg-white transition"
+              />
             </div>
           </>
         )}
-        {item.unit === 'ML' && (
+        {(item.unit === 'ML' || item.unit === 'M3') && (
           <div className="w-16">
-            <label className="text-[9px] text-slate-400 font-semibold uppercase block mb-0.5">ML</label>
+            <label className="text-[9px] text-slate-400 font-semibold uppercase block mb-0.5">{item.unit}</label>
             <DecimalInput
               value={item.measure}
               onCommit={value => onUpdate('measure', value)}
@@ -780,22 +794,36 @@ export const QuoteModal: React.FC<QuoteModalProps> = React.memo(({
         ) : (
           <ProFeatureGuard isPro={isPro} trialEndsAt={trialEndsAt}>
             <div className="mb-4">
-              {/* Category picker */}
-              <div className="grid grid-cols-3 gap-2 mb-4">
-                {CARPENTRY_CATEGORIES.map(cat => (
-                  <button
-                    key={cat.key}
-                    type="button"
-                    onClick={() => { onAddSection(cat.key); }}
-                    className="bg-white p-2.5 rounded-xl shadow-sm hover:shadow-md transition flex flex-col items-center gap-1.5"
-                  >
-                    <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${cat.colorFrom} ${cat.colorTo} flex items-center justify-center text-white shadow-sm ${cat.shadowColor}`}>
-                      <i className={`${cat.icon} text-sm`}></i>
+              {/* Selector de capítulos, agrupado por oficio.
+                  Van los dos juntos y no en pantallas separadas porque una
+                  remodelación normal mezcla las dos cosas: se tumba un muro,
+                  se pinta, y de paso se monta la cocina. */}
+              {GREMIOS.map(gremio => {
+                const categorias = CARPENTRY_CATEGORIES.filter(c => c.gremio === gremio.key);
+                if (!categorias.length) return null;
+                return (
+                  <div key={gremio.key} className="mb-4">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1.5 px-0.5">
+                      {gremio.label}
+                    </p>
+                    <div className="grid grid-cols-3 gap-2">
+                      {categorias.map(cat => (
+                        <button
+                          key={cat.key}
+                          type="button"
+                          onClick={() => { onAddSection(cat.key); }}
+                          className="bg-white p-2.5 rounded-xl shadow-sm hover:shadow-md transition flex flex-col items-center gap-1.5"
+                        >
+                          <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${cat.colorFrom} ${cat.colorTo} flex items-center justify-center text-white shadow-sm ${cat.shadowColor}`}>
+                            <i className={`${cat.icon} text-sm`}></i>
+                          </div>
+                          <span className="text-[10px] font-semibold text-slate-700 text-center leading-tight">{cat.label}</span>
+                        </button>
+                      ))}
                     </div>
-                    <span className="text-[10px] font-semibold text-slate-700 text-center leading-tight">{cat.label}</span>
-                  </button>
-                ))}
-              </div>
+                  </div>
+                );
+              })}
 
               {/* Added sections */}
               <div className="space-y-3">
