@@ -200,7 +200,12 @@ export const updateMessageStatus = async (
 };
 
 /**
- * Marca todos los mensajes de una conversación como entregados
+ * Marca como entregados los mensajes que me han mandado.
+ *
+ * El `neq` es lo que hace que el acuse signifique algo: la política RLS deja
+ * que cualquiera de los dos participantes actualice cualquier mensaje del chat,
+ * así que sin él esto marcaba también los míos salientes y el otro aparecía
+ * como que los había recibido sin haber abierto nada.
  */
 export const markMessagesAsDelivered = async (contactId: string): Promise<void> => {
   const userId = getCurrentUserId();
@@ -210,6 +215,7 @@ export const markMessagesAsDelivered = async (contactId: string): Promise<void> 
     .from('messages')
     .update({ status: 'delivered' })
     .eq('chat_id', chatId)
+    .neq('sender_id', userId)
     .eq('status', 'sent');
 
   if (error) {
@@ -218,7 +224,9 @@ export const markMessagesAsDelivered = async (contactId: string): Promise<void> 
 };
 
 /**
- * Marca todos los mensajes de una conversación como leídos
+ * Marca como leídos los mensajes que me han mandado.
+ *
+ * Mismo motivo que arriba para el `neq`: el doble visto es del otro, no mío.
  */
 export const markMessagesAsRead = async (contactId: string): Promise<void> => {
   const userId = getCurrentUserId();
@@ -228,6 +236,7 @@ export const markMessagesAsRead = async (contactId: string): Promise<void> => {
     .from('messages')
     .update({ status: 'read' })
     .eq('chat_id', chatId)
+    .neq('sender_id', userId)
     .in('status', ['sent', 'delivered']);
 
   if (error) {
@@ -251,11 +260,14 @@ export const listenToMessages = (
   };
 
   const loadInitial = async () => {
+    // Descendente y luego se le da la vuelta. Ordenando ascendente, el límite
+    // recorta por el otro extremo: una conversación de más de 100 mensajes se
+    // abría por el principio, con los últimos —los que se vienen a leer— fuera.
     const { data, error } = await supabase
       .from('messages')
       .select('*')
       .eq('chat_id', chatId)
-      .order('timestamp', { ascending: true })
+      .order('timestamp', { ascending: false })
       .limit(100);
 
     if (error) {
@@ -264,7 +276,9 @@ export const listenToMessages = (
     }
     if (cancelled) return;
 
-    buffer = (data || []).map((row) => rowToMessage(row, userId));
+    // El resto del código cuenta con el buffer en orden cronológico: es lo que
+    // asume el `sort` al anexar por Realtime y lo que pinta la lista.
+    buffer = (data || []).reverse().map((row) => rowToMessage(row, userId));
     emit();
   };
 
