@@ -1,279 +1,178 @@
-# 📱 Worky App - Vista Previa del Proyecto
+# Vista general del proyecto
 
-## 🎯 Descripción General
+Última revisión: 1 de septiembre de 2026.
 
-**Worky** es una aplicación móvil y web para la gestión integral de proyectos artesanales y de carpintería. Permite gestionar clientes, proyectos, cotizaciones, facturas, gastos y comunicación en tiempo real.
+> Este documento describía la app sobre Firebase (Authentication, Realtime
+> Database, Storage) y con Gemini analizando las fotos del catálogo. Nada de eso
+> sigue en el proyecto: `firebase` no está en `package.json` y la IA se retiró.
+> Se reescribió comprobando cada punto contra el código.
 
----
-
-## 🛠️ Stack Tecnológico
-
-### Frontend
-- **React 19.2.0** - Framework UI
-- **TypeScript 5.8.2** - Lenguaje tipado
-- **Vite 6.2.0** - Build tool y dev server
-- **Tailwind CSS** - Estilos (inferido del código)
-
-### Backend & Servicios
-- **Firebase 12.7.0** - Backend as a Service
-  - Authentication (Email/Phone)
-  - Realtime Database
-  - Storage
-- **Google Gemini AI (Gemini 2.5 Flash)** - Inteligencia Artificial
-  - Generación de respuestas inteligentes
-  - Análisis de imágenes de productos
-  - Extracción de datos para facturas
-
-### Mobile
-- **Capacitor 8.0** - Framework híbrido
-  - Android support
-  - Firebase Authentication plugin nativo
+Para **qué funciona y qué no**, el documento de referencia es
+[ESTADO-FUNCIONALIDADES.md](ESTADO-FUNCIONALIDADES.md). Este es el mapa del
+repositorio: dónde está cada cosa.
 
 ---
 
-## 📁 Estructura del Proyecto
+## Stack
+
+| Capa | Qué |
+|---|---|
+| UI | React 19 + TypeScript 5.8, compilado con Vite 6 |
+| Estilos | Tailwind y Font Awesome **desde CDN**, en `index.html`, con una paleta de variables CSS propia |
+| Backend | Supabase: Postgres con RLS, Auth, Realtime y Storage (`@supabase/supabase-js` v2) |
+| Móvil | Capacitor 8, solo Android |
+
+Las únicas dependencias de producción son `react`, `react-dom`,
+`@supabase/supabase-js` y los paquetes de Capacitor.
+
+`index.html` carga también `html2pdf` por CDN y trae un `importmap` de React
+heredado de AI Studio, que no hace falta porque Vite ya empaqueta React.
+
+---
+
+## Estructura
 
 ```
 worky_app/
-├── components/              # Componentes React
-│   ├── ChatList.tsx        # Lista de chats/contactos
-│   ├── ChatWindow.tsx      # Ventana de chat individual
-│   ├── FinancialReport.tsx # Reporte financiero
-│   ├── LoginScreen.tsx     # Pantalla de login
-│   ├── NotificationsPanel.tsx
-│   ├── ProjectBoard.tsx
-│   ├── QuoteDocument.tsx   # Generación de cotizaciones
-│   ├── SignaturePad.tsx    # Firma digital
-│   ├── StatusView.tsx      # Historias/Stories
-│   ├── WalletModal.tsx     # Gestión de cuentas bancarias
-│   └── WelcomeOnboarding.tsx # Onboarding inicial
+├── App.tsx                  # Componente raíz: estado, efectos y casi toda la lógica de pantalla
+├── index.tsx                # Entrada. Resuelve `?catalogo=` ANTES de montar la app
+├── types.ts                 # Contact, Message, Project, Product, Story, ChatGroup…
 │
-├── services/               # Servicios de negocio
-│   ├── authService.ts      # Autenticación Firebase
-│   ├── firebaseConfig.ts   # Configuración Firebase
-│   ├── geminiService.ts    # Servicios de IA
-│   └── messagingService.ts # Mensajería en tiempo real
+├── components/
+│   ├── LoginScreen.tsx       # Registro, acceso y el atajo por alias
+│   ├── WelcomeOnboarding.tsx # Negocio, oficio y logo. El oficio decide los capítulos de cotización
+│   ├── ChatList.tsx · ChatWindow.tsx
+│   ├── chat/                 # Cabecera, lista, burbujas, pie y modales del chat
+│   ├── QuoteDocument.tsx     # Cotizaciones, facturas, recibos y cuentas de cobro
+│   ├── ContractGenerator.tsx · SignaturePad.tsx
+│   ├── CatalogShareModal.tsx · catalogoPublico.ts  # Publicar y pintar el catálogo
+│   ├── SharedDocumentViewer.tsx                    # Ruta `?view=`, sin sesión
+│   ├── ProjectBoard.tsx · GanttChart.tsx
+│   ├── FinancialReport.tsx · WalletModal.tsx
+│   ├── GroupsManager.tsx · GroupChatWindow.tsx     # Solo localStorage
+│   ├── StatusView.tsx                              # Historias, solo localStorage
+│   ├── AdminPanel.tsx · ProFeatureGuard.tsx
+│   ├── ProfileEditor.tsx · UserSearchModal.tsx · NotificationsPanel.tsx
+│   └── Sidebar.tsx · ErrorBoundary.tsx
 │
-├── android/                # Aplicación Android nativa
-│   └── app/               # Código nativo Android
+├── services/
+│   ├── supabaseConfig.ts     # Cliente, PUBLIC_BUCKET y uniqueTopic
+│   ├── messagingService.ts   # Contactos, mensajes, Realtime, no leídos
+│   ├── dataService.ts        # Productos, categorías, proyectos, gastos, cuentas
+│   ├── storageService.ts     # Subidas a Storage
+│   ├── catalogShareService.ts# Instantánea HTML del catálogo, QR y enlaces
+│   ├── whatsappService.ts    # Documentos compartidos y enlaces de WhatsApp
+│   ├── documentHtml.ts       # HTML maquetado de los documentos
+│   ├── adminService.ts       # Panel de admin: Pro y prueba
+│   └── geminiService.ts      # Muerto: no lo importa nadie
 │
-├── types.ts               # Definiciones TypeScript
-├── App.tsx               # Componente principal
-├── index.tsx             # Entry point
-├── capacitor.config.ts   # Configuración Capacitor
-└── vite.config.ts        # Configuración Vite
+├── hooks/          useChatFormState.ts · useFileUpload.ts
+├── utils/          currency · imagen · id · errorMessage · carpentryCalculations · taxCalculations
+├── supabase/       functions/ (gemini, view-doc — ambas sin uso) y migrations/
+├── android/        Proyecto Capacitor
+└── *.sql           Migraciones para el SQL Editor, idempotentes
 ```
 
----
-
-## 🎨 Funcionalidades Principales
-
-### 1. 🔐 Autenticación
-- **Login por Email**: Link mágico de Firebase
-- **Login por Teléfono**: SMS verification (web + móvil nativo)
-- **Onboarding**: Configuración inicial del negocio
-  - Nombre del negocio
-  - Información del propietario
-  - Logo del negocio
-  - Tipo de negocio
-
-### 2. 💬 Mensajería
-- Chat en tiempo real con Firebase Realtime Database
-- Mensajes de texto
-- Envío de documentos (cotizaciones, facturas, cuentas de cobro)
-- Envío de productos del catálogo
-- Receipts de gastos
-- Notificaciones de mensajes no leídos
-
-### 3. 👥 Gestión de Contactos
-- **Tipos de contacto**:
-  - Clientes
-  - Proveedores
-  - Colaboradores
-- Estados: Lead, Cliente Activo, Finalizado, Archivado
-- Información de contacto (nombre, teléfono, avatar)
-- Historial de proyectos por contacto
-
-### 4. 📊 Gestión de Proyectos
-- Múltiples proyectos por cliente
-- **Estados del proyecto**:
-  - Consulta
-  - Propuesta
-  - En Progreso
-  - Facturación
-  - Completado
-- Registro de gastos por proyecto
-- Seguimiento de valor y fechas
-
-### 5. 📄 Documentos
-- **Cotizaciones**: Generación y envío vía chat
-- **Facturas**: Creación y seguimiento de pagos
-- **Cuentas de Cobro**: Generación de documentos de cobro
-- **Registro de Gastos**: Con recibo adjunto
-- Firma digital personalizada
-- Logo del negocio en documentos
-
-### 6. 🛍️ Catálogo de Productos
-- Gestión de productos con imágenes múltiples
-- Categorías de productos (carpetas)
-- **IA Integrada**:
-  - Análisis automático de imágenes
-  - Generación de descripciones
-  - Sugerencias para mejorar fotos
-  - Detección de características
-- Stock disponible
-- Precios
-- Envío directo desde catálogo al chat
-
-### 7. 💰 Gestión Financiera
-- Reporte financiero consolidado
-- Cuentas bancarias propias (Bancolombia, Nequi, Daviplata)
-- Cuentas de terceros (proveedores)
-- Envío de datos bancarios vía chat
-- Seguimiento de pagos y gastos
-
-### 8. 📸 Historias (Stories)
-- Creación de historias temporales
-- Texto e imágenes
-- Cámara integrada
-- Expiración automática
-
-### 9. 📱 Notificaciones
-- Panel de notificaciones
-- Alertas de mensajes no leídos
-- Recordatorios de proyectos
-
-### 10. 📁 Gestión de Documentos Legales
-- Subida de PDFs (RUT, Cámara de Comercio, Cédula)
-- Organización y categorización
-- Vista previa y descarga
+`App.tsx` conserva dos constantes `MOCK_CONTACTS` y `MOCK_STORIES` que **no las
+usa nadie**: son resto de la demo original, no un modo de datos falsos.
 
 ---
 
-## 🤖 Inteligencia Artificial (Google Gemini)
+## Modelo de datos
 
-### Funcionalidades IA:
-1. **Respuestas Inteligentes**: Sugerencias automáticas de respuestas en chats
-2. **Análisis de Productos**: 
-   - Descripción automática desde imágenes
-   - Sugerencias para mejorar fotos
-   - Detección de características
-3. **Extracción de Datos**: Análisis de conversaciones para generar facturas
+Tablas de `public` que toca la app:
+
+| Tabla | Para qué |
+|---|---|
+| `user_profiles` | El negocio: nombre, dueño, logo, `is_admin`, `is_pro`, `trial_ends_at` |
+| `public_info` | Índice público: `user_id`, `phone_or_email`, nombre y avatar. **Lectura pública** |
+| `user_index` | Índice viejo con claves escapadas al estilo Firebase. Solo compatibilidad |
+| `contacts` | Clientes, proveedores y colaboradores. `contact_user_id` es `NULL` en los contactos manuales |
+| `messages` | Todos los mensajes, agrupados por `chat_id` |
+| `user_chats` | Último mensaje y contador de no leídos por conversación |
+| `products` · `categories` | Catálogo |
+| `projects` · `expenses` | Proyectos y sus gastos |
+| `payment_accounts` | Cuentas bancarias propias y de terceros |
+
+Todas tienen RLS activado. Las políticas se auditaron el 28 de agosto de 2026:
+[SEGURIDAD.md](SEGURIDAD.md).
+
+Funciones que llama la app: `add_contact_mutual`, `bump_unread`,
+`sugerir_alias` y `reservar_alias`.
+
+### Storage
+
+Todo en el bucket `chat_media`. El bucket `files` está cerrado.
+
+| Qué | Ruta |
+|---|---|
+| Fotos y adjuntos del chat | `<uid>/<contacto>/<archivo>` |
+| Fotos de producto | `<uid>/<carpeta>/<archivo>` |
+| Catálogos publicados | `shared_catalogs/<uid>/<fecha>.html` |
+| Documentos compartidos | `shared_docs/<id>.json` y `.html` |
+
+### Lo que no se sincroniza
+
+Grupos, mensajes de grupo e historias viven **solo en `localStorage`**
+(`worky_chat_groups`, `worky_group_messages`, `worky_user_stories`). Son de ese
+teléfono y ese navegador: no se comparten, no se respaldan y se pierden al
+borrar los datos de la app.
 
 ---
 
-## 📱 Compatibilidad
+## Rutas públicas
 
-- ✅ **Web** (PWA-ready)
-- ✅ **Android** (nativo con Capacitor)
-- 📱 Diseño responsive (móvil y desktop)
+Tres recorridos funcionan **sin sesión**, y por eso se resuelven antes de que
+aparezca el login:
+
+| URL | Qué hace |
+|---|---|
+| `?catalogo=<userId>` | Pinta el catálogo del vendedor. Se resuelve en `index.tsx`, antes de montar la app |
+| `?view=<documentId>` | Enseña una cotización o factura compartida |
+| `?vendedor=<userId>` | Guarda con quién quiere hablar quien viene del QR, y le abre ese chat al entrar |
+
+Supabase sirve todo HTML público de Storage como `text/plain` con `nosniff`, así
+que **la página la pinta la app**, no Storage. El porqué está en
+[PENDIENTE-CATALOGO-STORAGE.md](PENDIENTE-CATALOGO-STORAGE.md).
 
 ---
 
-## 🔧 Configuración Requerida
+## Autenticación
 
-### Variables de Entorno:
+Correo y contraseña (`signUp` / `signInWithPassword`) y sesiones anónimas
+(`signInAnonymously`) para el atajo por alias. **No hay** login por SMS ni enlace
+mágico: el código de verificación por SMS se retiró.
+
+`Confirm email` está desactivado en Supabase, así que al registrarse se entra de
+una.
+
+---
+
+## Configuración
+
+Dos variables, ambas en `.env.local`; la plantilla es
+[env.example](env.example):
+
 ```env
-VITE_FIREBASE_API_KEY=
-VITE_FIREBASE_AUTH_DOMAIN=
-VITE_FIREBASE_DATABASE_URL=
-VITE_FIREBASE_PROJECT_ID=
-VITE_FIREBASE_STORAGE_BUCKET=
-VITE_FIREBASE_MESSAGING_SENDER_ID=
-VITE_FIREBASE_APP_ID=
-GEMINI_API_KEY=
+VITE_SUPABASE_URL=
+VITE_SUPABASE_ANON_KEY=
 ```
 
-### Scripts Disponibles:
-```bash
-npm run dev        # Desarrollo local
-npm run build      # Build para producción
-npm run preview    # Preview del build
-npm run android    # Build y abrir Android Studio
-```
+Sin ellas la app arranca igual y falla después con errores de red poco claros,
+así que `supabaseConfig.ts` avisa por consola al cargar.
+
+Los pasos de despliegue están en [GUIA-PRODUCCION.md](GUIA-PRODUCCION.md).
 
 ---
 
-## 🎨 Características de UI/UX
+## Deuda conocida
 
-- Diseño moderno y limpio
-- Tema oscuro para lista de chats
-- Tema claro para contenido principal
-- Navegación móvil con tabs inferiores
-- Modales y overlays con backdrop blur
-- Animaciones suaves
-- Iconos Font Awesome
-- Gradientes y sombras modernas
-
----
-
-## 📊 Modelo de Datos
-
-### Entidades Principales:
-- **User/Profile**: Información del negocio
-- **Contact**: Clientes, proveedores, colaboradores
-- **Project**: Proyectos asociados a contactos
-- **Expense**: Gastos por proyecto
-- **Message**: Mensajes de chat
-- **Product**: Productos del catálogo
-- **ProductCategory**: Categorías de productos
-- **Invoice/Quote/CollectionAccount**: Documentos
-- **PaymentAccount**: Cuentas bancarias
-- **Story**: Historias temporales
-
----
-
-## 🚀 Estado del Proyecto
-
-### ✅ Implementado:
-- Autenticación completa
-- Mensajería en tiempo real
-- Gestión de proyectos y gastos
-- Generación de documentos
-- Catálogo con IA
-- Reportes financieros
-- Firma digital
-- Onboarding
-
-### 🔄 En Desarrollo / Mejoras Futuras:
-- Integración completa con Firebase (actualmente usa datos mock)
-- Sincronización de datos en la nube
-- Notificaciones push
-- Más funcionalidades de IA
-- Exportación de reportes
-- Integración con servicios de pago
-
----
-
-## 📝 Notas Técnicas
-
-- Usa Firebase Realtime Database para mensajería
-- Firebase Authentication para login
-- Google Gemini AI para funcionalidades inteligentes
-- Capacitor para compilación móvil nativa
-- TypeScript para type safety
-- Vite para desarrollo rápido
-
----
-
-## 🔐 Seguridad
-
-- Autenticación Firebase
-- Datos encriptados en tránsito
-- Variables de entorno para API keys
-- Validación de tipos con TypeScript
-
----
-
-## 📞 Contacto y Documentación
-
-- Ver `FIREBASE-SETUP.md` para configuración de Firebase
-- Ver `INICIO-RAPIDO-FIREBASE.md` para inicio rápido
-- Ver `CATALOGO-IA.md` para funcionalidades de IA (si existe)
-
----
-
-**Versión**: 0.0.0  
-**Última actualización**: 2024  
-**Licencia**: Privada
-
+- **El código sigue diciendo «Firebase».** `sendMessageToFirebase`,
+  `firebaseContacts`, comentarios sueltos y un import comentado de
+  `FirebaseConnectionTest`. Son nombres heredados: por debajo todo es Supabase.
+- **`services/geminiService.ts` y `supabase/functions/gemini/` no los usa nadie**
+  desde que se retiraron las descripciones con IA. Ver [CATALOGO-IA.md](CATALOGO-IA.md).
+- **`supabase/functions/view-doc/`** quedó sin uso cuando `?view=` pasó a leer el
+  JSON directamente.
+- **`App.tsx` pasa de 3.700 líneas** y concentra casi todo el estado.
+- **`App.backup.tsx` y `App.minimal.tsx`** siguen en la raíz.

@@ -14,8 +14,8 @@ npm install
 npm run dev
 ```
 
-Las claves van en `.env.local`; hay una plantilla en
-[.env.local.example](.env.local.example).
+Las claves van en `.env.local` —son dos, la URL y la clave `anon` de Supabase—;
+hay una plantilla en [env.example](env.example).
 
 ## Documentación
 
@@ -23,13 +23,17 @@ Las claves van en `.env.local`; hay una plantilla en
 |---|---|
 | [ESTADO-FUNCIONALIDADES.md](ESTADO-FUNCIONALIDADES.md) | Qué funciona hoy y qué no. **Empieza por aquí.** Incluye cómo se arman las cotizaciones por capítulos y qué ve cada oficio |
 | [SEGURIDAD.md](SEGURIDAD.md) | Auditoría de las políticas de la base, agujeros cerrados y cómo repetirla |
-| [COMO-FUNCIONA-EL-CHAT.md](COMO-FUNCIONA-EL-CHAT.md) | Mensajería, contactos manuales |
+| [PREVIEW-PROYECTO.md](PREVIEW-PROYECTO.md) | Mapa del repositorio: stack, estructura, tablas y rutas públicas |
+| [COMO-FUNCIONA-EL-CHAT.md](COMO-FUNCIONA-EL-CHAT.md) | Mensajería, contactos manuales, tiempo real |
 | [PENDIENTE-CATALOGO-STORAGE.md](PENDIENTE-CATALOGO-STORAGE.md) | Por qué la página del catálogo la sirve la app y no Storage |
 | [IDEAS-CATALOGO.md](IDEAS-CATALOGO.md) | Ideas pendientes para el catálogo |
+| [INTEGRACION-WHATSAPP.md](INTEGRACION-WHATSAPP.md) | Cómo se comparten documentos por WhatsApp |
+| [GUIA-PRODUCCION.md](GUIA-PRODUCCION.md) | Montar Supabase y desplegar en web y Android |
 | [GUIA-GOOGLE-PLAY-STORE.md](GUIA-GOOGLE-PLAY-STORE.md) | Publicar en Play Store. **Incluye por qué rechazaron la 2.1.** |
 | [GENERAR-APK-ANDROID-STUDIO.md](GENERAR-APK-ANDROID-STUDIO.md) | Generar el APK |
-| [GUIA-PRODUCCION.md](GUIA-PRODUCCION.md) | Despliegue |
-| [MIGRATION_GUIDE.md](MIGRATION_GUIDE.md) | Notas de la migración a Supabase |
+| [CHECKLIST-EMPRENDEDOR.md](CHECKLIST-EMPRENDEDOR.md) | Qué dejar hecho para usar la app en un negocio real |
+| [MIGRATION_GUIDE.md](MIGRATION_GUIDE.md) | Qué cambió al pasar de Firebase a Supabase y qué costuras quedaron |
+| [CATALOGO-IA.md](CATALOGO-IA.md) | Las descripciones con IA: qué hacían y por qué se retiraron |
 
 ## Base de datos
 

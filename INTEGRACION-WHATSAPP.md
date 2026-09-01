@@ -1,196 +1,109 @@
-# 📱 Integración con WhatsApp - Worky App
+# Compartir por WhatsApp
 
-## ✅ Lo que YA está implementado
+Última revisión: 1 de septiembre de 2026.
 
-### 1. **Compartir por WhatsApp (Enlaces)**
-- ✅ Botón "Compartir por WhatsApp" en cotizaciones y facturas
-- ✅ Genera mensajes prellenados con la información del documento
-- ✅ Abre WhatsApp con el mensaje listo para enviar
-- ✅ Funciona en móvil y escritorio (abre WhatsApp Web)
-
-**Cómo funciona:**
-- Al ver una cotización o factura, aparece un botón verde de WhatsApp
-- Al hacer clic, abre WhatsApp con un mensaje prellenado
-- El usuario solo necesita hacer clic en "Enviar"
-
-**Limitaciones:**
-- No envía automáticamente (el usuario debe confirmar)
-- No puede adjuntar archivos PDF directamente (solo el mensaje con enlace)
-- Requiere que el usuario tenga WhatsApp instalado
+> Este documento decía que para mandar un documento habría que «generar el PDF y
+> subirlo a Firebase Storage». Firebase ya no está, y lo que se manda no es un
+> PDF: es un enlace a una página que sirve la app. Se reescribió con lo que hace
+> hoy [services/whatsappService.ts](services/whatsappService.ts).
 
 ---
 
-## 🚀 Opciones Avanzadas (Futuras)
+## Qué hace
 
-### 2. **WhatsApp Business API (Oficial)**
+No hay integración con la API de WhatsApp. Lo que hay es un **enlace
+`api.whatsapp.com/send`** con el mensaje ya escrito: se abre WhatsApp con el
+texto puesto y el usuario solo pulsa Enviar. Gratis, sin aprobación de Meta y
+sin servidor.
 
-**Ventajas:**
-- ✅ Envío automático de mensajes
-- ✅ Adjuntar archivos PDF directamente
-- ✅ Recibir mensajes en la app
-- ✅ Respuestas automáticas
-- ✅ Integración completa bidireccional
+El mensaje que se arma lleva:
 
-**Desventajas:**
-- ❌ Requiere aprobación de Meta/Facebook
-- ❌ Proceso de verificación largo (semanas/meses)
-- ❌ Requiere número de teléfono empresarial dedicado
-- ❌ Costos: $0.005 - $0.09 por mensaje (después de 1,000 mensajes gratis/mes)
-- ❌ Requiere servidor backend para manejar webhooks
-
-**Cuándo usar:**
-- Cuando tengas muchos clientes (más de 1,000 mensajes/mes)
-- Cuando necesites automatización completa
-- Cuando quieras recibir mensajes en la app
-
-**Costo estimado:**
-- Primeros 1,000 mensajes: Gratis
-- Después: $5 - $90 por cada 1,000 mensajes (depende del país)
+- El documento resumido en texto (cotización, factura, recibo…). Si la
+  cotización es por capítulos, va desglosada por capítulo y grupo, no como una
+  lista plana.
+- El total.
+- **Enlace para ver el documento completo**, `?view=<documentId>`.
+- **Enlace al catálogo**, si el vendedor tiene uno publicado.
+- El enlace de la app en Google Play.
 
 ---
 
-### 3. **Twilio API para WhatsApp**
+## Dónde vive el documento
 
-**Ventajas:**
-- ✅ Más fácil de aprobar que WhatsApp Business API
-- ✅ Envío automático de mensajes
-- ✅ Adjuntar archivos
-- ✅ Buena documentación
+Al compartir, `saveSharedDocument` guarda el documento en tres sitios:
 
-**Desventajas:**
-- ❌ Costos: $0.005 - $0.10 por mensaje
-- ❌ Requiere servidor backend
-- ❌ No es tan directo como WhatsApp Business API
+| Dónde | Para qué |
+|---|---|
+| `localStorage` | Para que quien lo mandó pueda reabrirlo sin red |
+| `shared_docs/<id>.json` en Storage | **Es el que se lee.** Lo baja la app cuando alguien abre el enlace |
+| `shared_docs/<id>.html` en Storage | No lo lee nadie |
 
-**Costo estimado:**
-- $5 - $100 por cada 1,000 mensajes
+Caduca a los 30 días (`expiresAt`).
 
----
+El `.html` **sobra**: se subía para abrirlo directo desde Storage, y eso no
+funciona. Supabase sirve todo HTML público de Storage como `text/plain` con
+`nosniff`, así que el destinatario veía el código fuente. Por eso
+`generateDocumentViewLink` apunta a la app —`?view=`, una ruta que se resuelve
+sin sesión— y es la app la que baja el JSON y lo pinta.
 
-### 4. **WhatsApp Web API (No Oficial)**
-
-**Ventajas:**
-- ✅ Gratis
-- ✅ Fácil de implementar
-- ✅ Envío automático
-
-**Desventajas:**
-- ❌ **NO RECOMENDADO**: Puede ser bloqueado por WhatsApp
-- ❌ Violación de términos de servicio
-- ❌ Puede resultar en ban permanente
-- ❌ No es estable (WhatsApp puede cambiar el protocolo)
-
-**Recomendación:** ❌ **NO USAR** - Riesgo muy alto
+Son unos 100 KB por documento para nada. Se puede quitar junto con la Edge
+Function `view-doc`, que quedó sin uso. Está anotado en
+[PENDIENTE-CATALOGO-STORAGE.md](PENDIENTE-CATALOGO-STORAGE.md).
 
 ---
 
-## 📊 Comparación de Opciones
+## Dos detalles que parecen de más y no lo son
 
-| Característica | Enlaces (Actual) | WhatsApp Business API | Twilio API |
-|---------------|------------------|----------------------|------------|
-| **Costo** | Gratis | $0.005-0.09/msg | $0.005-0.10/msg |
-| **Aprobación** | No requiere | Requiere (largo) | Más fácil |
-| **Envío automático** | ❌ | ✅ | ✅ |
-| **Adjuntar PDFs** | ❌ | ✅ | ✅ |
-| **Recibir mensajes** | ❌ | ✅ | ✅ |
-| **Complejidad** | Baja | Alta | Media |
-| **Tiempo implementación** | ✅ Ya hecho | 2-4 semanas | 1-2 semanas |
+**La pestaña se abre antes de tiempo.** Compartir un documento publica el
+catálogo y sube archivos, y para cuando eso termina el navegador ya no considera
+que haya un clic detrás: el bloqueador de emergentes se comía el `window.open`
+sin decir nada y el botón parecía muerto. Por eso quien comparte abre la pestaña
+**en el clic** y `openWhatsApp` recibe esa ventana ya abierta.
 
----
+**Y esa pestaña lleva una página puente.** No basta con asignarle la dirección:
+se queda en `about:blank` a la vista y hay que recargarla a mano. Así que se le
+escribe una página que redirige sola y que, si no lo consigue, deja el botón
+«Abrir WhatsApp» a mano. Lleva también «Volver a Worky», porque desde WhatsApp
+no había forma de regresar.
 
-## 🎯 Recomendación
-
-### Para empezar (Ahora):
-✅ **Usa la opción actual (Enlaces de WhatsApp)**
-- Ya está implementada
-- Gratis
-- Funciona bien para la mayoría de casos
-- El usuario solo hace clic en "Enviar"
-
-### Para el futuro (Cuando crezcas):
-🚀 **Considera WhatsApp Business API cuando:**
-- Tengas más de 500 clientes activos
-- Necesites enviar más de 1,000 mensajes/mes
-- Quieras automatizar completamente el proceso
-- Tengas presupuesto para los costos
+Si no hay pestaña previa y el bloqueador impide abrir otra, se navega en la
+misma: peor que abrir una pestaña, mejor que no hacer nada.
 
 ---
 
-## 💡 Mejoras Futuras a la Implementación Actual
+## El QR del catálogo al pie
 
-### 1. **Generar PDF y compartir enlace**
-- Generar PDF del documento
-- Subirlo a Firebase Storage
-- Incluir enlace del PDF en el mensaje de WhatsApp
+Los documentos se maquetan con `buildDocumentHtml`, y si el vendedor tiene
+catálogo publicado se les añade al pie un bloque con el **QR y el enlace**:
 
-### 2. **Botón de WhatsApp en el chat**
-- Agregar botón para compartir cualquier mensaje por WhatsApp
-- Compartir productos del catálogo directamente
+> Conoce todo nuestro catálogo — escanea el código o abre el enlace, no
+> necesitas registrarte.
 
-### 3. **Plantillas de mensajes personalizables**
-- Permitir al usuario crear sus propias plantillas
-- Guardar mensajes frecuentes
-
-### 4. **Historial de mensajes compartidos**
-- Registrar qué documentos se compartieron por WhatsApp
-- Fecha y hora de compartido
+Es la parte que convierte una factura en captación: quien la recibe puede ver
+todo lo que vendes sin cuenta, y solo necesita registrarse si quiere chatear.
 
 ---
 
-## 🔧 Cómo usar la funcionalidad actual
+## Límites
 
-1. **Genera una cotización o factura** en el chat
-2. **Haz clic en el documento** para verlo
-3. **Busca el botón verde "Compartir por WhatsApp"**
-4. **Haz clic** - Se abrirá WhatsApp con el mensaje prellenado
-5. **Revisa el mensaje** y haz clic en "Enviar"
-
----
-
-## 📝 Notas Técnicas
-
-### Archivos relacionados:
-- `services/whatsappService.ts` - Servicio principal
-- `components/QuoteDocument.tsx` - Botón de WhatsApp agregado
-- `components/ChatWindow.tsx` - Pasa el teléfono del contacto
-
-### Funciones principales:
-- `generateWhatsAppLink()` - Genera URL de WhatsApp
-- `openWhatsApp()` - Abre WhatsApp con mensaje
-- `shareQuoteViaWhatsApp()` - Comparte cotización
-- `shareInvoiceViaWhatsApp()` - Comparte factura
+- **No envía solo.** El usuario confirma en WhatsApp. Es un enlace, no un bot.
+- **No adjunta archivos.** Va el enlace, no el PDF. Un enlace además se puede
+  reenviar y sigue funcionando.
+- **Hace falta tener WhatsApp.** En móvil abre la app; en escritorio, WhatsApp
+  Web.
+- **El número tiene que estar bien.** `formatPhoneForWhatsApp` solo quita lo que
+  no son dígitos: no valida ni añade indicativo de país. Un número guardado sin
+  indicativo abre un chat con un número que no existe.
 
 ---
 
-## ❓ Preguntas Frecuentes
+## Si algún día hiciera falta más
 
-**P: ¿Puedo enviar archivos PDF directamente?**
-R: No con la implementación actual. WhatsApp Web no permite adjuntar archivos desde el navegador. La solución sería generar el PDF, subirlo a Firebase Storage, y compartir el enlace.
+Mandar solo, adjuntar archivos o **recibir** respuestas dentro de Worky exige la
+API de WhatsApp Business (o Twilio por encima), y eso son tres cosas que hoy no
+hay: número de empresa verificado, aprobación de Meta y un servidor que atienda
+los webhooks. Además se paga por mensaje pasados los primeros del mes.
 
-**P: ¿Funciona en Android/iOS?**
-R: Sí, en móvil abre la app de WhatsApp directamente. En escritorio abre WhatsApp Web.
-
-**P: ¿Cuánto cuesta?**
-R: La implementación actual es completamente gratis.
-
-**P: ¿Necesito aprobación de WhatsApp?**
-R: No, los enlaces de WhatsApp no requieren aprobación.
-
----
-
-## 🚀 Próximos Pasos Sugeridos
-
-1. ✅ **Ya implementado**: Compartir por WhatsApp con enlaces
-2. 🔄 **Siguiente**: Generar PDFs y compartir enlaces de descarga
-3. 🔄 **Futuro**: Evaluar WhatsApp Business API cuando sea necesario
-
-
-
-
-
-
-
-
-
-
-
+No compensa hasta que el volumen lo pida. Lo que sí conviene tener claro es que
+**la vía no oficial (automatizar WhatsApp Web) puede costar el número**: va
+contra los términos de servicio.

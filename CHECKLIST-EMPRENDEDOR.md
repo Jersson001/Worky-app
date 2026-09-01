@@ -1,120 +1,113 @@
-# ✅ Checklist para Emprendedores - Worky App
+# Checklist del emprendedor
 
-Usa esta lista para asegurarte de que tu app esté lista para gestionar proyectos reales.
+Última revisión: 1 de septiembre de 2026.
 
----
+> Este checklist pedía crear un proyecto Firebase, habilitar Realtime Database y
+> una clave de Gemini. Nada de eso existe ya en el proyecto. Se reescribió para
+> lo que hay: Supabase, y una app que el emprendedor solo tiene que usar.
 
-## 🔥 Configuración Inicial (Una vez)
-
-### Firebase
-- [ ] Proyecto Firebase creado
-- [ ] Realtime Database habilitada
-- [ ] Authentication habilitada (Email y Phone)
-- [ ] Credenciales copiadas a `.env.local`
-- [ ] Reglas de seguridad configuradas
-- [ ] Probar conexión: iniciar sesión funciona
-
-### Gemini AI (Opcional)
-- [ ] API key de Gemini obtenida
-- [ ] Agregada a `.env.local`
-- [ ] Probar: generar descripción de producto funciona
+Esto es lo que hay que dejar hecho para que la app sirva de verdad, no para
+probarla. Quien monta el servidor no es el emprendedor: eso está en
+[GUIA-PRODUCCION.md](GUIA-PRODUCCION.md).
 
 ---
 
-## 📱 Configuración por Dispositivo
+## Tu cuenta
 
-### Android
-- [ ] APK instalada en dispositivo
-- [ ] Permisos otorgados (cámara, almacenamiento)
-- [ ] Probar: abrir app y iniciar sesión
+- [ ] Registrarte con correo y contraseña
+- [ ] Completar el onboarding: nombre del negocio, tu nombre y logo
+- [ ] Elegir el **tipo de negocio**
 
----
+El tipo de negocio no es decorativo: decide qué capítulos de cotización ves. Un
+carpintero ve Carpintería, alguien de obra ve Obra blanca, un abogado no ve
+ninguno y cotiza en modo básico. La tabla está en
+[ESTADO-FUNCIONALIDADES.md](ESTADO-FUNCIONALIDADES.md#a-cada-oficio-sus-capítulos).
 
-## 👤 Primera Vez - Configuración de Perfil
-
-- [ ] Completar onboarding
-- [ ] Agregar nombre del negocio
-- [ ] Subir logo del negocio
-- [ ] Agregar información de contacto
-- [ ] Configurar al menos una cuenta bancaria
+- [ ] Firma digital guardada, si vas a mandar documentos firmados
+- [ ] Al menos una cuenta bancaria propia, para poder mandar los datos de pago
+      por el chat
 
 ---
 
-## 📦 Configuración de Catálogo
+## Tu catálogo
 
-- [ ] Crear al menos 2 categorías de productos
-- [ ] Agregar productos con fotos
-- [ ] Probar: enviar producto desde catálogo a chat
+- [ ] Dos carpetas de productos, como mínimo
+- [ ] Productos con foto. El nombre es obligatorio; **el precio no**: sin él sale
+      «Consultar precio»
+- [ ] Publicar el catálogo
+- [ ] Abrir el enlace del catálogo **en una ventana privada**, sin tu sesión, y
+      ver que se pinta
+- [ ] Imprimir el QR o guardarlo donde lo vayas a compartir
 
----
+El QR apunta a la app y es estable: puedes republicar el catálogo las veces que
+quieras sin reimprimirlo.
 
-## 👥 Gestión de Contactos
-
-- [ ] Agregar primer cliente/contacto
-- [ ] Crear primer proyecto
-- [ ] Agregar gasto al proyecto
-- [ ] Probar: enviar mensaje al contacto
-
----
-
-## 💰 Configuración Financiera
-
-- [ ] Agregar cuentas bancarias propias
-- [ ] Agregar cuenta de proveedor (opcional)
-- [ ] Probar: enviar datos bancarios por chat
+> Si tu catálogo es de antes de agosto de 2026, **republícalo**. El botón
+> «Chatear» viaja dentro de la instantánea y los publicados antes no lo tienen.
 
 ---
 
-## ✅ Verificación Final
+## Tus clientes
 
-### Funcionalidades Básicas
-- [ ] Puedo iniciar sesión
-- [ ] Puedo agregar contactos
-- [ ] Puedo crear proyectos
-- [ ] Puedo enviar mensajes
-- [ ] Los datos se guardan (no se pierden al cerrar app)
+- [ ] Agregar un cliente que también use Worky, buscándolo por su correo o
+      celular exacto
+- [ ] Comprobar que **a él también le apareces**. Si no, el chat está a medias
+- [ ] Crear la ficha de un cliente que no usa Worky y escribirle
+- [ ] Mandar un mensaje y una foto, y ver que llegan sin recargar
 
-### Sincronización
-- [ ] Abrir app en otro dispositivo
-- [ ] Iniciar sesión con misma cuenta
-- [ ] Verificar: los contactos aparecen
-- [ ] Verificar: los mensajes aparecen
-- [ ] Verificar: los proyectos aparecen
+No hay búsqueda por nombre ni acceso a la agenda del teléfono: hace falta el
+correo o el celular exacto. Cómo funciona, en
+[COMO-FUNCIONA-EL-CHAT.md](COMO-FUNCIONA-EL-CHAT.md).
 
 ---
 
-## 🚀 Listo para Usar
+## Tu primer trabajo cobrado
 
-Una vez completado este checklist, tu app está lista para:
-- ✅ Gestionar proyectos de clientes
-- ✅ Llevar control de gastos
-- ✅ Enviar cotizaciones
-- ✅ Comunicarte con clientes
-- ✅ Mantener catálogo de productos
-- ✅ Todo sincronizado en la nube
+- [ ] Crear un proyecto para ese cliente
+- [ ] Hacerle una cotización
+- [ ] Si cotizas por capítulos: revisar que el **rendimiento** del material sea
+      el tuyo. Las plantillas traen uno de partida (pintura 30 m²/galón, estuco
+      8 m²/bulto…) y cambia con el producto, las manos y la superficie
+- [ ] Mandársela por WhatsApp y **abrir el enlace desde otro teléfono**
+- [ ] Imprimirla y comprobar que no se corta por la derecha
+- [ ] Anotar un gasto del proyecto
+- [ ] Mirar el reporte financiero
 
----
-
-## 🆘 Si Algo No Funciona
-
-1. **Revisa la consola del navegador** (F12) para errores
-2. **Verifica que Firebase esté conectado** (debería decir "Firebase conectado")
-3. **Revisa `.env.local`** - las credenciales deben ser correctas
-4. **Revisa Firebase Console** - la base de datos debe estar activa
+Los costos de las plantillas nacen **todos en cero** a propósito: te recuerdan
+qué va en cada capítulo, no te sugieren precios.
 
 ---
 
-**¡Tu app está lista para hacer la vida del emprendedor más fácil!** 🎉
+## Antes de confiarle el negocio
 
+- [ ] Entrar desde otro teléfono con tu cuenta y ver que están tus contactos,
+      mensajes, productos y proyectos
 
+Y saber qué **no** se sincroniza, porque se pierde al cambiar de teléfono o
+borrar los datos de la app:
 
+| | |
+|---|---|
+| **Grupos y sus mensajes** | Solo en ese teléfono |
+| **Historias** | Solo en ese teléfono |
 
+Y qué no existe todavía:
 
+- **Avisos con la app cerrada.** No hay notificaciones push ni por correo: te
+  enteras de un mensaje cuando abres la app.
+- **Recuperar una cuenta de alias.** Quien entró solo con un alias, sin correo,
+  no tiene forma de recuperarla. Por eso ve el aviso invitándole a completar el
+  registro.
 
+La lista completa está en
+[ESTADO-FUNCIONALIDADES.md](ESTADO-FUNCIONALIDADES.md#lo-que-no-hay).
 
+---
 
+## Si algo no funciona
 
-
-
-
-
+1. Cierra sesión y vuelve a entrar.
+2. Si una foto no sube, prueba con una más pequeña.
+3. Si agregaste a alguien y no le apareces, es cosa del servidor, no tuya: está
+   explicado en [COMO-FUNCIONA-EL-CHAT.md](COMO-FUNCIONA-EL-CHAT.md).
+4. En el navegador, la consola (F12) suele decir qué pasó.

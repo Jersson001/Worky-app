@@ -33,10 +33,14 @@ fue por el contenido de la app:
 
 ## ✅ Estado actual del proyecto
 
-- ✅ Keystore configurado (`worky-release.jks`)
+- ✅ Keystore configurado (`worky-release.jks`), con las contraseñas en
+  `android/keystore.properties` (fuera del repositorio)
 - ✅ Configuración de firma en `build.gradle`
-- ✅ `google-services.json` configurado
 - ✅ App ID: `com.worky.app.v2`
+- ℹ️ **No hay `google-services.json` ni hace falta**: era de Firebase, que ya no
+  se usa. Gradle solo aplica ese plugin si el archivo existe, así que su
+  ausencia no rompe nada. Lo único que se pierde son las notificaciones push,
+  que tampoco están implementadas.
 - ✅ **Icono de la app**: ya es el logo de Worky. Hasta agosto de 2026 el bundle
   llevaba el icono de plantilla de Capacitor, porque nunca se reemplazó. Los
   originales están en `assets/`; para regenerarlo todo:
@@ -138,25 +142,25 @@ android/app/build/outputs/bundle/release/app-release.aab
    
    💬 Mensajería en tiempo real con clientes
    👥 Gestión completa de contactos y clientes
-   📦 Catálogo de productos con IA
+   📦 Catálogo de productos que compartes por QR o enlace
    📊 Gestión de proyectos y gastos
    💰 Control de cuentas bancarias
-   📄 Generación de cotizaciones profesionales
-   🤖 Asistente IA para descripciones de productos
+   📄 Cotizaciones por capítulos, con materiales y cálculo de ferretería
+   🧾 Facturas, recibos de caja y cuentas de cobro
    
    Características principales:
-   - Sincronización en la nube con Firebase
+   - Sincronización en la nube
+   - Comparte cotizaciones y catálogo por WhatsApp
    - Interfaz intuitiva y moderna
-   - Trabaja sin conexión
-   - Seguridad de datos garantizada
    
    Ideal para emprendedores, freelancers y pequeñas empresas que necesitan 
    una solución completa para gestionar sus proyectos y clientes.
    ```
 
-4. **Icono de la app**: 
+4. **Icono de la app**:
    - Tamaño: 512x512 px (PNG, sin transparencia)
-   - Ubicación: `android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png`
+   - Archivo: [assets/play-store-512.png](assets/play-store-512.png)
+   - Va a mano en la ficha; no sale del bundle
 
 5. **Capturas de pantalla** (mínimo 2, recomendado 4-8):
    - Teléfono: 16:9 o 9:16, mínimo 320px, máximo 3840px
@@ -201,10 +205,11 @@ Google Play puede gestionar la firma por ti:
 Puedes:
 - Crear una página en tu sitio web
 - Usar un generador como [Privacy Policy Generator](https://www.privacypolicygenerator.info/)
-- Hostearla en GitHub Pages, Firebase Hosting, etc.
+- Hostearla en GitHub Pages, Vercel, etc.
 
 La política debe incluir:
-- Qué datos recopilas (Firebase, autenticación, etc.)
+- Qué datos recopilas (cuenta, contactos, mensajes, fotos que subes)
+- Que el backend es Supabase y dónde se guardan los datos
 - Cómo usas los datos
 - Cómo proteges los datos
 - Información de contacto
@@ -214,7 +219,7 @@ La política debe incluir:
 En Play Console, declara:
 - ✅ **Cámara**: Para tomar fotos de productos/documentos
 - ✅ **Almacenamiento**: Para guardar archivos
-- ✅ **Internet**: Para sincronización con Firebase
+- ✅ **Internet**: Para sincronizar con el servidor
 - ✅ **Vibración**: Para notificaciones
 
 ### 5.3 Contenido objetivo
@@ -238,8 +243,8 @@ En Play Console, declara:
 
 - Verifica que la app funciona correctamente
 - Prueba en diferentes dispositivos Android
-- Verifica que Firebase funciona correctamente
-- Prueba autenticación y sincronización
+- Verifica que la app conecta con Supabase (registro, chat, catálogo)
+- Prueba el atajo por alias, que es lo que verá el revisor
 
 ---
 
@@ -352,7 +357,7 @@ cd android
 - [ ] Declaraciones completadas
 - [ ] Contenido objetivo configurado
 - [ ] App probada en dispositivos reales
-- [ ] Firebase configurado correctamente
+- [ ] Credenciales de la cuenta de demostración cargadas y probadas
 - [ ] Versión de producción lista
 
 ---

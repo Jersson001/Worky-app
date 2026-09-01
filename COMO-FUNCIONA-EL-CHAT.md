@@ -1,216 +1,195 @@
-# 💬 Cómo Funciona el Chat entre Usuarios en Worky
+# Cómo funciona el chat
 
-## 📋 Resumen
+Última revisión: 1 de septiembre de 2026.
 
-**Pregunta:** Si dos personas descargan la app, ¿ya se pueden chatear?
-
-**Respuesta:** **SÍ, pero necesitan agregarse mutuamente como contactos primero.**
-
----
-
-## 🔄 Cómo Funciona Actualmente
-
-### Paso 1: Registro/Autenticación
-Cuando un usuario se registra o inicia sesión:
-1. Se autentica con **email** o **teléfono** (Firebase Authentication)
-2. Se crea un `userId` único (UID de Firebase)
-3. El usuario se registra automáticamente en un **índice de búsqueda** con su teléfono/email
-
-### Paso 2: Búsqueda de Usuarios
-Para que dos usuarios puedan chatear:
-
-**Opción A: Búsqueda por teléfono/email** (NUEVO - Implementado)
-1. Usuario A busca a Usuario B por su teléfono o email
-2. Si Usuario B está registrado, aparece en los resultados
-3. Usuario A puede agregarlo como contacto
-4. ¡Ya pueden chatear!
-
-**Opción B: Agregar contacto manualmente** (Existente)
-1. Usuario A crea un contacto manualmente
-2. Si ese contacto también tiene la app y se registra con el mismo teléfono/email, pueden chatear
+> Este documento describía el chat sobre Firebase Realtime Database, con un
+> `userIndex/` de claves escapadas y login por SMS. Nada de eso sigue siendo
+> cierto: el backend es Supabase desde la migración. Se reescribió comprobando
+> cada punto contra [services/messagingService.ts](services/messagingService.ts)
+> y los `.sql` de la raíz.
 
 ---
 
-## 🎯 Escenario: Dos Personas Descargaron la App
+## Para chatear hay que ser contacto
 
-### Situación Inicial
-- **Persona A**: Se registra con email `personaA@email.com` o teléfono `+57 300 111 1111`
-- **Persona B**: Se registra con email `personaB@email.com` o teléfono `+57 300 222 2222`
+No hay directorio ni búsqueda por nombre. Dos personas se encuentran de una de
+estas tres formas:
 
-### Para que Puedan Chatear:
+| Cómo | Qué pasa |
+|---|---|
+| **Búsqueda por correo o celular** | Se consulta `public_info` por el identificador exacto |
+| **QR o enlace del catálogo** | El botón «Chatear» entra como `?vendedor=<userId>` y la app crea el contacto sola |
+| **Contacto manual** | El vendedor crea la ficha de alguien que no usa Worky |
 
-#### Método 1: Búsqueda (Recomendado)
-1. **Persona A** abre la app
-2. Busca a **Persona B** usando su teléfono o email (`+57 300 222 2222` o `personaB@email.com`)
-3. Si **Persona B** está registrado, aparece en los resultados
-4. **Persona A** hace clic en "Agregar contacto"
-5. **Persona B** recibe una notificación (si está implementada) o simplemente aparece en su lista de contactos
-6. ¡Ya pueden chatear en tiempo real!
+### La búsqueda
 
-#### Método 2: Compartir Código/Enlace (Futuro)
-- Podrías implementar un sistema de códigos únicos o enlaces de invitación
-- Ejemplo: "Comparte tu código: ABC123" o "Invita a chatear: worky.app/invite/ABC123"
+`searchUserByPhoneOrEmail` prueba tres cosas, en orden:
+
+1. Coincidencia exacta en `public_info.phone_or_email`, que guarda el
+   identificador **ya normalizado en minúsculas**. La búsqueda normaliza igual;
+   si difieren, no encuentra nada.
+2. El mismo término sin espacios, guiones ni paréntesis, porque un celular se
+   escribe de muchas formas y se guardó de una sola.
+3. `user_index` por `safe_key`, con las claves «escapadas» al estilo Firebase.
+   Es compatibilidad pura: ahí quedaron las cuentas registradas antes del
+   trigger que llena `public_info`.
+
+Buscarse a uno mismo devuelve `null`.
+
+`public_info` es de **lectura pública** a propósito: quien acaba de escanear un
+QR todavía no tiene sesión y hace falta para decirle de quién es el catálogo que
+está mirando (`getPublicInfoById`).
 
 ---
 
-## 🔧 Implementación Técnica
+## Agregar a alguien crea las dos fichas
 
-### Sistema de Índice de Usuarios
+`addContact` llama al RPC **`add_contact_mutual`** (el de 7 parámetros), que
+inserta la ficha tuya y la suya en la misma transacción. Sin eso el otro no se
+entera de nada: puede escribirte, pero no te ve en su lista.
 
-Firebase Realtime Database estructura:
-```
-userIndex/
-  ├── +57300111111/ → userId_A
-  ├── +57300222222/ → userId_B
-  ├── personaA@email.com/ → userId_A
-  └── personaB@email.com/ → userId_B
+Estuvo roto un tiempo —la versión desplegada con alias solo creaba la ficha del
+que agrega— y se corrigió en
+[supabase_contactos_ficha_inversa.sql](supabase_contactos_ficha_inversa.sql).
 
-users/
-  ├── userId_A/
-  │   ├── publicInfo/
-  │   │   ├── phoneOrEmail: "+57300111111"
-  │   │   └── registeredAt: timestamp
-  │   ├── profile/
-  │   │   ├── businessName: "Empresa A"
-  │   │   └── ...
-  │   └── contacts/
-  │       └── userId_B/ → Contacto
-  └── userId_B/
-      └── ...
-```
+Si el RPC falla, hay un camino de respaldo que inserta directo en `contacts`.
+Ese respaldo solo crea **tu** ficha, así que un fallo del RPC deja la relación a
+medias: es red de seguridad, no equivalente.
 
-### Funciones Disponibles
+El respaldo reintenta sin las columnas `alias` y `email` si la base todavía no
+las tiene (error `42703`), antes que perder el contacto entero por una columna
+que falta. Ver [supabase_contacts_email.sql](supabase_contacts_email.sql).
 
-```typescript
-// Buscar usuario por teléfono o email
-const foundUser = await searchUserByPhoneOrEmail('+57 300 222 2222');
-// Retorna: { userId, name, avatar, phone } o null
+### Contactos manuales
 
-// Agregar contacto desde búsqueda
-const newContact = await addContactFromSearch(foundUser);
-// Crea el contacto y habilita el chat
+Un contacto sin cuenta nace con id `lead_<uuid>` y va a `contacts` con
+`contact_user_id` en `NULL`, porque esa columna tiene clave foránea a
+`auth.users` y ahí no existe.
+
+Ese prefijo `lead_` hace que el id **no sea un uuid válido**, y choca con
+`contacts.id` y `projects.contact_id`, que sí lo son. Sigue pendiente; está
+anotado en [PENDIENTE-CATALOGO-STORAGE.md](PENDIENTE-CATALOGO-STORAGE.md).
+
+---
+
+## Los mensajes
+
+Todos viven en la tabla `messages`. La conversación se identifica por
+`chat_id`, que es **determinista y simétrico**:
+
+```js
+[userId1, userId2].sort().join('_')
 ```
 
----
+Los dos extremos calculan el mismo id sin ponerse de acuerdo. De eso depende que
+no haya chats cruzados.
 
-## ⚠️ Limitaciones Actuales
+El destinatario se anota de dos formas según con quién hables:
 
-### Lo que NO funciona aún:
-1. ❌ **Búsqueda por nombre** - Solo por teléfono/email exacto
-2. ❌ **Notificaciones push** - No hay alertas cuando llegan mensajes
-3. ❌ **Búsqueda de contactos de teléfono** - No accede a la agenda del dispositivo
-4. ❌ **Códigos de invitación** - No hay sistema de códigos únicos
+| A quién | Columnas |
+|---|---|
+| Usuario de Worky | `recipient_id = <uid>` |
+| Contacto manual | `recipient_id = NULL` y `recipient_contact = <id>` |
 
-### Lo que SÍ funciona:
-1. ✅ **Búsqueda por teléfono/email** - Si conoces el teléfono o email exacto
-2. ✅ **Chat en tiempo real** - Mensajes sincronizados instantáneamente
-3. ✅ **Historial de mensajes** - Todos los mensajes se guardan en Firebase
-4. ✅ **Múltiples dispositivos** - Sincronización entre dispositivos del mismo usuario
+`recipient_contact` es columna aparte porque `recipient_id` tiene clave foránea
+a `auth.users`. Y **solo se manda cuando hace falta**: si viajara siempre, los
+envíos entre usuarios se romperían en cuanto alguien corriera una versión
+anterior a
+[supabase_mensajes_a_contactos_manuales.sql](supabase_mensajes_a_contactos_manuales.sql).
 
----
+Quién es quién se decide con `esUsuarioDeWorky`, que descarta de entrada lo que
+ni siquiera tiene forma de uuid y cachea el resultado.
 
-## 🚀 Mejoras Futuras Sugeridas
-
-### 1. Búsqueda Mejorada
-- Búsqueda por nombre parcial
-- Búsqueda en contactos del teléfono
-- Sugerencias de usuarios cercanos
-
-### 2. Sistema de Invitaciones
-- Códigos únicos de invitación
-- Enlaces de invitación compartibles
-- Invitaciones por WhatsApp/SMS
-
-### 3. Notificaciones
-- Notificaciones push cuando llegan mensajes
-- Notificaciones cuando alguien te agrega como contacto
-- Alertas de mensajes no leídos
-
-### 4. Perfil Público
-- Perfil visible para otros usuarios
-- Foto de perfil personalizable
-- Estado "disponible/ocupado"
+El `'me'` / `'other'` de cada burbuja **no se guarda**: es relativo a quien mira,
+así que se deriva comparando contra el uid propio en cada lectura.
 
 ---
 
-## 📱 Experiencia del Usuario
+## Tiempo real
 
-### Flujo Típico:
+`listenToMessages` carga los **últimos 100 mensajes** del chat y luego se
+suscribe a los INSERT con la API de `supabase-js` v2:
 
-1. **Usuario A se registra**
-   - Email: `usuarioA@email.com`
-   - Se registra automáticamente en el índice
+```js
+supabase.channel(uniqueTopic(`chat:${chatId}`))
+  .on('postgres_changes', { event: 'INSERT', table: 'messages', filter: `chat_id=eq.${chatId}` }, …)
+```
 
-2. **Usuario B se registra**
-   - Teléfono: `+57 300 222 2222`
-   - Se registra automáticamente en el índice
+Dos detalles que conviene no deshacer:
 
-3. **Usuario A busca a Usuario B**
-   - Abre la app
-   - Busca: `+57 300 222 2222` o `usuarioB@email.com`
-   - Ve el resultado: "Usuario B"
-   - Hace clic en "Agregar contacto"
+- **`uniqueTopic`.** `supabase.channel(topic)` devuelve la instancia existente si
+  el topic coincide, incluida una ya suscrita o a medio cerrar (`removeChannel`
+  es asíncrono). Añadirle un `.on('postgres_changes')` a esa instancia lanza
+  `cannot add ... after subscribe()` y tumba la app. Con sufijo aleatorio cada
+  suscripción estrena canal; quien decide qué eventos llegan es el filtro, no el
+  topic.
+- **El INSERT propio también rebota** por el canal, así que se deduplica por id.
+- **La carga inicial pide descendente y le da la vuelta.** Con `ascending: true`
+  el `limit(100)` recorta por el otro extremo: una conversación de más de 100
+  mensajes se abría por el principio, con los últimos fuera. El buffer se
+  mantiene en orden cronológico, que es lo que asume el `sort` al anexar.
 
-4. **Usuario B aparece en la lista de contactos de Usuario A**
-   - Pueden empezar a chatear inmediatamente
+`messages` está en la publicación `supabase_realtime` y con `REPLICA IDENTITY
+FULL`. Lo pone [supabase_fix_chat.sql](supabase_fix_chat.sql).
 
-5. **Usuario B también ve a Usuario A en sus contactos**
-   - El chat es bidireccional
-   - Ambos pueden enviar mensajes
-
----
-
-## 🔒 Privacidad y Seguridad
-
-### Datos Públicos (Visibles para búsqueda):
-- Teléfono o email (normalizado)
-- Nombre del negocio (si está configurado)
-- Avatar/Logo (si está configurado)
-
-### Datos Privados (Solo para el usuario):
-- Mensajes del chat
-- Proyectos
-- Gastos
-- Información financiera
-
-### Control del Usuario:
-- Puede eliminar contactos en cualquier momento
-- Los mensajes anteriores se mantienen (pero el contacto desaparece de la lista)
-- Puede bloquear usuarios (funcionalidad futura)
+Pasados los 100, lo anterior no se carga: **no hay paginación hacia atrás**.
+Haría falta un `range()` disparado al llegar arriba del scroll.
 
 ---
 
-## ✅ Resumen Final
+## No leídos y acuses
 
-**Para que dos personas puedan chatear:**
+El contador vive en `user_chats`. Al enviar, tu lado se pone a 0 con un upsert y
+el del otro sube con el RPC **`bump_unread`**: RLS no te deja escribir en la fila
+de otro usuario, y por eso hace falta una función.
 
-1. ✅ Ambas deben tener la app instalada
-2. ✅ Ambas deben estar registradas/autenticadas
-3. ✅ Una debe buscar a la otra por teléfono o email
-4. ✅ Agregar como contacto
-5. ✅ ¡Listo para chatear!
+Nada de esto corre con un contacto manual. `user_chats` guarda ids de usuario y
+el contador es del otro lado; sin otro lado, ambas llamadas fallarían por tipo.
 
-**El sistema ya está implementado y funcionando.** Solo necesitas agregar la interfaz de búsqueda en la UI de la app.
+Los mensajes llevan `status`: `sent` → `delivered` → `read`. La política
+`messages_update_participants` deja que cualquiera de los dos participantes los
+actualice
+([supabase_update_messages_rls.sql](supabase_update_messages_rls.sql)).
+
+`markMessagesAsDelivered` y `markMessagesAsRead` filtran por `chat_id`, por
+estado y **por remitente** (`.neq('sender_id', userId)`). Ese último filtro es
+lo que hace que el acuse signifique algo: la política deja actualizar cualquier
+mensaje del chat, así que sin él se marcaban también los propios salientes y el
+doble visto aparecía sin que el otro hubiera leído nada.
 
 ---
 
-## 🛠️ Próximos Pasos para Completar
+## Avisos
 
-1. **Agregar botón de búsqueda** en la interfaz de contactos
-2. **Crear modal de búsqueda** con campo de teléfono/email
-3. **Mostrar resultados de búsqueda** con opción de agregar
-4. **Probar el flujo completo** con dos usuarios reales
+Cuando entra un mensaje y la pestaña lo permite, se lanza una **notificación del
+navegador** (`Notification`, si hay permiso) además del toast dentro de la app.
 
-¿Necesitas ayuda para implementar la interfaz de búsqueda? 🚀
+Eso **no son notificaciones push**: solo funciona con la app abierta. No hay FCM
+ni ningún servicio de push, ni avisos por correo. Está en la lista de
+[ESTADO-FUNCIONALIDADES.md](ESTADO-FUNCIONALIDADES.md#lo-que-no-hay).
 
+---
 
+## Lo que NO hay
 
+- **Push.** Ver arriba.
+- **Búsqueda por nombre.** Solo por correo o celular exacto.
+- **Acceso a la agenda del teléfono.**
+- **Bloquear a alguien.**
+- **Grupos sincronizados.** Los grupos y sus mensajes se guardan en
+  `localStorage` (`worky_chat_groups`, `worky_group_messages`): son de ese
+  teléfono y ese navegador, y nadie más los ve. `GroupsManager` y
+  `GroupChatWindow` no tocan Supabase.
 
+---
 
+## Piezas
 
-
-
-
-
-
-
+| Archivo | Qué hace |
+|---|---|
+| [services/messagingService.ts](services/messagingService.ts) | Todo lo de arriba |
+| [supabase_fix_chat.sql](supabase_fix_chat.sql) | `recipient_id`, RLS de `messages`, Realtime |
+| [supabase_mensajes_a_contactos_manuales.sql](supabase_mensajes_a_contactos_manuales.sql) | `recipient_contact` |
+| [supabase_contactos_ficha_inversa.sql](supabase_contactos_ficha_inversa.sql) | Que se creen las dos fichas |
+| [supabase_contacts_rls.sql](supabase_contacts_rls.sql) · [supabase_delete_contact_cascade.sql](supabase_delete_contact_cascade.sql) | Políticas de `contacts` |
+| [supabase_update_messages_rls.sql](supabase_update_messages_rls.sql) · [supabase_delete_messages_rls.sql](supabase_delete_messages_rls.sql) | Editar y borrar mensajes |

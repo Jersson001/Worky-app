@@ -1,110 +1,110 @@
-# Worky - Database Migration Guide
+# Notas de la migración a Supabase
 
-## ✅ Status
+Última revisión: 1 de septiembre de 2026.
 
-- **Git**: Commit creado con todas las migraciones SQL documentadas
-- **Branch**: main (1 commit ahead de origin/main)
-- **Workspace**: 39 archivos modificados (cambios en desarrollo)
+> Este documento era una lista de tareas de mitad de la migración: nueve SQL
+> «pendientes de ejecutar», 39 archivos sin commitear y tres opciones de `git
+> stash`. Todo eso se resolvió hace meses. Se reescribió como lo que hoy sirve:
+> qué cambió al pasar de Firebase a Supabase y qué costuras quedaron.
 
-## 📋 SQL Pending Execution
-
-Los siguientes 9 SQL files necesitan ejecutarse en **Supabase SQL Editor** para activar features en producción:
-
-### Orden de ejecución (CRÍTICO):
-
-1. **supabase_subscriptions.sql** - Base: añade is_pro, trial_ends_at, subscription_ends_at
-2. **supabase_admin_panel.sql** - Panel de admin: is_admin flag + RLS
-3. **supabase_contacts_fix_fk.sql** - Contactos: permite leads manuales (NULL en FK)
-4. **supabase_delete_contact_cascade.sql** - RLS: permite DELETE en contacts
-5. **supabase_projects_double_way.sql** - Proyectos: doble vía (contractor + client)
-6. **supabase_projects_schema_cache_fix.sql** - Cache fix para projects
-7. **supabase_contacts_alias_and_anchor.sql** - Alias en contactos + función mutual mejorada
-8. **supabase_chat_media_storage.sql** - Chat: media upload + bucket
-9. **supabase_delete_messages_rls.sql** + **supabase_update_messages_rls.sql** - Messages RLS
-
-### 🚀 Cómo aplicar:
-
-1. Entra a tu dashboard de Supabase → Project → SQL Editor
-2. **Opción A (Recomendado)**: Ejecuta cada SQL en el orden de arriba, uno por uno
-3. **Opción B (Rápido)**: Copia todo el contenido de `APPLY_MIGRATIONS_MASTER.sql` y ejecuta de una sola vez
-
-### ⚠️ Importante:
-
-- Cada SQL es **idempotente**: puedes ejecutarlo múltiples veces sin riesgo
-- Los `IF NOT EXISTS`, `DROP IF EXISTS` previenen errores
-- Al final, hace `NOTIFY pgrst, 'reload schema'` para refrescar el cache
+Para montar una base desde cero, el orden de los `.sql` está en
+[GUIA-PRODUCCION.md](GUIA-PRODUCCION.md#13-el-esquema). Esto es el porqué.
 
 ---
 
-## 📦 New Components Added
+## Qué cambió
 
-| Archivo | Propósito |
-|---------|-----------|
-| `components/ContractGenerator.tsx` | Generación automática de contratos |
-| `utils/carpentryCalculations.ts` | Cálculos para cotizaciones carpintería |
-| `supabase/functions/view-doc/index.ts` | Edge function para ver documentos |
+| Antes (Firebase) | Ahora (Supabase) |
+|---|---|
+| Realtime Database, árbol JSON | Postgres con tablas y RLS |
+| Reglas `.read` / `.write` en JSON | Políticas RLS por fila |
+| Authentication con SMS y enlace mágico | Correo y contraseña, más sesiones anónimas |
+| Firebase Storage | Storage de Supabase, bucket `chat_media` |
+| Adjuntos en base64 dentro del mensaje | Archivos en Storage, en el mensaje va la URL |
+| `userIndex/` con claves escapadas | Tabla `public_info`, de lectura pública |
+| Cloud Functions | Edge Functions (dos, ambas hoy sin uso) |
+
+Los adjuntos en base64 no eran un detalle: una foto de móvil son unos 10 MB y la
+escritura se pasaba del tiempo máximo. De ahí que ahora las fotos **se reduzcan
+antes de subirlas**, con el error 57014 de Postgres como recuerdo.
 
 ---
 
-## 🧹 Workspace Cleanup
+## Lo que la migración no arrastró
 
-Tienes 39 archivos modificados. Decide si quieres:
+Se quedaron por el camino, y no por descuido:
 
-### Option 1: Commitear los cambios actuales
+- **El login por SMS.** No lo llamaba nadie y hacía creer que agregar contactos
+  por celular costaba una suscripción de SMS. No cuesta nada.
+- **Las descripciones de producto con IA.** Ver [CATALOGO-IA.md](CATALOGO-IA.md).
+- **El trigger `on_auth_user_created`.** Está en
+  [supabase_signup_trigger.sql](supabase_signup_trigger.sql) pero **nunca llegó a
+  la base**: el perfil lo crea el cliente con un upsert al entrar. Eso abrió el
+  agujero de los admins, porque `protect_subscription_fields` solo cubría
+  `BEFORE UPDATE` y la primera fila entra por INSERT. Está contado en
+  [SEGURIDAD.md](SEGURIDAD.md).
+
+---
+
+## Costuras que siguen ahí
+
+**El código dice «Firebase» y quiere decir Supabase.** `sendMessageToFirebase`,
+`firebaseContacts`, `firebaseMessages`, comentarios sueltos y un import comentado
+de `FirebaseConnectionTest`. Son nombres heredados; por debajo no queda nada de
+Firebase (`firebase` no está en `package.json`).
+
+**`user_index` sobrevive por compatibilidad.** Las cuentas registradas antes del
+trigger que llena `public_info` solo están ahí, con las claves escapadas al
+estilo Firebase. `searchUserByPhoneOrEmail` la consulta como tercer intento, tras
+fallar los dos de `public_info`.
+
+**El respaldo de `addContact`.** Cuando el RPC `add_contact_mutual` falla, se
+inserta directo en `contacts`. Ese camino solo crea **tu** ficha, no la del otro:
+es red de seguridad, no equivalente. Y reintenta sin las columnas `alias` y
+`email` si la base todavía no las tiene, antes que perder el contacto por una
+columna que falta.
+
+**Dos versiones de `add_contact_mutual`** conviven en la base, de 6 y 7
+parámetros. La app usa la de 7. Convendría retirar la otra.
+
+**Contactos manuales con id `lead_<uuid>`**, que no son uuid válidos y chocan con
+`contacts.id` y `projects.contact_id`. Sigue pendiente.
+
+**`saveProject` manda columnas que no existen** (`quote_code`, `contractor_id`,
+`client_id`, `metadata`) y además se traga el error con un `return`. El SQL está
+dado; falta ejecutarlo.
+
+Las dos últimas están detalladas en
+[PENDIENTE-CATALOGO-STORAGE.md](PENDIENTE-CATALOGO-STORAGE.md).
+
+---
+
+## Cómo se prueban las migraciones
+
+Los `.sql` que llevan un `.test.mjs` al lado se prueban contra un Postgres de
+verdad (PGlite, en memoria) sin tocar producción:
+
 ```bash
-git add .
-git commit -m "feat: [describe tu feature]"
-git push
+npm install @electric-sql/pglite --no-save
+node supabase_alias.test.mjs
 ```
 
-### Option 2: Descartar cambios (destructivo)
-```bash
-git restore .
+Hay pruebas para `supabase_alias`, `supabase_no_autoascenderse`,
+`supabase_storage_por_dueno` y `supabase_limites_anonimos`.
+
+**Que copien el esquema real, con sus restricciones.** Una de estas pruebas dio
+verde a una función que fallaba en producción porque su tabla simulada dejaba
+`phone_or_email` nullable y la de verdad es `NOT NULL`.
+
+---
+
+## Si PostgREST se queda con el esquema viejo
+
+Síntoma: `column ... does not exist` sobre una columna que sí está.
+
+```sql
+NOTIFY pgrst, 'reload schema';
 ```
 
-### Option 3: Dejar en stash (reversible)
-```bash
-git stash
-git stash list  # ver cambios stashed
-git stash pop   # recuperar después
-```
-
----
-
-## ✅ Checklist post-migración
-
-Una vez ejecutes los SQL en Supabase:
-
-- [ ] Ejecutaste los 9 SQL en orden
-- [ ] No hay errores en Supabase (revisa logs)
-- [ ] Probaste login → crear contacto → enviar mensaje
-- [ ] Probaste el paywall (30-day trial debe estar activo)
-- [ ] Probaste upload de media en chat
-- [ ] Committeaste los cambios del workspace
-
----
-
-## 🚨 Si algo falla
-
-**Supabase RLS bloqueando lecturas:**
-- Verifica que `Enable RLS` esté activado en cada tabla
-- Corre las políticas en orden
-
-**"cannot add ... after subscribe()" error:**
-- Ya está solucionado en `supabaseConfig.ts` con `uniqueTopic()`
-- No necesita SQL adicional
-
-**Schema cache desincronizado:**
-- Ejecuta: `NOTIFY pgrst, 'reload schema';` en SQL Editor
-- Espera 2-3 segundos y recarga la app
-
----
-
-## 📞 Soporte rápido
-
-Genera un ZIP con:
-- Supabase project ID
-- Error exacto (screenshot o logs)
-- Paso donde falló
-
-Luego revisa en https://status.supabase.com/ si hay incidents.
+Todos los `.sql` de la raíz terminan con esa línea. Espera un par de segundos y
+recarga la app.
