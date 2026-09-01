@@ -45,9 +45,22 @@ export const ChatList: React.FC<ChatListProps> = ({ contacts, selectedContactId,
   const [searchTerm, setSearchTerm] = useState('');
 
   const activeFilter = FILTERS.find(f => f.key === filter) ?? FILTERS[0];
+  /** Milisegundos de la última conversación, tolerando lo que traiga el campo. */
+  const cuando = (v: Contact['lastMessageTime']): number => {
+    if (v instanceof Date) return v.getTime();
+    if (typeof v === 'number') return v;
+    const t = v ? new Date(v as any).getTime() : NaN;
+    return Number.isNaN(t) ? 0 : t;
+  };
+
+  // Se ordena aquí y no solo al cargar de la base: al mandar o recibir un
+  // mensaje, App parchea `lastMessageTime` en su estado, y ordenar al pintar es
+  // lo que hace que la conversación suba al momento, sin esperar una recarga.
   const filteredContacts = contacts
     .filter(c => !activeFilter.status || c.status === activeFilter.status)
-    .filter(c => !searchTerm.trim() || c.clientName.toLowerCase().includes(searchTerm.trim().toLowerCase()));
+    .filter(c => !searchTerm.trim() || c.clientName.toLowerCase().includes(searchTerm.trim().toLowerCase()))
+    .slice()
+    .sort((a, b) => cuando(b.lastMessageTime) - cuando(a.lastMessageTime));
 
   const initials = (name: string) => name.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase();
 

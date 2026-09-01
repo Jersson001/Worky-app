@@ -596,16 +596,48 @@ export const listenToContacts = (
   let cancelled = false;
 
   const load = async () => {
-    const { data, error } = await supabase
-      .from('contacts')
-      .select('*')
-      .eq('user_id', userId);
+    // `contacts` guarda la ficha; `user_chats`, cuándo se habló por última vez.
+    // Hacen falta las dos: `contacts.last_message_time` se escribe al crear el
+    // contacto y NADIE lo vuelve a tocar, así que ordenar por esa columna
+    // ordenaría por antigüedad de la ficha, no por conversación reciente. Lo
+    // que sí se actualiza al mandar y al recibir es `user_chats` —el upsert de
+    // sendMessage y el RPC bump_unread—.
+    const [{ data, error }, { data: chats }] = await Promise.all([
+      supabase.from('contacts').select('*').eq('user_id', userId),
+      supabase
+        .from('user_chats')
+        .select('contact_id, last_message, last_message_time')
+        .eq('user_id', userId),
+    ]);
 
     if (error) {
       console.error('Error cargando contactos:', error);
       return;
     }
-    if (!cancelled) callback((data || []).map(rowToContact));
+    if (cancelled) return;
+
+    const porContacto = new Map((chats ?? []).map(c => [c.contact_id, c]));
+
+    const contactos = (data || []).map(fila => {
+      const contacto = rowToContact(fila);
+      // Un contacto manual no tiene fila en `user_chats` —esa tabla guarda ids
+      // de usuario— y se queda con la fecha de su ficha, que es lo único que hay.
+      const chat = porContacto.get(fila.contact_user_id);
+      if (!chat?.last_message_time) return contacto;
+      return {
+        ...contacto,
+        lastMessage: chat.last_message || contacto.lastMessage,
+        lastMessageTime: new Date(chat.last_message_time),
+      };
+    });
+
+    // El más reciente arriba, como en cualquier chat: quien acaba de escribir
+    // no se busca. Sin esto no había ningún orden —la consulta no llevaba
+    // `order`— y Postgres devolvía las filas como le convenía, así que la
+    // lista podía salir distinta en cada recarga.
+    contactos.sort((a, b) => b.lastMessageTime.getTime() - a.lastMessageTime.getTime());
+
+    callback(contactos);
   };
 
   const channel = supabase
