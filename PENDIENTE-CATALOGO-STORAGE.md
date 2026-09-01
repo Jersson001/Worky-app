@@ -49,6 +49,12 @@ Ruta pública `?catalogo=<userId>`, resuelta en `index.tsx` **antes** de montar 
 app —el visitante no tiene sesión y no debe toparse con el login—: baja el HTML
 y lo pinta en un iframe con `sandbox` sin `allow-same-origin`.
 
+> **Nota del 1/09/2026.** Ya no hay iframe. Ese aislamiento dejaba la página
+> muerta —sin scripts no cabía un «me gusta» sobre cada foto— así que ahora la
+> app lee la instantánea y la pinta ella. No hace falta darle permisos a ese
+> HTML porque nunca se ejecuta. Lo demás de este documento sigue vigente: el
+> motivo por el que Storage no puede servir la página no ha cambiado.
+
 El enlace del QR es ahora `https://worky-app-khaki.vercel.app/?catalogo=<userId>`,
 más corto que la URL de Storage y estable por usuario, así que el QR impreso
 sigue sirviendo tras republicar.
@@ -92,9 +98,14 @@ con la Edge Function `view-doc`, que quedó sin uso.
 
 ## Otros pendientes de la misma tanda
 
-- **Proyectos no se guardan.** `saveProject` envía `quote_code`, `contractor_id`,
-  `client_id` y `metadata`, y esas columnas no existen en la tabla. El SQL está
-  dado; falta ejecutarlo. Además el error se traga con un `return`.
+- ~~**Proyectos no se guardan.** Faltan las columnas `quote_code`,
+  `contractor_id`, `client_id` y `metadata`.~~ **Falso, y costó descubrirlo:**
+  comprobadas contra la base el 1/09/2026, las cuatro columnas existen. El SQL
+  sí se ejecutó. Lo que impedía guardar era otra cosa —un proyecto inventado en
+  memoria que hacía creer al guardado que ya existía, y un id que no era uuid—,
+  contado en [ESTADO-FUNCIONALIDADES.md](ESTADO-FUNCIONALIDADES.md#proyectos).
+  Sigue en pie una parte: `saveProject` se traga el error con un `return`, así
+  que un fallo de guardado no llega a la pantalla.
 - **Contactos manuales** generan ids `lead_<uuid>`, que no son uuid válidos y
   chocan con `contacts.id` y `projects.contact_id`, ambos de tipo uuid. Sigue
   pasando con los clientes que aún no tienen cuenta; los que sí la tienen ya

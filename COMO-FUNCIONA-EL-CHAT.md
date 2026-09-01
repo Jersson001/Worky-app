@@ -159,6 +159,50 @@ doble visto aparecía sin que el otro hubiera leído nada.
 
 ---
 
+## El orden de la lista
+
+El más reciente arriba. **No lo era:** `listenToContacts` hacía
+`select('*').eq('user_id', …)` sin un solo `order`, así que Postgres devolvía
+las filas como le convenía y la lista salía distinta en cada recarga.
+
+No se ordena por `contacts.last_message_time`, que es la trampa evidente: esa
+columna se escribe al crear el contacto y nadie la vuelve a tocar —la única
+escritura a `contacts` que no es alta ni borrado es `updateContactWithProjects`,
+y no la incluye—, así que ordenaría por antigüedad de la ficha. Lo que sí se
+mantiene al día es **`user_chats`**, con el upsert de `sendMessage` y el RPC
+`bump_unread`. Se leen las dos tablas y se fusiona la fecha buena.
+
+Se ordena además al pintar, en `ChatList`: al mandar o recibir, App parchea
+`lastMessageTime` en su estado, y ordenar en el render es lo que hace que la
+conversación suba al momento sin esperar una recarga.
+
+> **Resto conocido.** Un contacto manual no tiene fila en `user_chats` y se
+> ordena por la fecha de su ficha: queda abajo aunque se le escriba hoy.
+
+---
+
+## Qué herramientas ve cada uno
+
+El «+» del chat ofrece cosas distintas según quién mire, porque los roles son
+simétricos: el cliente guarda al vendedor como `supplier` y el vendedor al
+cliente como `client` (fijo en
+[supabase_contactos_ficha_inversa.sql](supabase_contactos_ficha_inversa.sql)).
+
+| Quién | Qué ve |
+|---|---|
+| Cliente | Archivo, y nada más |
+| Vendedor con su proveedor | Archivo · Recibo · Registrar gasto |
+| Vendedor con su cliente | Cotización · Cuenta de Cobro · Factura · Recibo · Catálogo · Registrar gasto · Archivo |
+
+Quién es cliente se decide con `esAnonimo || (llegó de un catálogo && no tiene
+oficio)`. Mirar solo el oficio vacío **sería un error**: hay vendedores antiguos
+sin oficio declarado y les quitaría sus herramientas. La marca de haber llegado
+por un catálogo vive en la metadata de la cuenta, no en el navegador, así que
+aguanta cambiar de dispositivo. Ante la duda se le trata como vendedor: sobrarle
+un botón molesta, faltarle una herramienta es peor.
+
+---
+
 ## Avisos
 
 Cuando entra un mensaje y la pestaña lo permite, se lanza una **notificación del

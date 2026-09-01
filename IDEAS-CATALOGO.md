@@ -11,9 +11,12 @@ La página del catálogo lleva una barra con «Compartir» y «Copiar enlace».
 donde sea; en escritorio, donde ese menú no existe, cae a WhatsApp Web.
 
 La barra la dibuja la app, no la instantánea, así que **los catálogos ya
-publicados la tienen sin republicar**. Está fuera del iframe a propósito: la
-instantánea se pinta con `sandbox` y sin `allow-scripts`, y no compensa abrirle
-permisos a contenido publicado por un usuario solo para poner un botón.
+publicados la tienen sin republicar**.
+
+> **Nota del 1/09/2026.** Cuando se escribió esto, la instantánea se pintaba en
+> un iframe con `sandbox` y sin `allow-scripts`, y la barra estaba fuera a
+> propósito. Ya no hay iframe: la app lee la instantánea y la pinta entera. Ver
+> [ESTADO-FUNCIONALIDADES.md](ESTADO-FUNCIONALIDADES.md#catálogo).
 
 ## 2. Del QR al chat, sin pasos intermedios — HECHO
 
@@ -34,9 +37,15 @@ reintenta la próxima vez que entre.
 Ojo: el botón viaja dentro de la instantánea, así que **los catálogos
 publicados antes de esto hay que republicarlos** para que lo tengan.
 
-## 3. Que el cliente pueda responder con las imágenes del catálogo — HECHO
+## 3. Que el cliente pueda responder con las imágenes del catálogo — HECHO, Y REHECHO
 
 Confirmado con el usuario: marcar fotos del catálogo y que le lleguen al chat.
+
+> **Rehecho el 1/09/2026.** Lo que sigue describe la primera versión, por
+> producto y desde un panel aparte. El usuario dijo lo evidente —«ese paso
+> sobra»— y ahora el «me gusta» está encima de la foto ampliada, con una cinta
+> abajo que se va llenando al pasar de carpeta. Eso exigió dejar de usar el
+> iframe. Lo de abajo se conserva porque explica por qué se intentó así primero.
 
 Sobre el catálogo hay un botón «Me interesan». Abre un selector con los
 productos, se marcan los que interesan, se escribe una nota y se manda. Como

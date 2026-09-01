@@ -1,6 +1,6 @@
 # Estado de funcionalidades — Worky
 
-Última revisión: 29 de agosto de 2026.
+Última revisión: 1 de septiembre de 2026.
 
 > Este documento describía el proyecto cuando corría sobre Firebase y decía que
 > los clientes no podían tener cuenta, que Storage no estaba implementado y que
@@ -63,6 +63,28 @@ la tuya y la suya. Esto estuvo roto durante un tiempo —la versión desplegada 
 se enteraba— y se corrigió en
 [supabase_contactos_ficha_inversa.sql](supabase_contactos_ficha_inversa.sql).
 
+**El orden de la lista** es el más reciente arriba. No lo era: la consulta no
+llevaba `order` de ninguna clase y salía distinta en cada recarga. Y no se
+ordena por `contacts.last_message_time`, que se escribe al crear el contacto y
+nadie vuelve a tocar, sino por `user_chats`, que sí mantienen al día el envío y
+el RPC `bump_unread`. Los contactos manuales no tienen fila ahí y se ordenan por
+la fecha de su ficha: quedan abajo aunque se les escriba hoy.
+
+**Cada uno ve sus herramientas.** El «+» del chat ofrece cosas distintas según
+quién mire, porque el cliente guarda al vendedor como `supplier` y el vendedor
+al cliente como `client`:
+
+| Quién | Qué ve en el «+» |
+|---|---|
+| Cliente | Archivo, y nada más |
+| Vendedor con su proveedor | Archivo · Recibo · Registrar gasto |
+| Vendedor con su cliente | Cotización · Cuenta de Cobro · Factura · Recibo · Catálogo · Registrar gasto · Archivo |
+
+Quién es cliente se decide con `esAnonimo || (llegó de un catálogo && no tiene
+oficio)`. Mirar solo el oficio vacío **sería un error**: hay vendedores antiguos
+sin oficio declarado —los mismos que ven todos los capítulos de cotización por
+eso— y les quitaría sus herramientas. Ante la duda se le trata como vendedor.
+
 ---
 
 ## Archivos
@@ -98,8 +120,46 @@ página la sirve la app**, que baja la instantánea y la pinta. Ver
 Cada publicación estrena nombre de archivo en vez de sobrescribir. El QR impreso
 sigue sirviendo porque apunta a la app (`?catalogo=<uid>`), no al objeto.
 
-Quien lo abre puede marcar productos y pulsar «Chatear». Si aún no tiene cuenta,
-la selección se guarda y se le manda al vendedor en cuanto entra.
+**La instantánea ya no se mete en un iframe: la lee la app y la pinta ella.**
+Hasta el 1 de septiembre de 2026 se incrustaba tal cual, en un `sandbox` sin
+`allow-scripts`, y eso la dejaba muerta: ahí dentro no corre una línea de
+JavaScript, así que no cabía un «me gusta» encima de cada foto ni forma de que
+la app se enterara de lo que el visitante marcaba. Se llegó hasta donde llega el
+CSS —`details` para las carpetas, `:target` para ampliar— y da para navegar, no
+para elegir.
+
+No hace falta abrirle permisos a ese HTML porque **nunca se ejecuta**: solo se
+interpreta su estructura. Y por eso mismo los catálogos publicados antes siguen
+funcionando; de ellos salen una foto por producto y ninguna carpeta, que es lo
+que tenían.
+
+### Cómo lo recorre el cliente
+
+Las **carpetas** salen como fichas con su portada, su nombre y cuántos productos
+tienen. Pulsa una y entra: las demás se apartan y queda una cabecera «← Nombre»
+para volver. Con una sola carpeta no se pinta ninguna, por el mismo criterio que
+las pestañas de la cotización: una carpeta suelta solo esconde el catálogo.
+
+Cada producto enseña **hasta cuatro fotos**, la principal grande y el resto en
+miniatura debajo, todas a la vista. Fueron un carrusel y no servía: nadie
+descubre que hay que arrastrar, y quien entraba creía que el producto tenía una
+sola foto.
+
+Pulsa una foto y se amplía con un **«♡ Me gusta»**. Al darle, la foto se cierra
+sola y abajo crece una **cinta** con lo marcado, que se mantiene al cambiar de
+carpeta. Al confirmar se abre «Imágenes que me gustan» para escribir el mensaje
+—«quiero algo así pero en otro color»— y mandarlo. Al vendedor le llegan
+etiquetadas «cocina m1», «cocina m1 (foto 2)».
+
+Tope de **seis fotos por envío**, que es del almacenamiento del navegador y no
+del gusto: viajan como data URL en `localStorage` hasta que el cliente se
+registra, y si no caben el pedido se guarda sin ellas.
+
+**Ojo con el peso.** Las fotos van incrustadas y cada una suma unos 120 KB al
+archivo que el visitante baja *antes de ver nada*: treinta modelos a tres fotos
+son unos 10 MB. De ahí el tope de cuatro fotos por producto. El arreglo de fondo
+—subirlas a Storage y referenciarlas por URL— cambia cómo se guardan los
+productos y **no está hecho**.
 
 **Las URL se adaptan al sitio.** Un enlace generado desde un preview de Vercel
 apunta al preview; desde el APK o en local, a la app publicada — porque ahí el
@@ -199,6 +259,39 @@ una cotización de pura mano de obra sobra y confunde.
 `Aparatos y Materiales` —sanitarios, griferías, cerámica, iluminación— es para
 lo que no cuelga de ningún trabajo. Va marcado `soloMaterial`: sus líneas cuentan
 enteras del lado del material y no ofrecen el interruptor.
+
+---
+
+## Proyectos
+
+**Un proyecto nace al aceptarse una cotización.** Se llama por el «Producto o
+servicio» de esa cotización con su código detrás —`Cocina integral el U
+(COT-7979)`—, porque dos cocinas cotizadas al mismo cliente darían dos proyectos
+llamados igual y hay que distinguirlos para colgarles sus cuentas de cobro y sus
+gastos.
+
+También se pueden **añadir y borrar a mano** desde la ficha del contacto, para
+el cliente que ya tenía obra en marcha. Los añadidos nacen sin `quote_code`, que
+es lo que los distingue de los que vienen de una cotización.
+
+Agregar un contacto **no** crea proyecto. Lo creaba, y de ahí salieron cinco
+vacíos en «Consulta» con valor 0.
+
+Tres cosas que costó encontrar, todas corregidas el 1 de septiembre de 2026 y
+todas invisibles hasta que se miraron los datos de verdad:
+
+- **Cada chat enseñaba todos tus proyectos.** `fetchProjectsForContact` incluía
+  `client_id.eq.<yo>` y `contractor_id.eq.<yo>` sin atar nada al contacto. La
+  doble vía es que un proyecto lo vean los dos lados de la *misma pareja*, no
+  que cada uno vea todo lo suyo en cualquier conversación.
+- **Aceptar una cotización no guardaba nada.** La app inventaba en memoria un
+  proyecto por cada cotización aceptada del chat; al aprobar, ese inventado ya
+  estaba puesto cuando el guardado comprobaba «¿ya existe uno con este código?»,
+  daba que sí y se saltaba el `saveProject`. Los inventados desaparecían al
+  recargar y no admitían ni un gasto.
+- **El id era `Date.now().toString()`** para una columna `uuid`. Aunque no se
+  hubiera saltado el guardado, Postgres lo habría rechazado con 22P02 — el mismo
+  error que ya documenta [utils/id.ts](utils/id.ts).
 
 ---
 

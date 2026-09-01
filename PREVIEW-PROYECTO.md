@@ -135,6 +135,11 @@ Supabase sirve todo HTML público de Storage como `text/plain` con `nosniff`, as
 que **la página la pinta la app**, no Storage. El porqué está en
 [PENDIENTE-CATALOGO-STORAGE.md](PENDIENTE-CATALOGO-STORAGE.md).
 
+Y la pinta de verdad: `catalogoPublico.ts` **lee** la instantánea con
+`DOMParser` y construye la página a mano. No hay iframe. Ese HTML nunca se
+ejecuta, solo se interpreta su estructura, que es lo que permite el «me gusta»
+sobre cada foto sin darle permisos a contenido publicado por un usuario.
+
 ---
 
 ## Autenticación
@@ -176,3 +181,10 @@ Los pasos de despliegue están en [GUIA-PRODUCCION.md](GUIA-PRODUCCION.md).
   JSON directamente.
 - **`App.tsx` pasa de 3.700 líneas** y concentra casi todo el estado.
 - **`App.backup.tsx` y `App.minimal.tsx`** siguen en la raíz.
+- **CSS muerto en la instantánea del catálogo.** `catalogShareService.ts` sigue
+  generando `details` para las carpetas, el visor `:target` y la galería de
+  miniaturas. Eran para que la página funcionara dentro del iframe; desde que la
+  pinta la app, ese HTML solo se lee. No estorban —describen la estructura que
+  el visor interpreta— pero se pueden limpiar.
+- **`saveProject` se traga los errores** con un `return`, así que un fallo de
+  guardado no llega a la pantalla.
