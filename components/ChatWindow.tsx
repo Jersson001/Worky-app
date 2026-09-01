@@ -59,6 +59,8 @@ interface ChatWindowProps {
    * sigue alcanzable.
    */
   avisoSobreElInput?: React.ReactNode;
+  /** Quien mira es un cliente, no alguien que vende con Worky. Ver App.tsx. */
+  esCliente?: boolean;
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -82,6 +84,7 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
   onUpdateProjectInfo, products, paymentAccounts, onBack, activeAction, onClearAction,
   onUpdateMessage, businessLogo, digitalSignature, userProfile, onOpenGantt, onDeleteMessage,
   avisoSobreElInput,
+  esCliente = false,
 }) => {
   // ── UI Toggles ──
   const [showInfo, setShowInfo] = useState(false);
@@ -476,6 +479,7 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
 
         <ChatFooter
           contactRole={contact.role}
+          esCliente={esCliente}
           contactPhone={contact.phone}
           onSendMessage={handleSendTextMessage}
           onOpenQuote={() => { forms.setQuoteField('clientPhone', contact.phone || ''); forms.openModal('quote'); }}

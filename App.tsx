@@ -160,6 +160,13 @@ const App: React.FC = () => {
    * complete el registro, que no bloquea nada.
    */
   const [esAnonimo, setEsAnonimo] = useState(false);
+  /**
+   * Si la cuenta nació entrando al catálogo de alguien.
+   *
+   * El alta lo deja en la metadata de la cuenta, no en el navegador, así que
+   * sobrevive a cambiar de dispositivo y a confirmar el correo desde otro sitio.
+   */
+  const [llegoDeUnCatalogo, setLlegoDeUnCatalogo] = useState(false);
   /** Alta exprés: quien llega invitado desde un catálogo se salta el perfil de negocio. */
   const [altaExpres, setAltaExpres] = useState(false);
 
@@ -348,6 +355,7 @@ const App: React.FC = () => {
         await initializeUserId();
         setUidSesion(user.id);
         setEsAnonimo(user.is_anonymous === true);
+        setLlegoDeUnCatalogo(!!user.user_metadata?.vendedor);
 
         // Try to load profile from Supabase
         unsubProfileRef?.();
@@ -662,6 +670,22 @@ const App: React.FC = () => {
   }, []);
 
   // Manejar cerrar sesión — sign out from Firebase Auth
+  /**
+   * Si quien usa la app es un cliente y no alguien que vende con Worky.
+   *
+   * Decide qué herramientas se le ofrecen en el chat: a un cliente, «Recibo» o
+   * «Registrar gasto» le sobran igual que le sobraba «Cotizar».
+   *
+   * No basta con mirar el oficio vacío, que sería lo primero que uno probaría:
+   * hay vendedores antiguos sin oficio declarado —los mismos que en la
+   * cotización ven todos los capítulos por eso mismo— y les quitaría sus
+   * herramientas. Hace falta además la marca de haber llegado por un catálogo.
+   *
+   * Ante la duda se le trata como vendedor: sobrarle un botón es molesto,
+   * faltarle una herramienta que necesita es peor.
+   */
+  const esCliente = esAnonimo || (llegoDeUnCatalogo && !userProfile?.businessType);
+
   const handleLogout = useCallback(async () => {
     try {
       await supabase.auth.signOut();
@@ -2317,10 +2341,11 @@ ${describeError(error)}
                   >
                     Completa el registro
                   </button>
-                  {' '}para no perder la conversación.
+                  {' '}para no perder la conversación y acceder a las herramientas de Worky.
                 </p>
               </div>
             ) : null}
+            esCliente={esCliente}
             contact={contacts.find(c => c.id === selectedContactId) as Contact}
             allContacts={contacts}
             messages={messages[selectedContactId] || []}

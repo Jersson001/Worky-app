@@ -14,6 +14,8 @@ interface AttachMenuItem {
 
 interface ChatFooterProps {
   contactRole: ContactRole;
+  /** Quien mira es un cliente, no alguien que vende con Worky. Ver App.tsx. */
+  esCliente?: boolean;
   contactPhone?: string;
   onSendMessage: (text: string) => void;
   onOpenQuote: () => void;
@@ -27,7 +29,7 @@ interface ChatFooterProps {
 }
 
 export const ChatFooter: React.FC<ChatFooterProps> = React.memo(({
-  contactRole, onSendMessage,
+  contactRole, esCliente = false, onSendMessage,
   onOpenQuote, onOpenCollection, onOpenInvoice, onOpenReceipt,
   onOpenExpense, onOpenProductPicker, onTriggerDocumentInput, onCameraCapture,
 }) => {
@@ -49,9 +51,19 @@ export const ChatFooter: React.FC<ChatFooterProps> = React.memo(({
   }, [handleSend]);
 
   const getMenuItems = (): AttachMenuItem[] => {
+    const archivo = { icon: 'fa-paperclip', bg: 'from-blue-500 to-blue-600', shadow: 'shadow-blue-500/30', label: 'Archivo', action: onTriggerDocumentInput };
+
+    // Un cliente solo necesita poder mandar cosas: el plano, la foto de la
+    // medida, el PDF que le piden. Cotizar, cobrar y anotar gastos son
+    // herramientas de quien vende, y ahí solo estorban.
+    if (esCliente) return [archivo];
+
+    // Con un proveedor no se cotiza: la cotización la manda el otro lado. Pero
+    // esta rama la usa también el vendedor que le compra a SU proveedor, y ahí
+    // el recibo y el gasto son justo lo que hace falta al pagarle.
     if (contactRole === 'supplier') {
       return [
-        { icon: 'fa-file-invoice-dollar', bg: 'from-blue-500 to-blue-600', shadow: 'shadow-blue-500/30', label: 'Cotizar', action: onOpenQuote },
+        archivo,
         { icon: 'fa-receipt', bg: 'from-emerald-500 to-emerald-600', shadow: 'shadow-emerald-500/30', label: 'Recibo', action: onOpenReceipt },
         { icon: 'fa-money-bill-transfer', bg: 'from-rose-500 to-rose-600', shadow: 'shadow-rose-500/30', label: 'Registrar gasto', action: onOpenExpense },
       ];
