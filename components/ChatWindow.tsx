@@ -40,6 +40,8 @@ interface ChatWindowProps {
   onUpdateStage: (stage: ProjectStage, projectId: string) => void;
   onAddExpense: (amount: number, description: string, targetProjectId?: string) => void;
   onUpdateProjectInfo: (value: number, name: string, projectId: string) => void;
+  onAddProject: (name: string) => void;
+  onDeleteProject: (projectId: string) => void;
   products: Product[];
   paymentAccounts: PaymentAccount[];
   onBack: () => void;
@@ -81,7 +83,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = (props) => {
 
 const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
   contact, allContacts, messages, onSendMessage, onUpdateStage, onAddExpense,
-  onUpdateProjectInfo, products, paymentAccounts, onBack, activeAction, onClearAction,
+  onUpdateProjectInfo, onAddProject, onDeleteProject, products, paymentAccounts, onBack, activeAction, onClearAction,
   onUpdateMessage, businessLogo, digitalSignature, userProfile, onOpenGantt, onDeleteMessage,
   avisoSobreElInput,
   esCliente = false,
@@ -109,11 +111,11 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
   });
 
   // ── Derived data ──
+  // Por id y no por nombre, igual que en InfoPanel: dos cocinas cotizadas al
+  // mismo cliente son dos proyectos, y contándolos por nombre salía uno.
   const approvedProjects = useMemo(() => {
-    const approved = (contact.projects || []).filter(p => p && p.name);
-    return approved.filter((project, index, self) =>
-      index === self.findIndex(pp => pp.name === project.name)
-    );
+    const todos = (contact.projects || []).filter(p => p && p.name);
+    return todos.filter((project, index, self) => index === self.findIndex(pp => pp.id === project.id));
   }, [contact.projects]);
 
   const approvedProjectsCount = approvedProjects.length;
@@ -568,6 +570,8 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
         showSystemMessages={showSystemMessages}
         onViewDocument={(type: any, data: any) => setViewingDocument({ type, data })}
         onUpdateProjectInfo={onUpdateProjectInfo}
+        onAddProject={onAddProject}
+        onDeleteProject={onDeleteProject}
       />
 
       {/* Hidden file inputs */}

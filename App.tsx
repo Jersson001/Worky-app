@@ -27,7 +27,7 @@ import { Contact, Message, UserStatus, ProjectStage, Product, Expense, Story, Pa
 import { LoginScreen } from './components/LoginScreen';
 import { WelcomeOnboarding } from './components/WelcomeOnboarding';
 import { sendMessage as sendMessageToFirebase, listenToMessages, listenToContacts, addContact, deleteContact, saveUserProfile, getUserProfile, initializeUserId, setCurrentUserId, getCurrentUserId, searchUserByPhoneOrEmail, addContactFromSearch, deleteMessage, updateMessage, listenToGlobalIncomingMessages, markChatAsRead, markMessagesAsDelivered, markMessagesAsRead, getPublicInfoById } from './services/messagingService';
-import { saveProduct, deleteProduct, listenToProducts, saveCategory, deleteCategory, listenToCategories, saveProject, updateProject, addExpenseToProject, updateContactWithProjects, listenToPaymentAccounts, savePaymentAccount, deletePaymentAccount, PaymentAccountData, fetchProjectsForContact, listenToProjects } from './services/dataService';
+import { saveProduct, deleteProduct, listenToProducts, saveCategory, deleteCategory, listenToCategories, saveProject, deleteProject, updateProject, addExpenseToProject, updateContactWithProjects, listenToPaymentAccounts, savePaymentAccount, deletePaymentAccount, PaymentAccountData, fetchProjectsForContact, listenToProjects } from './services/dataService';
 import { supabase } from './services/supabaseConfig';
 import { formatCurrency } from './utils/currency';
 
@@ -745,7 +745,6 @@ const App: React.FC = () => {
   const [showUserSearchModal, setShowUserSearchModal] = useState(false);
   const [newContactName, setNewContactName] = useState('');
   const [newContactAlias, setNewContactAlias] = useState('');
-  const [newProjectName, setNewProjectName] = useState('');
   const [newContactPhone, setNewContactPhone] = useState('');
   const [newContactEmail, setNewContactEmail] = useState('');
   const [newContactRole, setNewContactRole] = useState<ContactRole>('client');
@@ -871,47 +870,20 @@ const App: React.FC = () => {
 
     const syncProjects = async () => {
       try {
+        // La base manda. Antes, además de los proyectos guardados, se inventaban
+        // aquí unos «locales» a partir de las cotizaciones aceptadas del chat, y
+        // eso hacía daño de dos formas: parecían proyectos pero no existían —al
+        // recargar desaparecían, y no se les podía colgar una cuenta de cobro ni
+        // un gasto—, y encima saboteaban el guardado de verdad, porque al
+        // aprobar una cotización el inventado ya estaba en memoria y la
+        // comprobación de «¿ya existe uno con este código?» daba que sí y se
+        // saltaba el saveProject. Comprobado en la base: cero filas con
+        // quote_code pese a haber cotizaciones aprobadas.
         const fetchedProjects = await fetchProjectsForContact(selectedContactId);
-        const chatMsgs = messages[selectedContactId] || [];
-        const acceptedQuoteMsgs = chatMsgs.filter(m => m.type === 'quote' && m.metadata?.status === 'accepted');
 
-        const localQuoteProjects: Project[] = [];
-        for (const msg of acceptedQuoteMsgs) {
-          const quoteCode = msg.metadata?.number || 'COT';
-          const existsInFetched = fetchedProjects.some(p => (p as any).metadata?.quoteCode === quoteCode);
-          if (!existsInFetched) {
-            const projectName = msg.metadata?.items && msg.metadata.items.length > 0
-              ? msg.metadata.items[0].description
-              : `Proyecto ${quoteCode}`;
-            localQuoteProjects.push({
-              id: `proj_${quoteCode}_${msg.id}`,
-              name: projectName,
-              value: msg.metadata?.total || 0,
-              stage: ProjectStage.InProgress,
-              expenses: [],
-              startDate: new Date(msg.timestamp || Date.now()),
-              metadata: { quoteCode: quoteCode }
-            } as any);
-          }
-        }
-
-        const allProjects = [...fetchedProjects, ...localQuoteProjects];
-
-        setContacts(prev => prev.map(c => {
-          if (c.id !== selectedContactId) return c;
-
-          const existing = c.projects || [];
-          const merged = [...existing];
-
-          for (const p of allProjects) {
-            const exists = merged.some(ep => ep.id === p.id || ((p as any).metadata?.quoteCode && (ep as any).metadata?.quoteCode === (p as any).metadata?.quoteCode));
-            if (!exists) {
-              merged.unshift(p);
-            }
-          }
-
-          return { ...c, projects: merged };
-        }));
+        setContacts(prev => prev.map(c => (
+          c.id === selectedContactId ? { ...c, projects: fetchedProjects } : c
+        )));
       } catch (err) {
         console.error('Error sincronizando proyectos:', err);
       }
@@ -1233,13 +1205,16 @@ const App: React.FC = () => {
           return; // Don't create duplicate project
         }
 
-        // Use first item's description as project name, or fallback to "Proyecto [code]"
-        const projectName = targetMessage.metadata.items && targetMessage.metadata.items.length > 0
-          ? targetMessage.metadata.items[0].description
-          : `Proyecto ${quoteCode}`;
+        // El nombre sale del «Producto o servicio» de la cotización, y lleva el
+        // código detrás: con dos cocinas cotizadas al mismo cliente saldrían dos
+        // proyectos llamados igual, y hay que poder distinguirlos para colgarles
+        // sus cuentas de cobro y sus gastos.
+        const servicio = targetMessage.metadata.items?.[0]?.description?.trim()
+          || targetMessage.metadata.sections?.[0]?.name?.trim();
+        const projectName = servicio ? `${servicio} (${quoteCode})` : `Proyecto ${quoteCode}`;
 
         const newProject: Project = {
-          id: Date.now().toString(),
+          id: newId(),
           name: projectName,
           value: targetMessage.metadata.total,
           stage: ProjectStage.InProgress,
@@ -1340,6 +1315,51 @@ const App: React.FC = () => {
           return c;
         }));
       }
+    }
+  };
+
+  /**
+   * Proyecto añadido a mano, para el cliente que ya tenía obra en marcha antes
+   * de que hubiera una cotización que aceptar. Nace sin `quoteCode`: es lo que
+   * lo distingue de los que salen de una cotización.
+   */
+  const handleAddProject = async (name: string) => {
+    if (!selectedContactId) return;
+
+    const proyecto: Project = {
+      id: newId(),
+      name,
+      value: 0,
+      stage: ProjectStage.InProgress,
+      expenses: [],
+      startDate: new Date(),
+    };
+
+    try {
+      const currentUserId = getCurrentUserId();
+      await saveProject(selectedContactId, proyecto, currentUserId, selectedContactId);
+      setContacts(prev => prev.map(c => (
+        c.id === selectedContactId ? { ...c, projects: [proyecto, ...c.projects] } : c
+      )));
+    } catch (error) {
+      console.error('No se pudo crear el proyecto:', error);
+      alert('No se pudo crear el proyecto. Inténtalo de nuevo.');
+    }
+  };
+
+  const handleDeleteProject = async (projectId: string) => {
+    if (!selectedContactId) return;
+
+    try {
+      await deleteProject(projectId);
+      setContacts(prev => prev.map(c => (
+        c.id === selectedContactId ? { ...c, projects: c.projects.filter(p => p.id !== projectId) } : c
+      )));
+    } catch (error) {
+      // No se quita de la pantalla si no se pudo borrar: un proyecto que
+      // desaparece y reaparece al recargar es peor que un aviso.
+      console.error('No se pudo borrar el proyecto:', error);
+      alert('No se pudo borrar el proyecto.');
     }
   };
 
@@ -2092,8 +2112,8 @@ ${describeError(error)}
   };
 
   const handleCreateContact = async () => {
-    if (!newContactName.trim() || !newProjectName.trim()) {
-      alert('El nombre del contacto y del proyecto son obligatorios.');
+    if (!newContactName.trim()) {
+      alert('El nombre del contacto es obligatorio.');
       return;
     }
 
@@ -2120,15 +2140,6 @@ ${describeError(error)}
       console.warn('No se pudo comprobar si el correo ya es de un usuario:', e);
     }
 
-    const newProject: Project = {
-      id: newId(),
-      name: newProjectName.trim(),
-      value: 0,
-      stage: ProjectStage.Inquiry,
-      expenses: [],
-      startDate: new Date()
-    };
-
     const newContact: Contact = {
       id: registrado ? registrado.userId : `lead_${crypto.randomUUID()}`,
       clientName: newContactName.trim(),
@@ -2141,7 +2152,11 @@ ${describeError(error)}
       email,
       status: UserStatus.Lead,
       role: newContactRole,
-      projects: [newProject],
+      // Agregar a alguien no crea proyecto: un proyecto nace al aceptar una
+      // cotización, o se añade a mano desde la ficha. Antes salía uno vacío
+      // —«Consulta», valor 0— por cada contacto, y eran los que ensuciaban la
+      // cuenta de proyectos de todos los chats.
+      projects: [],
       lastMessage: 'Nuevo contacto',
       lastMessageTime: new Date(),
       unreadCount: 0
@@ -2151,14 +2166,6 @@ ${describeError(error)}
       // Guardar contacto en Supabase (obligatorio)
       const savedContact = await addContact(newContact);
       const finalContact = savedContact || newContact;
-
-      // Guardar proyecto inicial (tolerante a errores de esquema o caché)
-      try {
-        await saveProject(finalContact.id, newProject);
-        await updateContactWithProjects(finalContact);
-      } catch (projErr) {
-        console.warn('Advertencia al asociar proyecto inicial:', projErr);
-      }
 
       // SOLO actualizar la UI local si Supabase guardó con éxito el contacto
       setContacts(prev => [finalContact, ...prev.filter(c => c.id !== finalContact.id && c.id !== newContact.id)]);
@@ -2170,7 +2177,6 @@ ${describeError(error)}
       // Limpiar campos del formulario
       setNewContactName('');
       setNewContactAlias('');
-      setNewProjectName('');
       setNewContactPhone('');
       setNewContactEmail('');
       setNewContactRole('client');
@@ -2352,6 +2358,8 @@ ${describeError(error)}
             onSendMessage={handleSendMessage}
             onUpdateStage={handleUpdateStage}
             onUpdateProjectInfo={handleUpdateProjectInfo}
+            onAddProject={handleAddProject}
+            onDeleteProject={handleDeleteProject}
             products={products}
             paymentAccounts={paymentAccounts}
             onAddExpense={handleAddExpense}
@@ -2501,7 +2509,6 @@ ${describeError(error)}
                       // Limpiar campos antes de abrir el modal
                       setNewContactName('');
                       setNewContactAlias('');
-                      setNewProjectName('');
                       setNewContactPhone('');
                       setNewContactRole('client');
                       setShowNewContactModal(true);
@@ -2584,7 +2591,6 @@ ${describeError(error)}
                 onClick={() => {
                   setShowClientSelectionModal(false);
                   setNewContactName('');
-                  setNewProjectName('');
                   setNewContactPhone('');
                   setNewContactRole('client');
                   setShowNewContactModal(true);
@@ -2623,7 +2629,6 @@ ${describeError(error)}
                 setShowNewContactModal(false);
                 setNewContactName('');
                 setNewContactAlias('');
-                setNewProjectName('');
                 setNewContactPhone('');
                 setNewContactRole('client');
               }}
@@ -2674,16 +2679,6 @@ ${describeError(error)}
                 />
               </div>
               <div>
-                <label className="text-xs text-slate-700 font-bold uppercase mb-1 block tracking-wide">Primer Proyecto / Empresa *</label>
-                <input
-                  type="text"
-                  placeholder="Ej. Remodelación Cocina"
-                  value={newProjectName}
-                  onChange={e => setNewProjectName(e.target.value)}
-                  className="w-full bg-slate-50 text-slate-900 font-semibold p-3 rounded-xl outline-none border border-slate-200 focus:border-blue-500 focus:bg-white transition text-sm placeholder-slate-400"
-                />
-              </div>
-              <div>
                 <label className="text-xs text-slate-700 font-bold uppercase mb-1 block tracking-wide">Teléfono (Obligatorio) *</label>
                 <input
                   type="tel"
@@ -2708,7 +2703,7 @@ ${describeError(error)}
               </div>
               <button
                 onClick={handleCreateContact}
-                disabled={!newContactName.trim() || !newContactPhone.trim() || !newContactEmail.trim() || !newProjectName.trim()}
+                disabled={!newContactName.trim() || !newContactPhone.trim() || !newContactEmail.trim()}
                 className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 rounded-xl font-bold mt-2 hover:shadow-lg transition shadow-md shadow-blue-500/25 disabled:opacity-50 disabled:shadow-none disabled:cursor-not-allowed active:scale-[0.99]"
               >
                 Guardar Contacto

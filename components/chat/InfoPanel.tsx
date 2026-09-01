@@ -13,18 +13,26 @@ interface InfoPanelProps {
   showSystemMessages: boolean;
   onViewDocument: (type: any, data: any) => void;
   onUpdateProjectInfo: (value: number, name: string, projectId: string) => void;
+  onAddProject: (name: string) => void;
+  onDeleteProject: (projectId: string) => void;
 }
 
-// Derived data
+/**
+ * Los proyectos del contacto.
+ *
+ * Antes solo se enseñaban los que traían `quoteCode`, o sea los nacidos de una
+ * cotización aceptada. Ahora también se pueden añadir a mano, y con aquel filtro
+ * el añadido no aparecía por ninguna parte. Se quitan duplicados por id y no por
+ * nombre: dos cocinas del mismo cliente son dos proyectos distintos.
+ */
 const getUniqueApprovedProjects = (contact: Contact): Project[] => {
-  const approved = contact.projects.filter(p => (p as any).metadata?.quoteCode);
-  return approved.filter((project, index, self) =>
-    index === self.findIndex(p => p.name === project.name)
-  );
+  const todos = (contact.projects || []).filter(p => p && p.name);
+  return todos.filter((project, index, self) => index === self.findIndex(p => p.id === project.id));
 };
 
 export const InfoPanel: React.FC<InfoPanelProps> = React.memo(({
   show, onClose, contact, messages, showSystemMessages, onViewDocument, onUpdateProjectInfo,
+  onAddProject, onDeleteProject,
 }) => {
   const [infoTab, setInfoTab] = useState<'overview' | 'costs' | 'documents'>('overview');
   const [selectedProjectForCosts, setSelectedProjectForCosts] = useState<string | null>(null);
@@ -136,7 +144,17 @@ export const InfoPanel: React.FC<InfoPanelProps> = React.memo(({
             {/* Projects List */}
             <div className="mb-6">
               <h4 className="text-indigo-600 text-xs font-bold uppercase tracking-wider mb-4 flex justify-between items-center">
-                Proyectos Activos ({approvedProjectsCount})
+                <span>Proyectos Activos ({approvedProjectsCount})</span>
+                <button
+                  onClick={() => {
+                    const nombre = window.prompt('Nombre del proyecto');
+                    if (nombre?.trim()) onAddProject(nombre.trim());
+                  }}
+                  className="text-indigo-600 hover:text-indigo-800 font-bold normal-case text-xs flex items-center gap-1"
+                  title="Añadir un proyecto a mano"
+                >
+                  <i className="fa-solid fa-plus"></i> Añadir
+                </button>
               </h4>
               {approvedProjectsCount === 0 ? (
                 <div className="text-slate-400 text-sm italic">Sin proyectos asignados.</div>
@@ -160,9 +178,18 @@ export const InfoPanel: React.FC<InfoPanelProps> = React.memo(({
                             <button onClick={handleSaveInfo} className="w-full bg-indigo-600 text-white py-1 rounded text-xs font-bold">Guardar</button>
                           </div>
                         ) : (
-                          <div className="flex justify-between items-start mb-2">
-                            <div className="font-bold text-slate-800 text-sm">{p.name}</div>
-                            <button onClick={() => startEditingProject(p)} className="text-slate-300 hover:text-indigo-600"><i className="fa-solid fa-pen text-xs"></i></button>
+                          <div className="flex justify-between items-start mb-2 gap-2">
+                            <div className="font-bold text-slate-800 text-sm flex-1">{p.name}</div>
+                            <button onClick={() => startEditingProject(p)} className="text-slate-300 hover:text-indigo-600" title="Cambiar nombre o valor"><i className="fa-solid fa-pen text-xs"></i></button>
+                            <button
+                              onClick={() => {
+                                if (window.confirm(`¿Borrar el proyecto «${p.name}»? Se van con él sus gastos.`)) onDeleteProject(p.id);
+                              }}
+                              className="text-slate-300 hover:text-red-600"
+                              title="Borrar proyecto"
+                            >
+                              <i className="fa-solid fa-trash text-xs"></i>
+                            </button>
                           </div>
                         )}
                         {!editingProjectId && (

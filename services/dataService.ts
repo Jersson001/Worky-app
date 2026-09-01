@@ -249,11 +249,35 @@ export const fetchProjectsForContact = async (
     let data: any[] | null = null;
     let error: any = null;
 
-    if (currentUserId) {
+    // Un id de contacto manual es `lead_<uuid>`, que no es un uuid válido:
+    // compararlo contra una columna uuid revienta la consulta entera.
+    const esUuid = (v: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
+
+    if (currentUserId && esUuid(contactId)) {
+      // Los proyectos DE ESTA conversación, no todos los míos.
+      //
+      // Antes las dos primeras condiciones eran `client_id.eq.<yo>` y
+      // `contractor_id.eq.<yo>` sueltas, sin atar al contacto: devolvían todos
+      // mis proyectos en cualquier chat, así que a un cliente al que solo le
+      // había cotizado una vez le aparecían los proyectos de otros clientes.
+      // La doble vía es que lo vean los DOS lados de la misma pareja, no que
+      // cada uno vea todo lo suyo.
       const res = await supabase
         .from('projects')
         .select('*')
-        .or(`client_id.eq.${currentUserId},contractor_id.eq.${currentUserId},contact_id.eq.${contactId},contact_id.eq.${currentUserId}`);
+        .or(
+          `contact_id.eq.${contactId},` +
+            `and(contractor_id.eq.${currentUserId},client_id.eq.${contactId}),` +
+            `and(contractor_id.eq.${contactId},client_id.eq.${currentUserId})`
+        );
+      data = res.data;
+      error = res.error;
+    } else if (currentUserId) {
+      // Contacto manual: no tiene cuenta, así que solo puede ser por contact_id.
+      const res = await supabase
+        .from('projects')
+        .select('*')
+        .eq('contact_id', contactId);
       data = res.data;
       error = res.error;
     } else {
@@ -501,6 +525,21 @@ export const updateContactWithProjects = async (contact: Contact): Promise<void>
     }
   } catch (error) {
     console.error('Error updating contact:', error);
+    throw error;
+  }
+};
+
+/**
+ * Borra un proyecto.
+ *
+ * Los gastos cuelgan de él con clave foránea y se van con la fila; si la base
+ * no lo tiene en cascada, el borrado falla y se propaga en vez de callarse: un
+ * proyecto que parece borrado y sigue ahí al recargar es peor que un error.
+ */
+export const deleteProject = async (projectId: string): Promise<void> => {
+  const { error } = await supabase.from('projects').delete().eq('id', projectId);
+  if (error) {
+    console.error('Error borrando proyecto:', error);
     throw error;
   }
 };
