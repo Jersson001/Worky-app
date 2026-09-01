@@ -12,7 +12,7 @@
 import { supabase, PUBLIC_BUCKET } from './supabaseConfig';
 import { reducirImagen } from '../utils/imagen';
 import { getCurrentUserId } from './messagingService';
-import { Product, UserProfileData } from '../types';
+import { Product, ProductCategory, UserProfileData } from '../types';
 
 /** La app publicada. El destino por defecto de todo lo que se comparte. */
 const APP_PUBLICADA = 'https://worky-app-khaki.vercel.app';
@@ -267,17 +267,102 @@ export const olvidarVendedorPendiente = (): void => {
 
 // ─── Página ──────────────────────────────────────────────────────────────────
 
+/**
+ * Cuántas fotos por producto llegan al catálogo publicado.
+ *
+ * Hay tope porque las fotos van incrustadas como data URL dentro de la
+ * instantánea: cada una suma al archivo que se baja el visitante ANTES de ver
+ * nada. Un proveedor con 30 modelos a 4 fotos ya son 120 imágenes en un solo
+ * HTML. Cuatro dan para frente, espalda y dos detalles, que es lo que se
+ * enseña de una prenda.
+ */
+export const MAX_FOTOS_POR_PRODUCTO = 4;
+
+/**
+ * Las fotos de un producto, en orden y sin repetir.
+ *
+ * `image` suele ser además `images[0]`, así que sin deduplicar la primera foto
+ * salía dos veces en la galería.
+ */
+const fotosDe = (p: Product): string[] =>
+  [...new Set([p.image, ...(p.images ?? [])].filter(Boolean) as string[])].slice(0, MAX_FOTOS_POR_PRODUCTO);
+
+/**
+ * Tarjeta de producto, con su galería y la foto ampliable al pulsarla.
+ *
+ * El visor no lleva JavaScript porque la instantánea se pinta en un iframe con
+ * `sandbox` y sin `allow-scripts`: ahí dentro no corre ni una línea de script, y
+ * abrirle ese permiso a contenido publicado por un usuario para poder ampliar
+ * una foto no compensa.
+ *
+ * Se usa `details` y NO un visor `:target`, aunque el segundo es el truco
+ * habitual. La instantánea se monta con `srcdoc`, y ahí la URL base se hereda
+ * del documento padre: un `href="#foto-3"` no ancla dentro de la página, navega
+ * el iframe a la app con ese fragmento. Comprobado en el navegador — la app
+ * entera se cargaba dentro del marco. `details` no navega: es estado del
+ * elemento.
+ *
+ * Al ampliar se reutiliza la MISMA etiqueta `img`, agrandada con CSS, en vez de
+ * repetirla dentro de un visor aparte. Con las fotos incrustadas como data URL,
+ * duplicarlas duplicaría el peso de la instantánea.
+ */
 const productCard = (p: Product): string => {
-  const img = p.image || p.images?.[0] || '';
+  const [principal, ...resto] = fotosDe(p);
+  const visor = (src: string, alt: string, clase: string) =>
+    `<details class="foto ${clase}">
+            <summary title="Pulsa para ampliar"><img src="${esc(src)}" alt="${esc(alt)}" loading="lazy"></summary>
+          </details>`;
+
   return `
       <article class="card">
-        ${img ? `<img src="${esc(img)}" alt="${esc(p.name)}" loading="lazy">` : '<div class="sin-foto">Sin foto</div>'}
+        ${principal
+          ? `<div class="galeria">
+          ${visor(principal, p.name, 'principal')}
+          ${resto.length
+              ? `<div class="miniaturas">${resto
+                  .map((src, i) => visor(src, `${p.name} (foto ${i + 2})`, 'mini'))
+                  .join('')}</div>`
+              : ''}
+        </div>`
+          : '<div class="sin-foto">Sin foto</div>'}
         <div class="card-body">
           <h3>${esc(p.name)}</h3>
           ${p.description ? `<p class="desc">${esc(p.description)}</p>` : ''}
           ${p.price ? `<p class="precio">${money(p.price)}</p>` : '<p class="precio sin-precio">Consultar precio</p>'}
         </div>
       </article>`;
+};
+
+const grid = (productos: Product[]): string =>
+  `<div class="grid">${productos.map(productCard).join('')}</div>`;
+
+/**
+ * Reparte los productos en sus carpetas, respetando el orden de las carpetas.
+ *
+ * Lo que no tiene carpeta —o la tiene borrada— cae en un grupo sin nombre que
+ * se pinta al final: perder un producto por no encontrar su carpeta sería peor
+ * que enseñarlo suelto.
+ */
+const porCarpeta = (
+  products: Product[],
+  categories: ProductCategory[],
+): Array<{ nombre: string; icono?: string; color?: string; portada?: string; productos: Product[] }> => {
+  type Grupo = { nombre: string; icono?: string; color?: string; portada?: string; productos: Product[] };
+  const conocidas = new Set(categories.map(c => c.id));
+  const grupos: Grupo[] = categories
+    .map(c => ({
+      nombre: c.name,
+      icono: c.icon,
+      color: c.color,
+      portada: c.coverImage,
+      productos: products.filter(p => p.categoryId === c.id),
+    }))
+    .filter(g => g.productos.length > 0);
+
+  const sueltos = products.filter(p => !p.categoryId || !conocidas.has(p.categoryId));
+  if (sueltos.length) grupos.push({ nombre: 'Otros', productos: sueltos });
+
+  return grupos;
 };
 
 /**
@@ -288,9 +373,39 @@ export const buildCatalogHtml = (
   profile: Pick<UserProfileData, 'businessName' | 'ownerName' | 'phone' | 'city' | 'businessLogo'>,
   products: Product[],
   userId?: string,
+  categories: ProductCategory[] = [],
 ): string => {
   const negocio = esc(profile.businessName || profile.ownerName || 'Catálogo');
-  const cards = products.map(productCard).join('');
+
+  // Con una sola carpeta no se pinta ninguna: una carpeta suelta que hay que
+  // abrir solo esconde el catálogo y hace pensar que falta algo. Es el mismo
+  // criterio que con las pestañas de la cotización.
+  const grupos = porCarpeta(products, categories);
+  const conCarpetas = grupos.length > 1;
+
+  // Las carpetas se pintan como fichas con su portada, y al pulsar una se entra:
+  // las demás se ocultan y quedan sus productos. Ninguna abierta de entrada,
+  // porque lo primero que tiene que ver el visitante es en qué está dividido
+  // todo. Se sale volviendo a pulsar la ficha, que arriba hace de cabecera.
+  const cuerpo = conCarpetas
+    ? `<div class="carpetas">${grupos
+        .map(
+          g => `
+      <details class="carpeta">
+        <summary class="ficha">
+          ${g.portada
+            ? `<img class="portada" src="${esc(g.portada)}" alt="${esc(g.nombre)}" loading="lazy">`
+            // La inicial y no el icono de la carpeta: la instantánea no carga
+            // Font Awesome —es HTML autónomo a propósito— y un <i class="fa-…">
+            // ahí dentro no pinta nada, así que la ficha salía en blanco.
+            : `<span class="portada sin-portada" style="background:${esc(g.color || '#2563eb')}">${esc(g.nombre.slice(0, 1).toUpperCase())}</span>`}
+          <span class="pie"><span class="nombre">${esc(g.nombre)}</span><span class="cuenta">${g.productos.length}</span></span>
+        </summary>
+        ${grid(g.productos)}
+      </details>`,
+        )
+        .join('')}</div>`
+    : grid(products);
 
   return `<!DOCTYPE html>
 <html lang="es">
@@ -310,15 +425,68 @@ export const buildCatalogHtml = (
   .card{background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 1px 3px rgba(15,23,42,.1);display:flex;flex-direction:column}
   .card img{width:100%;height:180px;object-fit:cover;display:block}
   .sin-foto{height:180px;display:flex;align-items:center;justify-content:center;background:#e2e8f0;color:#94a3b8;font-size:.85rem}
+
+  /* Carpetas como fichas. El elemento details es nativo: se abre y se cierra sin
+     una linea de script, que es la unica forma de que funcione en el sandbox. */
+  .carpetas{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px;margin:20px 0}
+  .carpeta{background:#fff;border-radius:14px;box-shadow:0 1px 3px rgba(15,23,42,.1);overflow:hidden}
+  .carpeta>summary{list-style:none;cursor:pointer;user-select:none;display:block}
+  .carpeta>summary::-webkit-details-marker{display:none}
+  .ficha .portada{display:block;width:100%;height:110px;object-fit:cover}
+  .ficha .sin-portada{display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.8rem;font-weight:700}
+  .ficha .pie{display:flex;align-items:center;gap:8px;padding:10px 12px;font-weight:700;font-size:.95rem}
+  /* Dos lineas antes de cortar: «Cocinas integrales» en una sola sale como
+     «Cocinas inte…», que no dice cual es. */
+  .ficha .nombre{flex:1;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+                 overflow:hidden;line-height:1.25}
+  .ficha .cuenta{background:#eff6ff;color:#2563eb;border-radius:999px;padding:2px 10px;font-size:.75rem;flex:none}
+
+  /* Dentro de una carpeta: ocupa el ancho entero y las demas se apartan, para
+     que se sienta que se ha entrado y no que se ha desplegado un acordeon.
+     Si el navegador no entiende :has, se queda en acordeon y sigue sirviendo. */
+  .carpeta[open]{grid-column:1/-1}
+  .carpetas:has(.carpeta[open])>.carpeta:not([open]){display:none}
+  /* La cabecera de la carpeta abierta NO va sticky: con top:52px Chrome le mete
+     esos 52px de hueco por encima aunque la pagina este sin desplazar, y la
+     ficha aparecia con una franja blanca. Lo unico fijo es barra-chat. */
+  .carpeta[open]>summary{background:#fff;border-bottom:1px solid #e2e8f0}
+  .carpeta[open] .ficha .portada{height:0}
+  .carpeta[open] .ficha .pie::before{content:'←';color:#2563eb;font-size:1.1rem;margin-right:2px}
+  .carpeta[open] .ficha .pie{padding:14px 16px}
+  .carpeta .grid{margin:0;padding:14px 16px}
+
+  /* Galeria: la principal grande y TODAS las demas debajo, a la vista. Antes
+     era un carrusel y solo se veia una: quien abria la carpeta creia que el
+     producto tenia una sola foto, porque hay que descubrir que se arrastra. */
+  .galeria{position:relative}
+  .miniaturas{display:flex;flex-wrap:wrap;gap:6px;padding:8px 8px 0}
+  .miniaturas .mini img{width:56px;height:56px;object-fit:cover;border-radius:8px}
+  .miniaturas .mini>summary{border-radius:8px;overflow:hidden}
+
+  /* Visor de foto: la misma imagen, agrandada al abrir su details. Sin script y
+     sin anclas, que dentro de un srcdoc navegarian fuera de la pagina. */
+  .foto{margin:0}
+  .foto>summary{list-style:none;display:block;cursor:zoom-in}
+  .foto>summary::-webkit-details-marker{display:none}
+  .foto[open]>summary{cursor:zoom-out}
+  .foto[open]>summary::before{content:'';position:fixed;inset:0;z-index:20;background:rgba(2,6,23,.94)}
+  .foto[open] img{position:fixed;inset:20px;margin:auto;z-index:21;width:auto;height:auto;
+                  max-width:calc(100% - 40px);max-height:calc(100% - 40px);object-fit:contain;border-radius:10px}
   .card-body{padding:12px;display:flex;flex-direction:column;gap:6px;flex:1}
   .card h3{font-size:.95rem;font-weight:600}
   .desc{font-size:.82rem;color:#64748b;flex:1}
   .precio{font-size:1.05rem;font-weight:700;color:#2563eb}
   .sin-precio{font-size:.9rem;color:#64748b}
-  .cta{background:#fff;border-radius:14px;padding:24px 16px;text-align:center;box-shadow:0 1px 3px rgba(15,23,42,.1);margin-bottom:24px}
-  .cta h2{font-size:1.1rem;margin-bottom:6px}
-  .cta p{color:#64748b;font-size:.88rem;margin-bottom:14px}
+  /* Sin boton aqui abajo: el de chatear va fijo arriba y repetirlo al final
+     ponia dos botones identicos en la misma pantalla. Queda solo el texto. */
+  .cierre{text-align:center;color:#64748b;font-size:.88rem;margin:4px 0 22px;padding:0 8px}
   .btn{display:inline-block;background:#2563eb;color:#fff;text-decoration:none;padding:12px 24px;border-radius:10px;font-weight:700;font-size:.92rem}
+
+  /* Chatear, siempre a la vista. Es la unica accion que de verdad importa: el
+     visitante puede decidirse en cualquier producto, no solo al final. */
+  .barra-chat{position:sticky;top:0;z-index:15;background:rgba(241,245,249,.94);
+              backdrop-filter:blur(8px);padding:8px 16px;border-bottom:1px solid #e2e8f0}
+  .barra-chat .btn{display:block;text-align:center;padding:11px 16px}
   .vacio{background:#fff;border-radius:14px;padding:40px 16px;text-align:center;color:#94a3b8;font-style:italic}
   footer{text-align:center;color:#94a3b8;font-size:.78rem;padding:0 16px 28px}
 </style>
@@ -330,16 +498,17 @@ export const buildCatalogHtml = (
     ${profile.city ? `<p>${esc(profile.city)}</p>` : ''}
   </header>
 
+  <div class="barra-chat">
+    <a class="btn" href="${userId ? chatInviteUrl(userId) : WORKY_APP_URL}" target="_blank" rel="noopener">💬 Chatear con ${negocio}</a>
+  </div>
+
   <div class="wrap">
     ${products.length
-      ? `<div class="grid">${cards}</div>`
+      ? cuerpo
       : '<div class="vacio">Este catálogo aún no tiene productos.</div>'}
 
-    <div class="cta">
-      <h2>¿Te interesa algo?</h2>
-      <p>Escríbenos por Worky para cotizar, preguntar por disponibilidad o hacer un pedido.</p>
-      <a class="btn" href="${userId ? chatInviteUrl(userId) : WORKY_APP_URL}" target="_blank" rel="noopener">Chatear con ${negocio}</a>
-    </div>
+    <p class="cierre">¿Te interesa algo? Escríbenos por Worky para cotizar,
+      preguntar por disponibilidad o hacer un pedido.</p>
 
     <footer>
       Catálogo actualizado el ${new Date().toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' })}<br>
@@ -352,14 +521,22 @@ export const buildCatalogHtml = (
 
 // ─── Preparación de imágenes ─────────────────────────────────────────────────
 
-/** Copia de los productos con la imagen principal aligerada. */
+/**
+ * Copia de los productos con sus fotos aligeradas.
+ *
+ * Antes solo se aligeraba la principal y las demás se tiraban. Ahora van todas
+ * —hasta `MAX_FOTOS_POR_PRODUCTO`—, porque de una prenda hay que ver el frente
+ * y la espalda, y ese era el motivo de que un proveedor tuviera que mandar las
+ * fotos sueltas por otro lado.
+ *
+ * Se reducen TODAS, no solo la primera: son las que engordan la instantánea.
+ */
 export const prepararProductos = async (products: Product[]): Promise<Product[]> =>
   Promise.all(
-    products.map(async p => ({
-      ...p,
-      image: await reducirImagen(p.image || p.images?.[0] || ''),
-      images: undefined, // el catálogo solo muestra la principal
-    })),
+    products.map(async p => {
+      const reducidas = await Promise.all(fotosDe(p).map(reducirImagen));
+      return { ...p, image: reducidas[0] ?? '', images: reducidas.slice(1) };
+    }),
   );
 
 // ─── Publicación ─────────────────────────────────────────────────────────────
@@ -372,8 +549,9 @@ export const publishCatalog = async (
   userId: string,
   profile: Parameters<typeof buildCatalogHtml>[0],
   products: Product[],
+  categories: ProductCategory[] = [],
 ): Promise<string> => {
-  const html = buildCatalogHtml(profile, await prepararProductos(products), userId);
+  const html = buildCatalogHtml(profile, await prepararProductos(products), userId, categories);
   // Sin `upsert`: cada publicación es un archivo nuevo, ver nuevaInstantanea.
   const { error } = await supabase.storage
     .from(PUBLIC_BUCKET)
@@ -403,13 +581,24 @@ export const publishCatalogForCurrentUser = async (
     const userId = getCurrentUserId();
     const { data, error } = await supabase
       .from('products')
-      .select('id, name, price, image, images, description')
+      .select('id, name, price, image, images, description, category_id')
       .eq('user_id', userId);
 
     if (error) throw error;
     if (!data?.length) return null;
 
-    return publishCatalog(userId, profile, data as Product[]);
+    const productos = data.map((p: any) => ({ ...p, categoryId: p.category_id })) as Product[];
+
+    // Las carpetas son secundarias: si fallan, el catálogo sale plano, que es
+    // como salía hasta ahora. Perder la publicación entera por esto sería peor.
+    const { data: cats } = await supabase
+      .from('categories')
+      .select('id, name, icon, color, cover_image')
+      .eq('user_id', userId);
+
+    const carpetas = (cats ?? []).map((c: any) => ({ ...c, coverImage: c.cover_image })) as ProductCategory[];
+
+    return publishCatalog(userId, profile, productos, carpetas);
   } catch (e) {
     console.warn('No se pudo publicar el catálogo para el documento:', e);
     return null;

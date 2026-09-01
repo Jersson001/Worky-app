@@ -3355,6 +3355,7 @@ ${describeError(error)}
             onClose={() => setShowCatalogShare(false)}
             profile={userProfile}
             products={products}
+            categories={categories}
           />
         </div>
       )}

@@ -6,7 +6,7 @@
  * después de actualizar productos: basta con volver a publicar.
  */
 import React, { useEffect, useState } from 'react';
-import { Product, UserProfileData } from '../types';
+import { Product, ProductCategory, UserProfileData } from '../types';
 import { getCurrentUserId } from '../services/messagingService';
 import { describeError } from '../utils/errorMessage';
 import { publishCatalog, qrImageUrl } from '../services/catalogShareService';
@@ -16,10 +16,12 @@ interface CatalogShareModalProps {
   onClose: () => void;
   profile: UserProfileData | null;
   products: Product[];
+  /** Las carpetas del catálogo. Sin ellas la instantánea sale plana. */
+  categories?: ProductCategory[];
 }
 
 export const CatalogShareModal: React.FC<CatalogShareModalProps> = ({
-  show, onClose, profile, products,
+  show, onClose, profile, products, categories = [],
 }) => {
   const [estado, setEstado] = useState<'publicando' | 'listo' | 'error'>('publicando');
   const [enlace, setEnlace] = useState('');
@@ -42,7 +44,7 @@ export const CatalogShareModal: React.FC<CatalogShareModalProps> = ({
       return;
     }
 
-    publishCatalog(userId, profile ?? { businessName: '', ownerName: '', phone: '' } as any, products)
+    publishCatalog(userId, profile ?? { businessName: '', ownerName: '', phone: '' } as any, products, categories)
       .then(publicada => {
         if (!vigente) return;
         setEnlace(publicada);
@@ -56,7 +58,7 @@ export const CatalogShareModal: React.FC<CatalogShareModalProps> = ({
       });
 
     return () => { vigente = false; };
-  }, [show, products, profile]);
+  }, [show, products, profile, categories]);
 
   if (!show) return null;
 
