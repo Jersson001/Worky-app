@@ -26,8 +26,10 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         // El 14 (2.1) lo rechazó Google por faltar las credenciales de demo, y
         // un versionCode no se reutiliza aunque la versión nunca se publicara.
-        versionCode 15
-        versionName "2.1"
+        // El 15 se envió el 29/08/2026; el 16 lleva catálogo en la cotización,
+        // «Cotizar» sobre una foto del chat y los datos de pago con QR.
+        versionCode 16
+        versionName "2.2"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'

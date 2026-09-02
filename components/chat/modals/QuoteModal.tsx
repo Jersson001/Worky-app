@@ -8,7 +8,8 @@ import { ModalWrapper } from './ModalWrapper';
 import { DecimalInput } from './DecimalInput';
 import { CurrencyInput } from './CurrencyInput';
 import ProFeatureGuard from '../../ProFeatureGuard';
-import { QuoteItem, Product, ContactRole, QuoteMode, CarpentrySection, CarpentryCategoryKey, CarpentryLineItem, CarpentryMaterial, CarpentryUnit, MaterialUnit } from '../../../types';
+import { CatalogPickerOverlay } from './CatalogPicker';
+import { QuoteItem, Product, ProductCategory, ContactRole, QuoteMode, CarpentrySection, CarpentryCategoryKey, CarpentryLineItem, CarpentryMaterial, CarpentryUnit, MaterialUnit } from '../../../types';
 import { formatCurrency } from '../../../utils/currency';
 import { leerImagenReducida } from '../../../utils/imagen';
 import { calculateTax } from '../../../utils/taxCalculations';
@@ -30,6 +31,8 @@ interface QuoteModalProps {
   clientPhone: string;
   showProductPicker: boolean;
   products: Product[];
+  /** Carpetas del catálogo: el buscador de productos entra por ellas. */
+  categories: ProductCategory[];
   // Item actions
   onAddItem: () => void;
   onDeleteItem: (index: number) => void;
@@ -371,7 +374,7 @@ export const QuoteModal: React.FC<QuoteModalProps> = React.memo(({
   show, onClose, contactRole,
   items, validDays, taxType, taxPercentage,
   aiuAdmin, aiuImprevistos, aiuUtilidad, aiuIva,
-  clientAddress, clientPhone, showProductPicker, products,
+  clientAddress, clientPhone, showProductPicker, products, categories,
   onAddItem, onDeleteItem, onUpdateItem, onUpdateItemPrice,
   onAddProductToQuote, onShowProductPicker,
   onImageUpload, onRemoveImage, onUpdateItemImage,
@@ -737,6 +740,20 @@ export const QuoteModal: React.FC<QuoteModalProps> = React.memo(({
     );
   })();
 
+  /**
+   * El catálogo entra como panel flotante, no como lista dentro del
+   * formulario: con muchos productos la lista no se podía recorrer, y el
+   * panel deja buscar por carpetas sin perder lo ya escrito.
+   */
+  const catalogPicker = showProductPicker && (
+    <CatalogPickerOverlay
+      products={products}
+      categories={categories}
+      onSelectProduct={onAddProductToQuote}
+      onClose={() => onShowProductPicker(false)}
+    />
+  );
+
   return (
     <ModalWrapper
       show={show}
@@ -744,7 +761,7 @@ export const QuoteModal: React.FC<QuoteModalProps> = React.memo(({
       title={title}
       icon="fa-file-invoice-dollar"
       iconColor="text-blue-600"
-      overlay={sectionEditor}
+      overlay={sectionEditor || catalogPicker}
     >
       {/* Las pestañas solo tienen sentido si hay capítulos que enseñar. Para un
           abogado o un sastre, la cotización básica es toda la cotización. */}
@@ -910,28 +927,6 @@ export const QuoteModal: React.FC<QuoteModalProps> = React.memo(({
               </button>
             </div>
 
-            {/* Product picker */}
-            {showProductPicker && (
-              <div className="mb-4 bg-white border border-slate-200 rounded-lg p-3 max-h-40 overflow-y-auto">
-                <div className="text-xs font-bold text-slate-700 mb-2 uppercase">Seleccionar Producto</div>
-                {products.length > 0 ? (
-                  products.map(p => (
-                    <div key={p.id} onClick={() => onAddProductToQuote(p)} className="flex items-center gap-2 p-2 hover:bg-slate-50 rounded cursor-pointer">
-                      <img src={p.image} className="w-8 h-8 rounded object-cover" alt={p.name} />
-                      <div className="flex-1 min-w-0">
-                        <div className="text-xs font-bold truncate">{p.name}</div>
-                        <div className="text-[10px] text-slate-500">{formatCurrency(p.price)}</div>
-                      </div>
-                      <i className="fa-solid fa-plus text-indigo-500"></i>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center py-4 text-slate-400 text-xs italic">
-                    No hay productos en el catálogo. Agrega productos desde la sección de Catálogo.
-                  </div>
-                )}
-              </div>
-            )}
           </>
         ) : (
           <ProFeatureGuard isPro={isPro} trialEndsAt={trialEndsAt}>

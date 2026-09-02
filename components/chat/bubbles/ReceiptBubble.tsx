@@ -77,31 +77,31 @@ export const ReceiptBubble: React.FC<ReceiptBubbleProps> = React.memo(({
           </div>
         )}
 
-        {/* QR Payment Section — Clients only */}
+        {/* QR de pago — solo para el cliente.
+            Antes se armaba aquí un QR al vuelo con direcciones inventadas
+            (bancolombia.com/pagar?cuenta=…), que no llevaban a ningún pago.
+            Ahora va el QR que el vendedor cargó en «Datos de pago»; el QR por
+            monto queda para cuando exista de verdad. */}
         {contactRole !== 'supplier' && !msg.isPaid && meta.selectedAccountId && meta.selectedAccountId !== 'efectivo' && (
           <div className="bg-gradient-to-br from-emerald-50 to-white border border-emerald-200 rounded-lg p-3 mb-2 shadow-sm">
             <div className="text-center">
-              <p className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider mb-2">Escanea para pagar</p>
-              <div className="flex justify-center mb-2">
-                {(() => {
-                  const qrData = meta.accountNumber
-                    ? `https://bancolombia.com/pagar?cuenta=${meta.accountNumber}&valor=${meta.amount}`
-                    : `https://nequi.com/pagar?valor=${meta.amount}`;
-                  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrData)}`;
-                  return (
+              {meta.qrImage && (
+                <>
+                  <p className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider mb-2">Escanea para pagar</p>
+                  <div className="flex justify-center mb-2">
                     <div
-                      onClick={() => onShowQR(qrUrl, meta)}
+                      onClick={() => onShowQR(meta.qrImage, meta)}
                       className="cursor-pointer hover:scale-105 transition-transform"
                     >
                       <img
-                        src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(qrData)}`}
-                        alt="QR Code"
-                        className="w-24 h-24 rounded-lg shadow-md border-2 border-white"
+                        src={meta.qrImage}
+                        alt="QR de pago"
+                        className="w-24 h-24 rounded-lg shadow-md border-2 border-white bg-white object-contain"
                       />
                     </div>
-                  );
-                })()}
-              </div>
+                  </div>
+                </>
+              )}
               <div className="flex items-center justify-center gap-2 text-[9px] text-slate-500 mb-2">
                 {meta.bankName && <span className="font-semibold">{meta.bankName}</span>}
                 {meta.accountNumber && (

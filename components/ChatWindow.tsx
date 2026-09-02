@@ -5,7 +5,7 @@
  * Original: 2393 lines → Now: ~250 lines.
  */
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Contact, Message, ProjectStage, Product, PaymentAccount, UserProfileData, Project } from '../types';
+import { Contact, Message, ProjectStage, Product, ProductCategory, PaymentAccount, UserProfileData, Project } from '../types';
 import { DocumentViewer } from './QuoteDocument';
 import { formatCurrency } from '../utils/currency';
 import { calculateTax } from '../utils/taxCalculations';
@@ -43,6 +43,8 @@ interface ChatWindowProps {
   onAddProject: (name: string) => void;
   onDeleteProject: (projectId: string) => void;
   products: Product[];
+  /** Carpetas del catálogo, para buscar productos por carpeta. */
+  categories: ProductCategory[];
   paymentAccounts: PaymentAccount[];
   onBack: () => void;
   activeAction?: 'invoice' | 'quote' | 'collection_account' | 'expense' | null;
@@ -83,7 +85,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = (props) => {
 
 const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
   contact, allContacts, messages, onSendMessage, onUpdateStage, onAddExpense,
-  onUpdateProjectInfo, onAddProject, onDeleteProject, products, paymentAccounts, onBack, activeAction, onClearAction,
+  onUpdateProjectInfo, onAddProject, onDeleteProject, products, categories, paymentAccounts, onBack, activeAction, onClearAction,
   onUpdateMessage, businessLogo, digitalSignature, userProfile, onOpenGantt, onDeleteMessage,
   avisoSobreElInput,
   esCliente = false,
@@ -310,6 +312,10 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
       accountType: selectedAccount === 'efectivo' ? '' : (selectedAcc?.accountType || ''),
       accountNumber: selectedAccount === 'efectivo' ? '' : (selectedAcc?.accountNumber || ''),
       holderName: selectedAccount === 'efectivo' ? '' : (selectedAcc?.holderName || ''),
+      // El QR se copia dentro del mensaje a propósito: si el vendedor cambia
+      // de cuenta después, la cuenta de cobro ya enviada debe seguir mostrando
+      // el QR con el que se pidió la plata.
+      qrImage: selectedAccount === 'efectivo' ? undefined : selectedAcc?.qrImage,
       projectName: project?.name || '', date: new Date(),
     });
 
@@ -332,6 +338,9 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
       accountType: selectedAccount === 'efectivo' ? '' : (selectedAcc?.accountType || ''),
       accountNumber: selectedAccount === 'efectivo' ? '' : (selectedAcc?.accountNumber || ''),
       holderName: selectedAccount === 'efectivo' ? '' : (selectedAcc?.holderName || ''),
+      // El mismo QR que cargó el vendedor en sus datos de pago. Se copia al
+      // enviar para que el recibo no cambie si luego borra esa cuenta.
+      qrImage: selectedAccount === 'efectivo' ? undefined : selectedAcc?.qrImage,
       selectedAccountId: selectedAccount,
     };
 
@@ -376,6 +385,17 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
     forms.setPendingPayment({ id: msg.id, type: msg.type, metadata: msg.metadata });
     forms.openModal('paymentConfirm');
   }, []);
+
+  /**
+   * «Cotizar» sobre una foto del chat: abre la cotización con esa foto ya
+   * puesta como ítem. Le ahorra al vendedor bajar la imagen, buscar el chat de
+   * nuevo y volver a subirla, que es lo que hacía hasta ahora.
+   */
+  const handleQuoteImage = useCallback((imageUrl: string, texto?: string) => {
+    forms.setQuoteField('clientPhone', contact.phone || '');
+    forms.addPhotoToQuote(imageUrl, texto);
+    forms.openModal('quote');
+  }, [forms, contact.phone]);
 
   const handleShowQR = useCallback((qrUrl: string, metadata: any) => {
     forms.setQrPreviewData({ qrUrl, metadata });
@@ -475,6 +495,7 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
           onDeleteMessage={onDeleteMessage}
           onCopyPaymentInfo={handleCopyPaymentInfo}
           onShowQR={handleShowQR}
+          onQuoteImage={esCliente ? undefined : handleQuoteImage}
         />
 
         {avisoSobreElInput}
@@ -516,7 +537,7 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
           validDays={forms.quote.validDays} taxType={forms.quote.taxType} taxPercentage={forms.quote.taxPercentage}
           aiuAdmin={forms.quote.aiuAdmin} aiuImprevistos={forms.quote.aiuImprevistos} aiuUtilidad={forms.quote.aiuUtilidad} aiuIva={forms.quote.aiuIva}
           clientAddress={forms.quote.clientAddress} clientPhone={forms.quote.clientPhone}
-          showProductPicker={forms.quote.showProductPicker} products={products}
+          showProductPicker={forms.quote.showProductPicker} products={products} categories={categories}
           onAddItem={forms.addQuoteItem} onDeleteItem={forms.deleteQuoteItem} onUpdateItem={forms.updateQuoteItem} onUpdateItemPrice={forms.updateQuoteItemPrice}
           onAddProductToQuote={forms.addProductToQuote} onShowProductPicker={(v) => forms.setQuoteField('showProductPicker', v)}
           onImageUpload={(e, idx) => fileUpload.handleQuoteImageUpload(e, idx, forms.addQuoteItemImages)} onRemoveImage={forms.removeQuoteItemImage} onUpdateItemImage={forms.updateQuoteItemImage}
@@ -547,7 +568,7 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
         />
         <ProductPickerModal
           show={forms.modals.productPicker} onClose={() => forms.closeModal('productPicker')}
-          products={products} onSelectProduct={handleSelectProduct}
+          products={products} categories={categories} onSelectProduct={handleSelectProduct}
         />
         <PaymentConfirmModal
           show={forms.modals.paymentConfirm} pendingPayment={forms.pendingPayment}

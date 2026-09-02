@@ -38,12 +38,23 @@ export interface UserProfileData {
 
 export interface PaymentAccount {
   id: string;
-  bankName: 'Bancolombia' | 'Nequi' | 'Daviplata' | 'Efectivo';
-  accountType: 'Ahorros' | 'Corriente' | 'Celular';
+  /**
+   * Texto libre a propósito: la lista de bancos del país cambia, y encerrarla
+   * en un tipo obligaba a tocar el código cada vez que aparece uno nuevo.
+   * Las opciones que se ofrecen están en BANCOS_Y_PLATAFORMAS (WalletModal).
+   */
+  bankName: string;
+  accountType: 'Ahorros' | 'Corriente' | 'Celular' | 'Llave Bre-B';
   accountNumber: string;
   holderName: string;
   color: string;
   iconClass: string;
+  /**
+   * QR de cobro de la cuenta, ya subido a Storage. Es la imagen que el banco
+   * o la plataforma genera; Worky no la inventa. Sin ella, la cuenta de cobro
+   * no enseña ningún QR.
+   */
+  qrImage?: string;
 }
 
 export interface ThirdPartyAccount {
@@ -107,6 +118,8 @@ export interface ReceiptData {
   concept: string;
   date: Date;
   paymentMethod: string;
+  /** QR de cobro de la cuenta usada, copiado al enviar. Ver PaymentAccount. */
+  qrImage?: string;
 }
 
 export interface QuoteItem {
@@ -247,6 +260,8 @@ export interface CollectionAccountData {
   accountType?: string;
   accountNumber?: string;
   holderName?: string;
+  /** QR de cobro de la cuenta elegida, copiado al enviar. Ver PaymentAccount. */
+  qrImage?: string;
   date: Date;
 }
 

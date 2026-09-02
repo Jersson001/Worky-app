@@ -85,6 +85,8 @@ export interface ChatFormActions {
   updateQuoteItemPrice: (index: number, value: string) => void;
   deleteQuoteItem: (index: number) => void;
   addQuoteItemImages: (index: number, newImages: string[]) => void;
+  /** Mete una foto que llegó por el chat como ítem de la cotización. */
+  addPhotoToQuote: (imageUrl: string, description?: string) => void;
   removeQuoteItemImage: (itemIndex: number, imageIndex: number) => void;
   updateQuoteItemImage: (index: number, url: string) => void;
   setQuoteField: <K extends keyof QuoteFormState>(field: K, value: QuoteFormState[K]) => void;
@@ -227,6 +229,29 @@ export const useChatFormState = (
       return { ...prev, items };
     });
   }, []);
+  /**
+   * La foto que mandó el cliente, convertida en ítem de la cotización.
+   *
+   * Si el formulario está recién abierto trae un ítem vacío de cortesía; se
+   * aprovecha ese en vez de dejar una línea en blanco encima. La descripción
+   * queda vacía a propósito: el vendedor la escribe mirando la foto, y un
+   * texto inventado habría que borrarlo.
+   */
+  const addPhotoToQuote = useCallback((imageUrl: string, description?: string) => {
+    setQuote(prev => {
+      const nuevo = { description: description || '', quantity: 1, price: 0, images: [imageUrl] };
+      const items = [...prev.items];
+      const ultimo = items.length - 1;
+      const vacio = ultimo >= 0
+        && !items[ultimo].description
+        && !items[ultimo].price
+        && !items[ultimo].image
+        && !(items[ultimo].images && items[ultimo].images!.length);
+      if (vacio) items[ultimo] = nuevo; else items.push(nuevo);
+      return { ...prev, items, mode: 'basica', showProductPicker: false };
+    });
+  }, []);
+
   const removeQuoteItemImage = useCallback((itemIndex: number, imageIndex: number) => {
     setQuote(prev => {
       const items = [...prev.items];
@@ -359,7 +384,7 @@ export const useChatFormState = (
     expense, setExpenseField, resetExpense,
     invoice, addInvoiceItem, updateInvoiceItem, deleteInvoiceItem, setInvoiceField, resetInvoice,
     quote, addQuoteItem, addProductToQuote, updateQuoteItem, updateQuoteItemPrice,
-    deleteQuoteItem, addQuoteItemImages, removeQuoteItemImage, updateQuoteItemImage, setQuoteField, resetQuote,
+    deleteQuoteItem, addQuoteItemImages, addPhotoToQuote, removeQuoteItemImage, updateQuoteItemImage, setQuoteField, resetQuote,
     setQuoteMode, addCarpentrySection, removeCarpentrySection, addCarpentryItem, updateCarpentryItem, removeCarpentryItem,
     collection, setCollectionField, resetCollection,
     receipt, setReceiptField, resetReceipt,

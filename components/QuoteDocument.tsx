@@ -730,6 +730,24 @@ const CollectionTemplate = ({ data, businessLogo, userProfile, signature, scale,
                         </div>
                     )}
                 </div>
+                {/* El QR va en el documento porque es donde de verdad sirve:
+                    el cliente imprime o abre la cuenta de cobro y paga sin
+                    teclear el número de cuenta. */}
+                {data.qrImage && (
+                    <div className="mt-5 pt-5 border-t border-blue-200 flex items-center gap-4">
+                        <img
+                            src={data.qrImage}
+                            alt="QR para pagar"
+                            className="w-28 h-28 object-contain bg-white p-1.5 rounded-lg border border-blue-200"
+                        />
+                        <div>
+                            <p className="font-bold text-gray-900 text-sm">Paga escaneando</p>
+                            <p className="text-xs text-gray-600">
+                                Abre la cámara o tu app bancaria y escanea este código.
+                            </p>
+                        </div>
+                    </div>
+                )}
             </div>
         )}
 
@@ -810,6 +828,22 @@ const ReceiptTemplate = ({ data, businessLogo, userProfile, signature, scale, po
                 <div className="bg-gray-50 p-5 rounded-lg border-l-4 border-emerald-600">
                     <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Forma de Pago</p>
                     <p className="text-lg font-semibold text-gray-900">{data.paymentMethod}</p>
+                </div>
+            )}
+
+            {/* El QR del vendedor. En un recibo no sirve para cobrar lo ya
+                pagado: queda a mano para el siguiente abono. */}
+            {data.qrImage && (
+                <div className="bg-gray-50 p-5 rounded-lg border-l-4 border-emerald-600 flex items-center gap-4">
+                    <img
+                        src={data.qrImage}
+                        alt="QR de pago"
+                        className="w-24 h-24 object-contain bg-white p-1.5 rounded-lg border border-gray-200"
+                    />
+                    <div>
+                        <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Para próximos pagos</p>
+                        <p className="text-sm text-gray-700">Escanea este código con tu app bancaria.</p>
+                    </div>
                 </div>
             )}
         </div>

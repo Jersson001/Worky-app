@@ -160,6 +160,14 @@ const cuerpo = (type: DocType, d: any): string => {
         ${fila('Tipo de cuenta', d.accountType)}
         ${fila('Número', d.accountNumber)}
         ${fila('Titular', d.holderName)}` : ''}
+        ${d.qrImage ? `
+        <div style="margin:16px 0;display:flex;align-items:center;gap:14px">
+          <img src="${d.qrImage}" alt="QR para pagar" style="width:110px;height:110px;object-fit:contain;background:#fff;padding:6px;border:1px solid #e2e8f0;border-radius:8px" />
+          <div>
+            <p style="margin:0;font-weight:700">Paga escaneando</p>
+            <p style="margin:2px 0 0;font-size:12px;color:#64748b">Abre la cámara o tu app bancaria y escanea este código.</p>
+          </div>
+        </div>` : ''}
         ${totales(d)}`;
 
     case 'receipt':
@@ -168,6 +176,14 @@ const cuerpo = (type: DocType, d: any): string => {
         ${fila('Concepto', d.concept)}
         ${fila('Forma de pago', d.paymentMethod)}
         ${fila('Fecha', fecha(d.date))}
+        ${d.qrImage ? `
+        <div style="margin:16px 0;display:flex;align-items:center;gap:14px">
+          <img src="${d.qrImage}" alt="QR de pago" style="width:100px;height:100px;object-fit:contain;background:#fff;padding:6px;border:1px solid #e2e8f0;border-radius:8px" />
+          <div>
+            <p style="margin:0;font-weight:700">Para próximos pagos</p>
+            <p style="margin:2px 0 0;font-size:12px;color:#64748b">Escanea este código con tu app bancaria.</p>
+          </div>
+        </div>` : ''}
         ${totales(d)}`;
 
     default:

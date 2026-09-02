@@ -27,7 +27,7 @@ import { Contact, Message, UserStatus, ProjectStage, Product, Expense, Story, Pa
 import { LoginScreen } from './components/LoginScreen';
 import { WelcomeOnboarding } from './components/WelcomeOnboarding';
 import { sendMessage as sendMessageToFirebase, listenToMessages, listenToContacts, addContact, deleteContact, saveUserProfile, getUserProfile, initializeUserId, setCurrentUserId, getCurrentUserId, searchUserByPhoneOrEmail, addContactFromSearch, deleteMessage, updateMessage, listenToGlobalIncomingMessages, markChatAsRead, markMessagesAsDelivered, markMessagesAsRead, getPublicInfoById } from './services/messagingService';
-import { saveProduct, deleteProduct, listenToProducts, saveCategory, deleteCategory, listenToCategories, saveProject, deleteProject, updateProject, addExpenseToProject, updateContactWithProjects, listenToPaymentAccounts, savePaymentAccount, deletePaymentAccount, PaymentAccountData, fetchProjectsForContact, listenToProjects } from './services/dataService';
+import { saveProduct, deleteProduct, listenToProducts, saveCategory, deleteCategory, listenToCategories, saveProject, deleteProject, updateProject, addExpenseToProject, updateContactWithProjects, listenToPaymentAccounts, savePaymentAccount, deletePaymentAccount, PaymentAccountData, listenToThirdPartyAccounts, saveThirdPartyAccount, deleteThirdPartyAccount, fetchProjectsForContact, listenToProjects } from './services/dataService';
 import { supabase } from './services/supabaseConfig';
 import { formatCurrency } from './utils/currency';
 
@@ -126,14 +126,42 @@ const MOCK_STORIES: Story[] = [
   { id: 's1', contactId: '2', content: 'Oferta especial en maderas este fin de semana', type: 'text', timestamp: new Date(Date.now() - 3600000), expiresAt: new Date(Date.now() + 86400000), color: '#3b82f6' }
 ];
 
-const MOCK_ACCOUNTS: PaymentAccount[] = [
-  { id: 'a1', bankName: 'Bancolombia', accountType: 'Ahorros', accountNumber: '234-567890-12', holderName: 'Carpintería SAS', color: '#fdd835', iconClass: 'fa-solid fa-building-columns' },
-  { id: 'a2', bankName: 'Nequi', accountType: 'Celular', accountNumber: '300 123 4567', holderName: 'Admin', color: '#6f00ef', iconClass: 'fa-solid fa-mobile-screen' },
-];
+/**
+ * Sube a Supabase las cuentas de terceros que quedaron en este teléfono.
+ *
+ * Hasta ahora vivían solo en el navegador. Se corre una vez al cargar la
+ * libreta: lo que esté guardado aquí y no esté en la base se sube, y solo
+ * entonces se borra del navegador. Si algo falla se deja tal cual para
+ * reintentarlo en la siguiente entrada; perder una cuenta es peor que
+ * migrarla dos veces.
+ */
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+let migracionHecha = false;
 
-const MOCK_THIRD_PARTY: ThirdPartyAccount[] = [
-  { id: 'tp1', alias: 'Proveedor Maderas El Roble', bankName: 'Bancolombia', accountNumber: '987-654321-00', accountType: 'Corriente', holderName: 'Maderas El Roble SAS', documentId: '900.123.123' },
-];
+const migrarCuentasDelTelefono = async (enLaBase: ThirdPartyAccount[]) => {
+  if (migracionHecha) return;
+  const guardadas = localStorage.getItem('worky_saved_accounts');
+  if (!guardadas) return;
+  migracionHecha = true;
+
+  try {
+    const locales: ThirdPartyAccount[] = JSON.parse(guardadas);
+    const yaEstan = new Set(enLaBase.map(a => a.accountNumber));
+
+    for (const cuenta of locales) {
+      if (yaEstan.has(cuenta.accountNumber)) continue;
+      // Las viejas traían ids como 'tp1' o un Date.now(); la columna es uuid
+      // y Postgres los rechaza con 22P02.
+      const id = UUID.test(cuenta.id) ? cuenta.id : newId();
+      await saveThirdPartyAccount({ ...cuenta, id });
+    }
+
+    localStorage.removeItem('worky_saved_accounts');
+  } catch (err) {
+    console.error('No se pudieron migrar las cuentas de terceros:', err);
+    migracionHecha = false;
+  }
+};
 
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -407,7 +435,10 @@ const App: React.FC = () => {
 
 
   // Estado para cuentas de pago
-  const [paymentAccounts, setPaymentAccounts] = useState<PaymentAccount[]>(MOCK_ACCOUNTS);
+  // Arranca vacío a propósito. Antes venía con dos cuentas de ejemplo que no
+  // existían en la base: al intentar editarlas o borrarlas no pasaba nada y
+  // volvían a aparecer, que es lo que hacía parecer que no se dejaban tocar.
+  const [paymentAccounts, setPaymentAccounts] = useState<PaymentAccount[]>([]);
 
   // Cargar datos de Firebase cuando el usuario está autenticado
   useEffect(() => {
@@ -476,11 +507,17 @@ const App: React.FC = () => {
       }
     });
 
+    // Cargar cuentas de terceros (a quién le pago)
+    const unsubscribeThirdParty = listenToThirdPartyAccounts((cuentas) => {
+      setSavedAccounts(cuentas as ThirdPartyAccount[]);
+      void migrarCuentasDelTelefono(cuentas as ThirdPartyAccount[]);
+    });
+
     // Cargar cuentas de pago
     const unsubscribePaymentAccounts = listenToPaymentAccounts((firebaseAccounts) => {
-      if (firebaseAccounts && firebaseAccounts.length > 0) {
-        setPaymentAccounts(firebaseAccounts as PaymentAccount[]);
-      }
+      // Sin el `length > 0` de antes: borrar la última cuenta tiene que dejar
+      // la lista vacía, no revivir la anterior.
+      setPaymentAccounts((firebaseAccounts || []) as PaymentAccount[]);
     });
 
     // Cargar perfil desde Firebase
@@ -498,6 +535,7 @@ const App: React.FC = () => {
       unsubscribeProducts();
       unsubscribeCategories();
       unsubscribePaymentAccounts();
+      unsubscribeThirdParty();
       unsubscribeProfile();
     };
   }, [isAuthenticated, needsOnboarding]);
@@ -902,15 +940,6 @@ const App: React.FC = () => {
 
   // Cargar datos persistentes de localStorage al montar
   useEffect(() => {
-    const storedAccounts = localStorage.getItem('worky_saved_accounts');
-    if (storedAccounts) {
-      try {
-        setSavedAccounts(JSON.parse(storedAccounts));
-      } catch (err) {
-        console.error('Error parsing saved accounts from localStorage:', err);
-      }
-    }
-
     const storedGroups = localStorage.getItem('worky_chat_groups');
     if (storedGroups) {
       try {
@@ -954,10 +983,6 @@ const App: React.FC = () => {
   }, []);
 
   // Guardar datos en localStorage ante cualquier cambio
-  useEffect(() => {
-    localStorage.setItem('worky_saved_accounts', JSON.stringify(savedAccounts));
-  }, [savedAccounts]);
-
   useEffect(() => {
     localStorage.setItem('worky_chat_groups', JSON.stringify(groups));
   }, [groups]);
@@ -1502,19 +1527,32 @@ const App: React.FC = () => {
     }
   };
 
-  const handleSaveThirdPartyAccount = (account: ThirdPartyAccount) => {
-    setSavedAccounts(prev => {
-      const exists = prev.some(acc => acc.id === account.id);
-      if (exists) {
-        return prev.map(acc => acc.id === account.id ? account : acc);
-      } else {
-        return [...prev, account];
-      }
-    });
+  const handleSaveThirdPartyAccount = async (account: ThirdPartyAccount) => {
+    // Se pinta de una vez y luego se guarda: la suscripción traerá la versión
+    // de la base y dejará todo igual. Si falla, se revierte y se avisa.
+    const anterior = savedAccounts;
+    setSavedAccounts(prev => prev.some(a => a.id === account.id)
+      ? prev.map(a => (a.id === account.id ? account : a))
+      : [...prev, account]);
+    try {
+      await saveThirdPartyAccount(account);
+    } catch (err) {
+      console.error('Error guardando cuenta de tercero:', err);
+      setSavedAccounts(anterior);
+      alert('No se pudo guardar la cuenta. Revisa tu conexión e inténtalo otra vez.');
+    }
   };
 
-  const handleDeleteThirdPartyAccount = (accountId: string) => {
+  const handleDeleteThirdPartyAccount = async (accountId: string) => {
+    const anterior = savedAccounts;
     setSavedAccounts(prev => prev.filter(acc => acc.id !== accountId));
+    try {
+      await deleteThirdPartyAccount(accountId);
+    } catch (err) {
+      console.error('Error eliminando cuenta de tercero:', err);
+      setSavedAccounts(anterior);
+      alert('No se pudo eliminar la cuenta. Inténtalo otra vez.');
+    }
   };
 
   const handleUploadContractPdf = async (pdfBlob: Blob, filename: string): Promise<string> => {
@@ -2361,6 +2399,7 @@ ${describeError(error)}
             onAddProject={handleAddProject}
             onDeleteProject={handleDeleteProject}
             products={products}
+            categories={categories}
             paymentAccounts={paymentAccounts}
             onAddExpense={handleAddExpense}
             onBack={() => setSelectedContactId(null)}
@@ -2477,9 +2516,9 @@ ${describeError(error)}
                     </button>
                     <button onClick={() => setShowWallet(true)} className="bg-white p-3 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2">
                       <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-sky-500 to-sky-600 flex items-center justify-center text-white shadow-sm shadow-sky-500/30">
-                        <i className="fa-solid fa-wallet text-lg"></i>
+                        <i className="fa-solid fa-money-check-dollar text-lg"></i>
                       </div>
-                      <span className="text-slate-700 text-[11.5px] font-semibold">Billetera</span>
+                      <span className="text-slate-700 text-[11.5px] font-semibold">Datos de pago</span>
                     </button>
                     <button onClick={() => { setShowStatus(true); setStartCamera(false); }} className="bg-white p-3 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2">
                       <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-pink-500 to-pink-600 flex items-center justify-center text-white shadow-sm shadow-pink-500/30">
@@ -2812,7 +2851,7 @@ ${describeError(error)}
                 <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
                   <i className="fa-solid fa-box-open text-white text-xl"></i>
                 </div>
-                <h2 className="text-white text-xl font-bold">Gestión de Catálogo</h2>
+                <h2 className="text-white text-xl font-bold">Catálogo de Productos</h2>
               </div>
               <div className="flex items-center gap-2">
                 <button

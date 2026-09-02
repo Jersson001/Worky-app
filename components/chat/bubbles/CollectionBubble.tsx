@@ -71,22 +71,26 @@ export const CollectionBubble: React.FC<CollectionBubbleProps> = React.memo(({
         {!msg.isPaid && (
           <div className="bg-gradient-to-br from-orange-50 to-white border border-orange-200 rounded-lg p-3 mb-2 shadow-sm">
             <div className="text-center">
-              <p className="text-[10px] font-bold text-orange-700 uppercase tracking-wider mb-2">Escanea para pagar</p>
-              <div className="flex justify-center mb-2">
-                <div
-                  onClick={() => {
-                    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent('https://ejemplo-pago.com')}`;
-                    onShowQR(qrUrl, meta);
-                  }}
-                  className="cursor-pointer hover:scale-105 transition-transform"
-                >
-                  <img
-                    src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=https://ejemplo-pago.com"
-                    alt="QR Code"
-                    className="w-24 h-24 rounded-lg shadow-md border-2 border-white"
-                  />
-                </div>
-              </div>
+              {/* Solo se enseña el QR que el vendedor cargó en sus datos de
+                  pago. Antes iba uno fijo que apuntaba a un sitio de ejemplo:
+                  quien lo escaneaba no pagaba nada. */}
+              {meta.qrImage && (
+                <>
+                  <p className="text-[10px] font-bold text-orange-700 uppercase tracking-wider mb-2">Escanea para pagar</p>
+                  <div className="flex justify-center mb-2">
+                    <div
+                      onClick={() => onShowQR(meta.qrImage, meta)}
+                      className="cursor-pointer hover:scale-105 transition-transform"
+                    >
+                      <img
+                        src={meta.qrImage}
+                        alt="QR de pago"
+                        className="w-24 h-24 rounded-lg shadow-md border-2 border-white bg-white object-contain"
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
               <div className="flex items-center justify-center gap-2 text-[9px] text-slate-500 mb-2">
                 {meta.bankName && <span className="font-semibold">{meta.bankName}</span>}
                 {meta.accountNumber && (

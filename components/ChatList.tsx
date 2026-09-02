@@ -125,7 +125,7 @@ export const ChatList: React.FC<ChatListProps> = ({ contacts, selectedContactId,
                   onClick={() => { onOpenWallet(); setShowMenu(false); }}
                   className="w-full text-left px-4 py-2 text-slate-700 hover:bg-slate-50 text-sm transition flex items-center gap-2"
                 >
-                  <i className="fa-solid fa-wallet text-emerald-600 w-4"></i> Billetera
+                  <i className="fa-solid fa-money-check-dollar text-emerald-600 w-4"></i> Datos de pago
                 </button>
                 <button
                   onClick={() => { onOpenFinancials(); setShowMenu(false); }}

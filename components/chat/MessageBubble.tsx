@@ -22,11 +22,17 @@ interface MessageBubbleProps {
   onDeleteMessage?: (messageId: string) => void;
   onCopyPaymentInfo: (metadata: any) => void;
   onShowQR: (qrUrl: string, metadata: any) => void;
+  /**
+   * Manda la foto del mensaje al formulario de cotización. Solo llega cuando
+   * quien mira es el vendedor: al cliente no se le ofrecen sus herramientas.
+   */
+  onQuoteImage?: (imageUrl: string, texto?: string) => void;
 }
 
 export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
   msg, contactRole, contactName, copiedText,
   onViewDocument, onMarkPayment, onUpdateMessage, onDeleteMessage, onCopyPaymentInfo, onShowQR,
+  onQuoteImage,
 }) => {
   const isSystem = msg.metadata?.isSystem;
 
@@ -238,6 +244,27 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
     }
   };
 
+  /**
+   * ¿Esta burbuja es una foto? El tipo del mensaje no siempre lo dice: las
+   * fotos que llegan por Storage vienen como 'file' con su mediaType, y las
+   * viejas ni eso, solo la extensión en la URL.
+   */
+  const esImagen = (): boolean => {
+    const url = getFileUrl();
+    if (msg.type === 'image') return !!url;
+    if (msg.mediaType?.startsWith('image/')) return !!url;
+    const tipo = msg.metadata?.fileType || msg.metadata?.mimeType;
+    if (typeof tipo === 'string' && tipo.startsWith('image/')) return !!url;
+    return !!url && /\.(png|jpe?g|gif|webp|heic|bmp)(\?|$)/i.test(url);
+  };
+
+  const handleQuote = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setShowMenu(false);
+    const url = getFileUrl();
+    if (url && onQuoteImage) onQuoteImage(url, msg.text || undefined);
+  };
+
   const handleDelete = (e?: React.MouseEvent) => {
     e?.stopPropagation();
     setShowMenu(false);
@@ -325,6 +352,25 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
                 </svg>
                 <span>Compartir</span>
               </button>
+
+              {/* Cotizar: la foto que mandó el cliente se vuelve un ítem de
+                  la cotización, sin volver a buscarla ni subirla otra vez. */}
+              {onQuoteImage && esImagen() && (
+                <>
+                  <div className="w-px h-4 bg-slate-200" />
+                  <button
+                    type="button"
+                    onClick={handleQuote}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+                    title="Cotizar esta foto"
+                  >
+                    <svg className="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <span>Cotizar</span>
+                  </button>
+                </>
+              )}
 
               {/* Botón Borrar */}
               {onDeleteMessage && (

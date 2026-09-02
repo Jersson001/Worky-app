@@ -410,6 +410,7 @@ export interface PaymentAccountData {
   holderName: string;
   color: string;
   iconClass: string;
+  qrImage?: string;
 }
 
 export const savePaymentAccount = async (
@@ -427,6 +428,7 @@ export const savePaymentAccount = async (
       holder_name: account.holderName,
       color: account.color,
       icon_class: account.iconClass,
+      qr_image: account.qrImage ?? null,
     });
 
     if (error) throw error;
@@ -491,6 +493,7 @@ const loadPaymentAccounts = async (
       holderName: a.holder_name,
       color: a.color,
       iconClass: a.icon_class,
+      qrImage: a.qr_image || undefined,
     }));
 
     callback(accounts);
@@ -543,3 +546,100 @@ export const deleteProject = async (projectId: string): Promise<void> => {
     throw error;
   }
 };
+
+// ─── Cuentas de terceros ─────────────────────────────────────────────────────
+
+export interface ThirdPartyAccountData {
+  id: string;
+  alias: string;
+  bankName: string;
+  accountType: string;
+  accountNumber: string;
+  holderName: string;
+  documentId?: string;
+}
+
+export const saveThirdPartyAccount = async (
+  account: ThirdPartyAccountData
+): Promise<void> => {
+  try {
+    const userId = getCurrentUserId();
+
+    const { error } = await supabase.from('third_party_accounts').upsert({
+      id: account.id,
+      user_id: userId,
+      alias: account.alias,
+      bank_name: account.bankName,
+      account_type: account.accountType || null,
+      account_number: account.accountNumber,
+      holder_name: account.holderName,
+      document_id: account.documentId ?? null,
+    });
+
+    if (error) throw error;
+  } catch (error) {
+    console.error('Error saving third party account:', error);
+    throw error;
+  }
+};
+
+export const deleteThirdPartyAccount = async (accountId: string): Promise<void> => {
+  try {
+    const userId = getCurrentUserId();
+    const { error } = await supabase
+      .from('third_party_accounts')
+      .delete()
+      .eq('id', accountId)
+      .eq('user_id', userId);
+    if (error) throw error;
+  } catch (error) {
+    console.error('Error deleting third party account:', error);
+    throw error;
+  }
+};
+
+export const listenToThirdPartyAccounts = (
+  callback: (accounts: ThirdPartyAccountData[]) => void
+): (() => void) => {
+  const userId = getCurrentUserId();
+
+  const subscription = supabase
+    .channel(uniqueTopic(`third_party_accounts:${userId}`))
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'third_party_accounts', filter: `user_id=eq.${userId}` }, () => {
+      loadThirdPartyAccounts(userId, callback);
+    })
+    .subscribe();
+
+  loadThirdPartyAccounts(userId, callback);
+
+  return () => {
+    void supabase.removeChannel(subscription);
+  };
+};
+
+const loadThirdPartyAccounts = async (
+  userId: string,
+  callback: (accounts: ThirdPartyAccountData[]) => void
+) => {
+  try {
+    const { data, error } = await supabase
+      .from('third_party_accounts')
+      .select('*')
+      .eq('user_id', userId);
+
+    if (error) throw error;
+
+    callback((data || []).map((a: any) => ({
+      id: a.id,
+      alias: a.alias,
+      bankName: a.bank_name,
+      accountType: a.account_type || '',
+      accountNumber: a.account_number,
+      holderName: a.holder_name,
+      documentId: a.document_id || undefined,
+    })));
+  } catch (error) {
+    console.error('Error loading third party accounts:', error);
+  }
+};
+
