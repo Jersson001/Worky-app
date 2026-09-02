@@ -1,7 +1,9 @@
 ext {
     minSdkVersion = 24
-    compileSdkVersion = 35
-    targetSdkVersion = 35
+    // Play exige API 36 desde el 1/09/2026: rechazó el versionCode 16 con
+    // «must target at least API level 36». El AGP 8.7 lo compila sin quejarse.
+    compileSdkVersion = 36
+    targetSdkVersion = 36
     androidxActivityVersion = '1.8.2'
     androidxAppCompatVersion = '1.6.1'
     androidxCoordinatorLayoutVersion = '1.2.0'
