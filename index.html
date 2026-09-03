@@ -266,20 +266,22 @@
              193,4mm y un A4 con estos márgenes deja 190mm, así que iba
              rozando. Casi ninguna impresora imprime hasta el borde —tienen su
              propio margen físico— y ese pelo de diferencia se comía la
-             columna de la derecha.
+             columna de la derecha. Al 0.80 son 180mm y sobra un centímetro.
 
-             Estuvo en 0.80 —180mm, un centímetro de sobra— y se bajó a 0.74
-             para ganar alto: encoger la hoja un 7% más es lo que termina de
-             meter en una sola página una cotización que se pasaba por poco,
-             después de haberle quitado el aire de arriba y del cierre. Son
-             166mm de ancho, con 24mm de margen, y la letra sigue leyéndose. */
+             Se probó bajarlo a 0.74 para que una cotización larga entrase en
+             una sola hoja, y se volvió al 0.80: encogerlo de fábrica le hace
+             la letra más pequeña a todo el mundo para resolverle el caso a
+             unos pocos. Quien lo necesite tiene la escala en el propio
+             diálogo de impresión —«Ajustar al ancho de página», o un
+             porcentaje a mano—, y ahí decide cada quien. Lo que sí se le
+             quitó es el blanco de sobra, que no le costaba tamaño a nadie. */
           width: 850px !important;
           max-width: none !important;
           /* `!important` obligatorio: la hoja lleva un `zoom` en línea desde
              React —el que la encoge para caber en pantalla— y un estilo en
              línea gana a la hoja de estilos. Sin esto se imprime a sus 850px
              reales, más ancha que el papel, y se corta por la derecha. */
-          zoom: 0.74 !important;
+          zoom: 0.80 !important;
           /* Y tiene que poder crecer: con el alto fijo y el desbordamiento
              oculto de la pantalla, lo que no cabía en la primera página no
              pasaba a la segunda, se perdía. */
