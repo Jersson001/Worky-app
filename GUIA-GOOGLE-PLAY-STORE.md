@@ -4,7 +4,41 @@ Esta guía te llevará paso a paso para publicar tu aplicación Worky en Google 
 
 ---
 
-## ⛔ La versión 2.1 fue rechazada — qué falta
+## 📌 Dónde va esto — al 3 de septiembre de 2026
+
+Listo para enviar el **`versionCode` 18 (versión 2.3)**, compilado y firmado en
+`android/app/build/outputs/bundle/release/app-release.aab`.
+
+**Antes de subirlo faltan cuatro cosas:**
+
+1. **Probarlo en un teléfono.** Lo que entró en el 18 —políticas, forma de pago,
+   condiciones, tallas, apartado legal— se verificó por los documentos que
+   genera y porque compila, **no** con la aplicación en marcha.
+2. **Desplegar en Vercel**, para que `worky-app-khaki.vercel.app/privacidad.html`
+   esté viva. Es la URL que pide la ficha, y sin ella no se publica.
+3. **Llenar «Seguridad de los datos»**, que es un formulario aparte de la
+   política y tiene que coincidir con ella (ver el Paso 5).
+4. **Rotar la clave de subida**, expuesta en el historial público de git.
+
+### Los `versionCode` quemados
+
+No se reutilizan aunque la versión nunca llegue a publicarse, así que cada
+intento fallido gasta un número:
+
+| | |
+|---|---|
+| 14 (2.1) | Rechazado: faltaban las credenciales de demostración |
+| 15 | Enviado el 29/08/2026 |
+| 16 | Rechazado por apuntar a API 35, y aun así se quedó con el número |
+| 17 (2.2) | Catálogo en la cotización, «Cotizar» sobre una foto, datos de pago con QR |
+| **18 (2.3)** | Políticas y apartado legal, forma de pago y condiciones, tallas, oficios de comercio, impresión en A4 |
+
+**Play exige API 36** desde el 1 de septiembre de 2026. Está en
+`android/variables.gradle`.
+
+---
+
+## ⛔ Por qué rechazaron la 2.1
 
 Google Play rechazó el `versionCode` **14** (versión 2.1) en agosto de 2026. No
 fue por el contenido de la app:
@@ -45,7 +79,8 @@ fue por el contenido de la app:
   llevaba el icono de plantilla de Capacitor, porque nunca se reemplazó. Los
   originales están en `assets/`; para regenerarlo todo:
   `npx @capacitor/assets generate --android`
-- ⛔ VersionCode 14 (2.1) **rechazado**. Ver arriba.
+- ✅ **Política de privacidad y términos** escritos, en `public/`, empaquetados con la app
+- ⏳ VersionCode 18 (2.3) compilado, **sin probar en teléfono y sin enviar**. Ver arriba.
 
 ---
 
@@ -144,8 +179,10 @@ android/app/build/outputs/bundle/release/app-release.aab
    👥 Gestión completa de contactos y clientes
    📦 Catálogo de productos que compartes por QR o enlace
    📊 Gestión de proyectos y gastos
-   💰 Control de cuentas bancarias
+   💰 Datos de pago: tus cuentas de cobro, con QR
    📄 Cotizaciones por capítulos, con materiales y cálculo de ferretería
+   👕 Cotiza por tallas: camisa, pantalón y calzado
+   📋 Forma de pago y condiciones de negociación en cada cotización
    🧾 Facturas, recibos de caja y cuentas de cobro
    
    Características principales:
@@ -198,21 +235,60 @@ Google Play puede gestionar la firma por ti:
 
 ## ✅ Paso 5: Completar Políticas y Declaraciones
 
-### 5.1 Política de privacidad
+### 5.1 Política de privacidad — **ya está escrita**
 
-**OBLIGATORIO**: Necesitas una URL pública con tu política de privacidad.
+Está en [public/privacidad.html](public/privacidad.html), a nombre de Ferry App
+S.A.S., redactada sobre la Ley 1581 de 2012 y sobre lo que la app guarda de
+verdad, no sobre una plantilla. Los términos, en
+[public/terminos.html](public/terminos.html).
 
-Puedes:
-- Crear una página en tu sitio web
-- Usar un generador como [Privacy Policy Generator](https://www.privacypolicygenerator.info/)
-- Hostearla en GitHub Pages, Vercel, etc.
+Al desplegar quedan en:
 
-La política debe incluir:
-- Qué datos recopilas (cuenta, contactos, mensajes, fotos que subes)
-- Que el backend es Supabase y dónde se guardan los datos
-- Cómo usas los datos
-- Cómo proteges los datos
-- Información de contacto
+```
+https://worky-app-khaki.vercel.app/privacidad.html   ← la URL que pide Play
+https://worky-app-khaki.vercel.app/terminos.html
+```
+
+**Van en `public/` a propósito**: Vite las copia al build y Capacitor las
+empaqueta, así que los enlaces del registro y del apartado Legal funcionan
+dentro de la app y sin conexión.
+
+Dentro de la app se aceptan al registrarse, con una casilla que nace
+desmarcada, y de la aceptación queda constancia —fecha y versión— en la cuenta.
+
+> **Pendiente:** que un abogado las repase una vez, sobre todo por el
+> tratamiento de datos financieros de terceros. Es una revisión, no una
+> redacción desde cero.
+
+### 5.1 bis · Seguridad de los datos — **el que más rechazos causa**
+
+Es un **formulario aparte** de la política, en *Contenido de la app* →
+*Seguridad de los datos*, y **tiene que coincidir con lo que la política dice**.
+Declarar de menos es motivo de rechazo, y es el error típico: se sube la URL de
+la política y se deja este a medias.
+
+Lo que Worky recoge, para llenarlo sin inventar:
+
+| Categoría | Qué |
+|---|---|
+| Información personal | Nombre, correo, teléfono, NIT o documento, dirección |
+| Contactos | Los clientes y proveedores que el usuario registra |
+| Mensajes | Chat, con fotos y archivos |
+| Fotos y vídeos | Catálogo, ítems de cotización, logo, firma, QR de cobro |
+| Información financiera | **Números de cuenta bancaria del propio usuario y de a quién le paga.** No se procesan pagos ni se piden claves |
+| Actividad en la app | Documentos creados, proyectos, gastos |
+
+Todo va cifrado en tránsito, el usuario puede pedir la eliminación —hay un
+botón en el apartado Legal del perfil—, y nada se vende ni se usa para
+publicidad.
+
+### 5.2 Declaraciones de permisos
+
+En Play Console, declara:
+- ✅ **Cámara**: Para tomar fotos de productos/documentos
+- ✅ **Almacenamiento**: Para guardar archivos
+- ✅ **Internet**: Para sincronizar con el servidor
+- ✅ **Vibración**: Para notificaciones
 
 ### 5.2 Declaraciones de permisos
 
@@ -290,8 +366,8 @@ Para futuras actualizaciones:
 
 1. **Incrementa el versionCode** en `android/app/build.gradle`:
    ```gradle
-   versionCode 3  // Incrementa este número
-   versionName "1.1"  // Actualiza la versión visible
+   versionCode 19       // El siguiente libre: el 18 es la 2.3
+   versionName "2.4"    // La versión que ve el usuario
    ```
 
 2. **Genera nuevo AAB**:

@@ -5,6 +5,10 @@ cotizaciones y facturas, y control de proyectos y gastos.
 
 React + TypeScript + Vite sobre Supabase, empaquetada para Android con Capacitor.
 
+La publica **Ferry App S.A.S.** (NIT 902.028.115-2). Sus datos legales viven en
+[utils/legal.ts](utils/legal.ts), y la política de privacidad y los términos en
+`public/`, de donde Vite los copia al build y Capacitor los empaqueta.
+
 ## Arrancar en local
 
 Requisitos: Node.js.
@@ -21,7 +25,7 @@ hay una plantilla en [env.example](env.example).
 
 | | |
 |---|---|
-| [ESTADO-FUNCIONALIDADES.md](ESTADO-FUNCIONALIDADES.md) | Qué funciona hoy y qué no. **Empieza por aquí.** Incluye cómo se arman las cotizaciones por capítulos y qué ve cada oficio |
+| [ESTADO-FUNCIONALIDADES.md](ESTADO-FUNCIONALIDADES.md) | Qué funciona hoy y qué no. **Empieza por aquí.** Cómo se arman las cotizaciones por capítulos, qué ve cada oficio, y por qué el documento se imprime como se imprime |
 | [SEGURIDAD.md](SEGURIDAD.md) | Auditoría de las políticas de la base, agujeros cerrados y cómo repetirla |
 | [PREVIEW-PROYECTO.md](PREVIEW-PROYECTO.md) | Mapa del repositorio: stack, estructura, tablas y rutas públicas |
 | [COMO-FUNCIONA-EL-CHAT.md](COMO-FUNCIONA-EL-CHAT.md) | Mensajería, contactos manuales, tiempo real |
@@ -29,7 +33,7 @@ hay una plantilla en [env.example](env.example).
 | [IDEAS-CATALOGO.md](IDEAS-CATALOGO.md) | Ideas pendientes para el catálogo |
 | [INTEGRACION-WHATSAPP.md](INTEGRACION-WHATSAPP.md) | Cómo se comparten documentos por WhatsApp |
 | [GUIA-PRODUCCION.md](GUIA-PRODUCCION.md) | Montar Supabase y desplegar en web y Android |
-| [GUIA-GOOGLE-PLAY-STORE.md](GUIA-GOOGLE-PLAY-STORE.md) | Publicar en Play Store. **Incluye por qué rechazaron la 2.1.** |
+| [GUIA-GOOGLE-PLAY-STORE.md](GUIA-GOOGLE-PLAY-STORE.md) | Publicar en Play Store. **Incluye por qué rechazaron la 2.1 y la 16.** |
 | [GENERAR-APK-ANDROID-STUDIO.md](GENERAR-APK-ANDROID-STUDIO.md) | Generar el APK |
 | [CHECKLIST-EMPRENDEDOR.md](CHECKLIST-EMPRENDEDOR.md) | Qué dejar hecho para usar la app en un negocio real |
 | [MIGRATION_GUIDE.md](MIGRATION_GUIDE.md) | Qué cambió al pasar de Firebase a Supabase y qué costuras quedaron |

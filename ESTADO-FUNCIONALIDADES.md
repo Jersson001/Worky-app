@@ -1,6 +1,6 @@
 # Estado de funcionalidades — Worky
 
-Última revisión: 1 de septiembre de 2026.
+Última revisión: 3 de septiembre de 2026.
 
 > Este documento describía el proyecto cuando corría sobre Firebase y decía que
 > los clientes no podían tener cuenta, que Storage no estaba implementado y que
@@ -18,6 +18,25 @@ país, celular y contraseña.
 
 `Confirm email` está **desactivado** en Supabase, así que al registrarse entra
 de una, sin pasar por su bandeja de correo.
+
+**Acepta las políticas antes de crear la cuenta.** Una casilla con la Política
+de Tratamiento de Datos y los Términos enlazados al lado, para que se pueda
+leer lo que se acepta sin salir de la pantalla. Nace desmarcada: la Ley 1581
+pide autorización previa, expresa e informada, y una casilla premarcada no es
+un acto de quien se registra.
+
+De la aceptación queda constancia —la fecha y qué versión— en la metadata del
+alta, así que sobrevive aunque no llegue a confirmar el correo. Sin la versión
+la prueba solo diría «aceptó algo, algún día», y el titular puede pedirla.
+La versión vive en `utils/legal.ts`: al cambiar los documentos se sube esa
+fecha, y a quien aceptó una anterior habrá que volver a pedírsela.
+
+Los dos documentos están en `public/`, así que Vite los copia al build y
+Capacitor los empaqueta: los enlaces funcionan dentro de la app y sin conexión.
+El perfil tiene además un apartado **Legal** con los documentos, quién responde
+por la aplicación —Ferry App S.A.S., con su NIT y su correo—, el aviso de
+derechos y la solicitud de eliminación de cuenta, que Play exige a toda
+aplicación con cuentas.
 
 ### El cliente que escanea un QR — sin correo ni celular
 
@@ -178,7 +197,88 @@ la hoja lleva otro en línea desde React —el que la encoge para caber en
 pantalla— y un estilo en línea gana a la hoja de estilos. Sin eso se imprime a
 sus 850 px reales y se corta por la derecha. El 80 % tampoco es la cuenta
 exacta: da 180 mm sobre los 190 útiles de un A4, y esa holgura es a propósito,
-porque casi ninguna impresora llega al borde del papel.
+porque casi ninguna impresora llega al borde del papel. **Nunca subirlo al
+86 %**, que es la cuenta justa: da 193 mm y se come la columna de la derecha.
+
+Bajarlo tampoco: se probó al 74 % para meter una cotización larga en una hoja y
+se volvió al 80 %. Encogerlo de fábrica le hace la letra más pequeña a todo el
+mundo para resolverle el caso a unos pocos, y una cotización larga no cabe por
+mucho que se reduzca. Quien lo necesite tiene la escala en el diálogo de
+impresión.
+
+**El documento se monta colgado del `body`, con un portal.** No es un detalle
+de estilo: vive dentro del árbol de la aplicación, y para imprimirlo solo a él
+se le sacaba del flujo con `position: absolute`. Lo posicionado en absoluto
+**no se reparte en páginas** —el navegador lo pinta en la primera y corta—, así
+que una cotización de dos hojas salía sin su final: sin firma y sin cierre.
+Colgado del `body` se puede esconder la aplicación entera (`#root { display:
+none }`, que activa la clase `imprimiendo-documento`) y dejar el documento en
+flujo normal, que es lo único que sabe paginar. El `position: absolute` se
+queda solo para el informe financiero, que lo sigue necesitando.
+
+Lo que no debe partirse entre hojas lo dicen reglas propias: las filas, la
+firma —el garabato en una hoja y su raya en la siguiente queda pésimo en un
+documento que el cliente firma—, los totales y el bloque de foto y comentario.
+El encabezado de la tabla se repite en cada página; sin él, la segunda son
+cifras en columnas sin nombre.
+
+Los espacios se aprietan **solo en papel**, con las clases `marco-doc`,
+`cuerpo-doc`, `cabecera-doc` y `cierre-doc`: unos 82 mm entre el aire de la
+cabecera, el del cierre y el hueco del pie, que en pantalla se agradecen y en
+la hoja empujaban el final a una segunda página casi vacía.
+
+El HTML que se comparte lleva sus propias reglas de A4 —`@page` con márgenes de
+12 mm, `print-color-adjust: exact` para que los fondos azules no salgan en
+blanco, y los mismos cortes de página—. El ancho nunca fue problema ahí: la
+maquetación es fluida y cede ante un papel más estrecho.
+
+El encabezado con la fecha y la URL que sale arriba al imprimir **lo pone
+Chrome, no Worky**: se quita desmarcando «Encabezados y pies de página» en su
+diálogo. No hay CSS que lo controle.
+
+### Forma de pago y condiciones de negociación
+
+Lo que en el formato de papel iba al pie. Sin ello el cliente aprueba una cifra
+y luego se discute el plazo, el anticipo, qué incluye y qué cubre la garantía.
+
+**La forma de pago la ven todos los oficios**, que cobrar se cobra en todos. Se
+escribe solo el porcentaje del anticipo y el saldo sale por resta, para que los
+dos números sumen el total sin céntimos perdidos; los montos van calculados. La
+cuenta se elige de la libreta de datos de pago y **se copia entera en el
+documento**, no por referencia: si mañana se borra de la libreta, la cotización
+que ya se mandó tiene que seguir diciendo a dónde consignar. Mismo criterio que
+el QR de los recibos.
+
+**Las condiciones son de carpintería y obra**, los oficios con capítulos, donde
+se pacta plazo, anticipo y garantía. Cinco apartados —entrega, qué no incluye,
+qué pone la obra, garantía y notas—, cada uno con su interruptor y su texto
+editable, un renglón por punto.
+
+Se guardan **en el perfil**, no en cada cotización: un carpintero manda las
+mismas siempre, y reescribir «la obra deberá garantizar la seguridad de los
+materiales» cada vez es trabajo que nadie hace dos veces. Viven en
+`user_profiles.condiciones_cotizacion` (jsonb) y `anticipo_porcentaje`
+(smallint, 0–100). Se retocan en una cotización concreta sin tocar la
+plantilla, y un botón las deja como las de siempre.
+
+### Cotizar por tallas
+
+En confección la cantidad no se escribe, se cuenta: un pedido de uniformes no
+son «20 camisas», son 3 S, 8 M, 6 L y 3 XL. Ese desglose es lo que el cliente
+revisa y lo que se manda a producción, y antes acababa escrito a mano en el
+campo de comentarios.
+
+La línea lleva su cuadro de tallas, igual que las de obra llevan su material.
+Tres rejillas en `utils/tallas.ts`: camisa por letra (XS–XXL), pantalón por
+cintura (28–40) y calzado por número (34–44). Al encenderlo **la cantidad deja
+de escribirse** y sale de sumarlas; dejarla editable permitía que la cantidad y
+el desglose dijeran cosas distintas en el mismo documento.
+
+Nace apagado —la mayoría de las líneas no son prendas— y cambiar de rejilla no
+arrastra las cantidades: una M de camisa no es una 32 de pantalón.
+
+Los rangos están sin validar con un taller de verdad. Si hace falta talla por
+edad para uniformes escolares, o la 46 en calzado, es un renglón en `REJILLAS`.
 
 ---
 
@@ -205,18 +305,27 @@ un capítulo de «Drywall y Cielorrasos» solo le hace dudar de si la app es par
 | `carpinteria`, `muebles` | Carpintería |
 | `decoracion` | Las dos |
 | `construccion`, `reformas`, `pintura`, `plomeria`, `electricidad` | Obra blanca |
+| `moda_textiles`, `calzado`, `belleza`, `articulos_varios` | Ninguno: se vende de catálogo |
 | `otro` | Ninguno: solo cotización básica |
 | *(vacío o desconocido)* | Todos |
 
 Sin oficio declarado se enseñan todos a propósito: eran 8 de 17 usuarios cuando
 se hizo, gente que ya usaba los capítulos. Quien se registra ahora sí elige.
 
+Los de comercio no ven capítulos porque ahí se vende de catálogo y se cotiza
+por cantidad, no por metro lineal de mesón. La forma de pago y la cuenta sí las
+ven, y los de confección tienen su cuadro de tallas.
+
 Cuando no hay capítulos, las pestañas Básica/Personalizada desaparecen enteras
 —una sola pestaña solo invita a buscar la otra— y el modo se fuerza a básica.
 
-Añadir una profesión son dos líneas: el `<option>` en `WelcomeOnboarding.tsx` y
-su entrada en `GREMIOS_POR_OFICIO`. **Las dos**: si falta la del mapeo, cae en
-el caso seguro y ve todo.
+**Añadir una profesión es una línea**, en `utils/tiposDeNegocio.ts`. Estaba
+escrita en tres sitios —el registro, el editor de perfil y la tabla de gremios—
+y olvidar el tercero no daba error: `gremiosVisibles` le enseña *todos* los
+capítulos a quien no reconoce, así que una tienda de ropa habría visto «Cocinas
+Integrales» en su cotización. Ahora la lista es una y la tabla se deriva de
+ella. El selector va agrupado en «Obra y construcción» y «Comercio», que con
+trece opciones seguidas ya no se lee.
 
 ### Los capítulos
 
@@ -310,11 +419,20 @@ todas invisibles hasta que se miraron los datos de verdad:
   editor de perfil, que guarda el correo en el perfil pero no en la cuenta de
   autenticación. Falta llamar a `updateUser` con correo y contraseña.
 - **Capítulos para oficios que no son de obra.** Un abogado o un sastre usan la
-  cotización básica, que les sobra. Si algún día se quieren capítulos propios
-  —«Honorarios», «Confección»— el mecanismo ya está: una entrada en el selector
-  de tipo de negocio y otra en `GREMIOS_POR_OFICIO`.
+  cotización básica, que con el cuadro de tallas ya les cunde. Si algún día se
+  quieren capítulos propios —«Honorarios», «Uniformes empresariales»— el
+  mecanismo ya está: basta con darle gremios a su entrada en
+  `utils/tiposDeNegocio.ts` y añadir los capítulos.
+- **Lo que cobra la confección aparte de la prenda.** El **ponchado**
+  —digitalizar el logo, pago único que se olvida cobrar—, la personalización
+  por unidad (bordado, estampado) y la muestra de aprobación. Por ahora el
+  ponchado se pone como línea suelta sin tallas y funciona.
 - **Presupuesto de materiales aparte.** Los materiales salen dentro de la
   cotización, no como lista de compra independiente para la ferretería.
+- **Condiciones de negociación para comercio.** Solo las ven carpintería y
+  obra. Un taller de uniformes querría las suyas —cambios de talla, variación
+  de color por lote, la producción arranca con la muestra aprobada—, pero los
+  textos de fábrica son de obra y no le servirían.
 
 ---
 
@@ -327,6 +445,34 @@ cerraron tres agujeros. Está todo en [SEGURIDAD.md](SEGURIDAD.md).
 
 ## Publicación
 
-La versión 2.1 (`versionCode` 14) **fue rechazada** por Google Play: faltaban las
-credenciales de la cuenta de demostración. Ver
-[GUIA-GOOGLE-PLAY-STORE.md](GUIA-GOOGLE-PLAY-STORE.md).
+Worky lo publica **Ferry App S.A.S.**, NIT 902.028.115-2, con domicilio en
+Bogotá. Sus datos están en `utils/legal.ts`, que es de donde los leen el
+registro, el apartado Legal del perfil y los documentos.
+
+**Historia de los `versionCode`.** No se reutilizan aunque la versión nunca
+llegue a publicarse, así que cada intento fallido quema un número:
+
+| | |
+|---|---|
+| 14 (2.1) | Rechazado: faltaban las credenciales de la cuenta de demostración |
+| 15 | Enviado el 29/08/2026 |
+| 16 | Rechazado por apuntar a API 35, y aun así se quedó con el número |
+| 17 (2.2) | Catálogo en la cotización, «Cotizar» sobre una foto, datos de pago con QR, API 36 |
+| **18 (2.3)** | Políticas y apartado legal, forma de pago y condiciones, cotizar por tallas, oficios de comercio, impresión en A4 |
+
+Play exige **API 36** desde el 1 de septiembre de 2026.
+
+**Lo que falta antes de subir el 18**, al 3 de septiembre de 2026:
+
+1. **Probarlo en un teléfono.** Nada de lo que entró en el 18 se ha visto
+   funcionando con sesión iniciada: se verificaron los documentos generados y
+   que todo compila, no la aplicación en marcha.
+2. **Desplegar en Vercel.** La ficha de Play pide una URL viva de política de
+   privacidad y `worky-app-khaki.vercel.app/privacidad.html` aún no lo está.
+3. **Llenar «Seguridad de los datos»** en Play Console. Es un formulario aparte
+   de la política y **tiene que coincidir con ella**: declarar de menos es
+   motivo de rechazo.
+4. **Rotar la clave de subida**, que quedó expuesta en el historial público de
+   git.
+
+Ver [GUIA-GOOGLE-PLAY-STORE.md](GUIA-GOOGLE-PLAY-STORE.md).

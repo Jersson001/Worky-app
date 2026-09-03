@@ -68,6 +68,7 @@ worky_app/
 │
 ├── hooks/          useChatFormState.ts · useFileUpload.ts
 ├── utils/          currency · imagen · id · errorMessage · carpentryCalculations · taxCalculations
+│                  legal · tiposDeNegocio · condicionesCotizacion · tallas
 ├── supabase/       functions/ (gemini, view-doc — ambas sin uso) y migrations/
 ├── android/        Proyecto Capacitor
 └── *.sql           Migraciones para el SQL Editor, idempotentes
@@ -84,7 +85,7 @@ Tablas de `public` que toca la app:
 
 | Tabla | Para qué |
 |---|---|
-| `user_profiles` | El negocio: nombre, dueño, logo, `is_admin`, `is_pro`, `trial_ends_at` |
+| `user_profiles` | El negocio: nombre, dueño, logo, `is_admin`, `is_pro`, `trial_ends_at`, y su plantilla de cotización en `condiciones_cotizacion` (jsonb) y `anticipo_porcentaje` |
 | `public_info` | Índice público: `user_id`, `phone_or_email`, nombre y avatar. **Lectura pública** |
 | `user_index` | Índice viejo con claves escapadas al estilo Firebase. Solo compatibilidad |
 | `contacts` | Clientes, proveedores y colaboradores. `contact_user_id` es `NULL` en los contactos manuales |
@@ -92,7 +93,8 @@ Tablas de `public` que toca la app:
 | `user_chats` | Último mensaje y contador de no leídos por conversación |
 | `products` · `categories` | Catálogo |
 | `projects` · `expenses` | Proyectos y sus gastos |
-| `payment_accounts` | Cuentas bancarias propias y de terceros |
+| `payment_accounts` | Cuentas propias donde le consignan, con su QR de cobro en `qr_image` |
+| `third_party_accounts` | Las cuentas a las que él paga. Vivían en el `localStorage` y se perdían al reinstalar |
 
 Todas tienen RLS activado. Las políticas se auditaron el 28 de agosto de 2026:
 [SEGURIDAD.md](SEGURIDAD.md).
@@ -130,6 +132,7 @@ aparezca el login:
 | `?catalogo=<userId>` | Pinta el catálogo del vendedor. Se resuelve en `index.tsx`, antes de montar la app |
 | `?view=<documentId>` | Enseña una cotización o factura compartida |
 | `?vendedor=<userId>` | Guarda con quién quiere hablar quien viene del QR, y le abre ese chat al entrar |
+| `/privacidad.html` · `/terminos.html` | Los documentos legales. Son HTML suelto en `public/`, sin React: los sirve el hosting tal cual, y Capacitor los empaqueta para que abran dentro de la app sin conexión |
 
 Supabase sirve todo HTML público de Storage como `text/plain` con `nosniff`, así
 que **la página la pinta la app**, no Storage. El porqué está en
