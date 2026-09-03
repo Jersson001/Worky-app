@@ -30,8 +30,14 @@ android {
         // Play lo rechazó por apuntar a API 35 y aun así se quedó con el
         // número. El 17 lleva catálogo en la cotización, «Cotizar» sobre una
         // foto del chat, los datos de pago con QR y ya apunta a API 36.
-        versionCode 17
-        versionName "2.2"
+        //
+        // El 18 (2.3): aceptación de las políticas al registrarse y apartado
+        // legal en el perfil —lo que Play pide para publicar—, forma de pago y
+        // condiciones de negociación en la cotización, cotizar por tallas para
+        // confección y calzado, oficios de comercio, y el documento arreglado
+        // para imprimir en A4 sin perder el final.
+        versionCode 18
+        versionName "2.3"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
