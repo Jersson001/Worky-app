@@ -66,14 +66,20 @@ const fotos = (imagenes?: string[]): string =>
     : '';
 
 /**
- * Los comentarios de la línea. Se escribían en el formulario y no salían por
- * ninguna parte: son las condiciones del trabajo —«según sugerencia enviada»—
- * y sin ellas el cliente aprueba una foto y un precio, nada más.
+ * La foto y el comentario, uno al lado del otro.
+ *
+ * La foto ocupa 64px y a su derecha quedaba media celda en blanco. El
+ * comentario lleva las condiciones del trabajo —«según sugerencia enviada»— y
+ * no salía por ninguna parte: se escribía en el formulario y ahí moría. Va en
+ * negro, no en gris de nota al pie, porque es parte de lo que el cliente
+ * aprueba.
  */
-const comentario = (item: any): string =>
-  item?.comments?.trim()
-    ? `<div class="nota">${esc(item.comments.trim())}</div>`
-    : '';
+const fotosYNota = (item: any): string => {
+  const nota = item?.comments?.trim();
+  const imgs = fotos(item?.images);
+  if (!nota && !imgs) return '';
+  return `<div class="media">${imgs}${nota ? `<div class="nota">${esc(nota)}</div>` : ''}</div>`;
+};
 
 /** Modo personalizado de cotización: secciones → grupos → ítems. */
 const tablaSecciones = (sections: any[]): string =>
@@ -91,7 +97,7 @@ const tablaSecciones = (sections: any[]): string =>
           // una fila de trabajo en cero.
           const filaTrabajo = manoDeObra > 0 || material === 0
             ? `<tr>
-            <td>${esc(i.description)}<span class="detalle">${esc(describeCantidad(i))}</span>${comentario(i)}${fotos(i.images)}</td>
+            <td>${esc(i.description)}<span class="detalle">${esc(describeCantidad(i))}</span>${fotosYNota(i)}</td>
             <td class="num">${formatCurrency(i.unitCost || 0)}</td>
             <td class="num">${formatCurrency(manoDeObra)}</td>
           </tr>`
@@ -244,7 +250,8 @@ export const buildDocumentHtml = (doc: DocumentoCompartido, pieCatalogo = ''): s
   .num{text-align:right;white-space:nowrap}
   .grupo td{background:#f8fafc;font-weight:700;font-size:.75rem;text-transform:uppercase;color:#64748b;letter-spacing:.03em}
   .detalle{display:block;color:#94a3b8;font-size:.78rem;margin-top:2px}
-  .nota{color:#475569;font-size:.82rem;margin-top:4px;white-space:pre-line}
+  .media{display:flex;gap:10px;align-items:flex-start;margin-top:6px}
+  .nota{flex:1;min-width:0;color:#0f172a;font-size:11px;line-height:1.35;white-space:pre-line;overflow-wrap:anywhere}
   .material td{color:#475569;font-size:.82rem;padding-top:2px;padding-bottom:9px}
   .material td:first-child{padding-left:22px}
   .totales{margin-top:18px;border-top:2px solid #e2e8f0;padding-top:12px}
@@ -252,7 +259,7 @@ export const buildDocumentHtml = (doc: DocumentoCompartido, pieCatalogo = ''): s
   .tot.total{font-size:1.15rem;font-weight:700;color:#2563eb;border-top:1px solid #e2e8f0;margin-top:6px;padding-top:10px}
   .firma{margin-top:26px;text-align:center}
   .firma img{max-width:190px;max-height:80px}
-  .fotos{display:flex;gap:6px;margin-top:6px}
+  .fotos{display:flex;gap:6px;flex-shrink:0}
   .fotos img{width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid #e2e8f0}
   .firma p{border-top:1px solid #94a3b8;display:inline-block;padding-top:5px;margin-top:5px;color:#64748b;font-size:.8rem}
   footer{text-align:center;color:#94a3b8;font-size:.75rem;padding:20px}

@@ -344,26 +344,30 @@ const QuoteTemplate = ({ data, businessLogo, userProfile, signature, scale, posi
                                                     <React.Fragment key={item.id}>
                                                     <tr className="border-t border-gray-100">
                                                         <td className="py-2 px-3 text-sm text-gray-800">
-                                                            {item.description}
-                                                            {/* Los comentarios: se escribían en el formulario y
-                                                                no salían por ninguna parte. Son las condiciones
-                                                                del trabajo —«según sugerencia enviada»— y sin
-                                                                ellas el cliente aprueba una foto y un precio. */}
-                                                            {item.comments?.trim() && (
-                                                                <div className="text-xs text-gray-500 whitespace-pre-line mt-0.5">
-                                                                    {item.comments.trim()}
-                                                                </div>
-                                                            )}
-                                                            {/* Las fotos del ítem: se podían adjuntar en el
-                                                                formulario pero no llegaban al documento. */}
-                                                            {item.images && item.images.length > 0 && (
-                                                                <div className="flex gap-1.5 mt-1.5">
-                                                                    {item.images.slice(0, 3).map((img, i) => (
-                                                                        <img key={i} src={img} className="w-20 h-20 rounded object-cover border border-gray-200" />
-                                                                    ))}
-                                                                    {item.images.length > 3 && (
-                                                                        <div className="w-20 h-20 rounded border border-gray-200 bg-gray-100 flex items-center justify-center text-[10px] text-gray-500 font-bold">
-                                                                            +{item.images.length - 3}
+                                                            {item.description && <div>{item.description}</div>}
+                                                            {/* La foto y el comentario van uno al lado del otro:
+                                                                la foto ocupa 80px y a su derecha quedaba media
+                                                                celda en blanco. El comentario lleva las
+                                                                condiciones del trabajo —«según sugerencia
+                                                                enviada»—, así que se lee en negro y no en gris
+                                                                de nota al pie: es parte de lo que se aprueba. */}
+                                                            {((item.images && item.images.length > 0) || item.comments?.trim()) && (
+                                                                <div className="flex gap-2.5 mt-1.5 items-start">
+                                                                    {item.images && item.images.length > 0 && (
+                                                                        <div className="flex gap-1.5 flex-shrink-0">
+                                                                            {item.images.slice(0, 3).map((img, i) => (
+                                                                                <img key={i} src={img} className="w-20 h-20 rounded object-cover border border-gray-200" />
+                                                                            ))}
+                                                                            {item.images.length > 3 && (
+                                                                                <div className="w-20 h-20 rounded border border-gray-200 bg-gray-100 flex items-center justify-center text-[10px] text-gray-500 font-bold">
+                                                                                    +{item.images.length - 3}
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    )}
+                                                                    {item.comments?.trim() && (
+                                                                        <div className="flex-1 min-w-0 text-[11px] leading-snug text-gray-900 whitespace-pre-line break-words">
+                                                                            {item.comments.trim()}
                                                                         </div>
                                                                     )}
                                                                 </div>
