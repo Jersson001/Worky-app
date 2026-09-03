@@ -251,7 +251,7 @@ export const buildDocumentHtml = (doc: DocumentoCompartido, pieCatalogo = ''): s
   .grupo td{background:#f8fafc;font-weight:700;font-size:.75rem;text-transform:uppercase;color:#64748b;letter-spacing:.03em}
   .detalle{display:block;color:#94a3b8;font-size:.78rem;margin-top:2px}
   .media{display:flex;gap:10px;align-items:flex-start;margin-top:6px}
-  .nota{flex:1;min-width:0;color:#0f172a;font-size:11px;line-height:1.35;white-space:pre-line;overflow-wrap:anywhere}
+  .nota{flex:1;min-width:0;color:#0f172a;font-size:14px;line-height:1.4;white-space:pre-line;overflow-wrap:anywhere}
   .material td{color:#475569;font-size:.82rem;padding-top:2px;padding-bottom:9px}
   .material td:first-child{padding-left:22px}
   .totales{margin-top:18px;border-top:2px solid #e2e8f0;padding-top:12px}

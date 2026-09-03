@@ -366,7 +366,7 @@ const QuoteTemplate = ({ data, businessLogo, userProfile, signature, scale, posi
                                                                         </div>
                                                                     )}
                                                                     {item.comments?.trim() && (
-                                                                        <div className="flex-1 min-w-0 text-[11px] leading-snug text-gray-900 whitespace-pre-line break-words">
+                                                                        <div className="flex-1 min-w-0 text-[14px] leading-snug text-gray-900 whitespace-pre-line break-words">
                                                                             {item.comments.trim()}
                                                                         </div>
                                                                     )}
