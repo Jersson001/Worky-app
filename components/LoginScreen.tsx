@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { supabase } from '../services/supabaseConfig';
 import { setCurrentUserId } from '../services/messagingService';
 import { llegoInvitado, vendedorPendiente } from '../services/catalogShareService';
+import { URL_PRIVACIDAD, URL_TERMINOS, constanciaDeAceptacion } from '../utils/legal';
 
 interface LoginScreenProps {
   onLogin: () => void;
@@ -74,6 +75,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister, i
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  /**
+   * Si aceptó la política y los términos. Nace apagado a propósito: la
+   * autorización para tratar datos personales tiene que ser un acto de quien
+   * se registra, y una casilla premarcada no lo es.
+   */
+  const [aceptaLegal, setAceptaLegal] = useState(false);
   // Quien llega invitado desde un catálogo casi nunca tiene cuenta: se le abre
   // directamente en «Registrarse», que si no acaba mirando un formulario de
   // acceso que no puede rellenar.
@@ -199,6 +206,14 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister, i
           return;
         }
 
+        // Sin autorización no se crea la cuenta. No es un formalismo: es lo
+        // que la Ley 1581 pide antes de tratar los datos de nadie.
+        if (!aceptaLegal) {
+          setError('Para crear la cuenta hay que aceptar la Política de Datos y los Términos.');
+          setLoading(false);
+          return;
+        }
+
         const fullName = formularioCorto ? firstName.trim() : `${firstName} ${lastName}`;
         // E.164 estricto (sin espacios): Supabase rechaza el envío de SMS si el
         // número no matchea ese formato exacto.
@@ -220,7 +235,15 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister, i
           email: normalizedEmail,
           password,
           options: {
-            data: { full_name: fullName, phone: fullPhone, ...(vendedor ? { vendedor } : {}) },
+            // La constancia de la aceptación viaja con el alta y queda en la
+            // cuenta: el titular puede pedir prueba de la autorización que
+            // dio, y aquí sobrevive aunque no llegue a confirmar el correo.
+            data: {
+              full_name: fullName,
+              phone: fullPhone,
+              ...constanciaDeAceptacion(),
+              ...(vendedor ? { vendedor } : {}),
+            },
           },
         });
 
@@ -667,6 +690,42 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister, i
                     />
                   </div>
                 </>
+              )}
+              {/* La autorización para tratar sus datos. Va con los enlaces al
+                  lado, no detrás de un «leer más»: se acepta lo que se puede
+                  leer sin salir de aquí. */}
+              {authMode === 'register' && (
+                <label className="flex items-start gap-2.5 cursor-pointer select-none bg-slate-50 border border-slate-200 rounded-xl p-3">
+                  <input
+                    type="checkbox"
+                    checked={aceptaLegal}
+                    onChange={e => setAceptaLegal(e.target.checked)}
+                    className="mt-0.5 w-4 h-4 flex-shrink-0 accent-blue-600 cursor-pointer"
+                  />
+                  <span className="text-[11px] leading-snug text-slate-600">
+                    He leído y acepto la{' '}
+                    <a
+                      href={URL_PRIVACIDAD}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={e => e.stopPropagation()}
+                      className="text-blue-600 font-bold hover:underline"
+                    >
+                      Política de Tratamiento de Datos
+                    </a>{' '}
+                    y los{' '}
+                    <a
+                      href={URL_TERMINOS}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={e => e.stopPropagation()}
+                      className="text-blue-600 font-bold hover:underline"
+                    >
+                      Términos y Condiciones
+                    </a>
+                    , y autorizo el tratamiento de mis datos personales.
+                  </span>
+                </label>
               )}
               {error && (
                 <div className="text-red-600 text-xs font-semibold bg-red-50 p-3 rounded-xl border border-red-200 flex items-center gap-2">

@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { UserProfileData } from '../types';
+import { EMPRESA, URL_PRIVACIDAD, URL_TERMINOS, avisoDerechos } from '../utils/legal';
 
 interface ProfileEditorProps {
   userProfile: UserProfileData;
@@ -297,6 +298,66 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ userProfile, onSav
                 />
               </div>
             </div>
+          </div>
+
+          {/* Sección: Legal
+              Quién responde por la aplicación y dónde están sus documentos.
+              Play pide la política a la vista, y la Ley 1581 que el titular
+              pueda llegar a ella y ejercer sus derechos sin buscarla. */}
+          <div className="space-y-4 pt-4 border-t border-slate-200">
+            <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+              <i className="fa-solid fa-shield-halved text-indigo-600"></i>
+              Legal
+            </h3>
+
+            <div className="grid grid-cols-2 gap-3">
+              <a
+                href={URL_PRIVACIDAD}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2.5 p-3 bg-slate-50 border border-slate-200 rounded-xl hover:border-indigo-400 hover:bg-white transition"
+              >
+                <i className="fa-solid fa-user-shield text-indigo-600"></i>
+                <span className="text-sm font-semibold text-slate-700">Política de Datos</span>
+              </a>
+              <a
+                href={URL_TERMINOS}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2.5 p-3 bg-slate-50 border border-slate-200 rounded-xl hover:border-indigo-400 hover:bg-white transition"
+              >
+                <i className="fa-solid fa-file-contract text-indigo-600"></i>
+                <span className="text-sm font-semibold text-slate-700">Términos</span>
+              </a>
+            </div>
+
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-1.5">
+              <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Responsable</p>
+              <p className="text-sm font-bold text-slate-800">{EMPRESA.razonSocial}</p>
+              <p className="text-xs text-slate-600">NIT {EMPRESA.nit}</p>
+              <p className="text-xs text-slate-600">{EMPRESA.direccion}</p>
+              <p className="text-xs text-slate-600">{EMPRESA.ciudad}</p>
+              <a
+                href={`mailto:${EMPRESA.correo}`}
+                className="text-xs text-indigo-600 font-semibold hover:underline inline-block pt-1"
+              >
+                {EMPRESA.correo}
+              </a>
+            </div>
+
+            {/* Play exige que una aplicación con cuentas diga cómo se borran.
+                Va por correo, que es lo que promete la política. */}
+            <a
+              href={`mailto:${EMPRESA.correo}?subject=${encodeURIComponent('Solicitud de eliminación de cuenta y datos')}&body=${encodeURIComponent('Solicito la eliminación de mi cuenta de Worky y de mis datos personales.\n\nNombre:\nDocumento:\nCorreo de la cuenta:\n')}`}
+              className="flex items-center justify-center gap-2 w-full p-3 bg-white border border-red-200 text-red-600 rounded-xl text-sm font-semibold hover:bg-red-50 transition"
+            >
+              <i className="fa-solid fa-trash-can text-xs"></i>
+              Solicitar eliminación de mi cuenta y datos
+            </a>
+
+            <p className="text-[11px] text-slate-400 text-center pt-1">
+              {avisoDerechos()}
+            </p>
           </div>
         </div>
 
