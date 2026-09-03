@@ -228,7 +228,13 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
 
     const isPersonalizada = mode === 'personalizada';
     const validItemsSinSubir = isPersonalizada ? flattenSectionsToQuoteItems(sections) : items.filter(i => i.description && i.price > 0);
-    if (validItemsSinSubir.length === 0) return;
+    // El botón se habilita con el total en pantalla, así que llegar aquí sin
+    // líneas significa que ambos criterios se separaron otra vez. Se avisa: un
+    // return mudo deja al usuario dándole al botón sin saber qué le falta.
+    if (validItemsSinSubir.length === 0) {
+      alert('La cotización no tiene ninguna línea con precio, así que no se envió. Revisa que los ítems tengan cantidad y costo unitario.');
+      return;
+    }
 
     // Las fotos van a Storage y en la cotización queda su dirección. Antes
     // viajaban en base64 dentro del mensaje: cada cotización con fotos pesaba
@@ -238,14 +244,11 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
 
     setEnviandoCotizacion(true);
     try {
-      console.log('[handleSendQuote] Iniciando envío de cotización, modo:', isPersonalizada ? 'personalizada' : 'basica');
-
       validItems = await Promise.all(
         validItemsSinSubir.map(async item => ({ ...item, images: await uploadQuotePhotos(item.images) })),
       );
 
       if (isPersonalizada) {
-        console.log('[handleSendQuote] Procesando secciones personalizada...');
         sectionsSubidas = await Promise.all(
           sections.map(async section => ({
             ...section,
@@ -260,7 +263,6 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
           })),
         );
       }
-      console.log('[handleSendQuote] Fotos procesadas exitosamente');
     } catch (error) {
       // No se manda a medias: sin las fotos, el cliente recibe una cotización
       // distinta de la que se preparó.

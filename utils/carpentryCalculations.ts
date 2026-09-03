@@ -575,8 +575,16 @@ export const flattenSectionsToQuoteItems = (sections: CarpentrySection[]): Quote
   sections.forEach(section => {
     section.groups.forEach(group => {
       group.items.forEach(item => {
-        if (!item.description.trim()) return;
-        const base = `${section.name} · ${group.label} · ${item.description}`;
+        // Sin nombre pero con precio, la línea igual se cobra: se la nombra con
+        // su capítulo. Descartarla, como se hacía antes, dejaba una cotización
+        // cuyo total salía en pantalla pero cuyo desglose venía vacío, y el
+        // envío se cancelaba sin decir nada —el botón estaba habilitado porque
+        // computeGrandTotal sí la contaba—. Quien adjunta la foto del clóset y
+        // le pone el precio ya dijo lo que era.
+        const desc = item.description.trim();
+        const base = desc
+          ? `${section.name} · ${group.label} · ${desc}`
+          : `${section.name} · ${group.label}`;
         const manoDeObra = computeLineSubtotal(item);
         if (manoDeObra > 0) {
           flat.push({ description: base, quantity: 1, price: manoDeObra });
