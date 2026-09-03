@@ -300,9 +300,9 @@ const QuoteTemplate = ({ data, businessLogo, userProfile, signature, scale, posi
     const qrCodeUrl = qrImageUrl(enlaceCatalogo, 120);
     
     return (
-    <div className="p-16 h-full relative bg-white">
+    <div className="p-16 h-full relative bg-white cuerpo-doc">
         {/* Modern Header with Logo */}
-        <div className="mb-10 pb-8 border-b-2 border-blue-600">
+        <div className="mb-10 pb-8 border-b-2 border-blue-600 cabecera-doc">
             <div className="flex justify-between items-start gap-6 mb-4">
                 <div className="flex-1">
                     <h1 className="text-4xl font-bold text-gray-900 mb-2">COTIZACIÓN</h1>
@@ -593,9 +593,9 @@ const QuoteTemplate = ({ data, businessLogo, userProfile, signature, scale, posi
 };
 
 const InvoiceTemplate = ({ data, businessLogo, userProfile, signature, scale, position, showSignature, onDragStart, onDrag, onDragEnd }: { data: InvoiceData, businessLogo?: string, userProfile?: UserProfileData | null } & Partial<SignatureProps>) => (
-    <div className="p-16 h-full relative bg-white">
+    <div className="p-16 h-full relative bg-white cuerpo-doc">
         {/* Modern Header */}
-        <div className="mb-10 pb-8 border-b-2 border-purple-600">
+        <div className="mb-10 pb-8 border-b-2 border-purple-600 cabecera-doc">
             <div className="flex justify-between items-start">
                 <div className="flex-1">
                     <h1 className="text-4xl font-bold text-gray-900 mb-2">FACTURA</h1>
@@ -699,7 +699,7 @@ const InvoiceTemplate = ({ data, businessLogo, userProfile, signature, scale, po
 );
 
 const CollectionTemplate = ({ data, businessLogo, userProfile, signature, scale, position, showSignature, onDragStart, onDrag, onDragEnd }: { data: CollectionAccountData, businessLogo?: string, userProfile?: UserProfileData | null } & Partial<SignatureProps>) => (
-    <div className="p-16 h-full relative bg-white">
+    <div className="p-16 h-full relative bg-white cuerpo-doc">
         {/* Header with Logo */}
         <div className="text-center mb-12 pb-8 border-b-2 border-emerald-600">
             {businessLogo && (
@@ -816,14 +816,14 @@ const CollectionTemplate = ({ data, businessLogo, userProfile, signature, scale,
 );
 
 const ReceiptTemplate = ({ data, businessLogo, userProfile, signature, scale, position, showSignature, onDragStart, onDrag, onDragEnd }: { data: ReceiptData, businessLogo?: string, userProfile?: UserProfileData | null } & Partial<SignatureProps>) => (
-    <div className="p-16 h-full relative bg-white">
+    <div className="p-16 h-full relative bg-white cuerpo-doc">
         {/* Paid Stamp */}
         <div className="absolute top-20 right-20 border-4 border-green-600 text-green-600 p-4 rounded-lg rotate-[-15deg] opacity-90 shadow-lg">
             <p className="text-3xl font-black uppercase">PAGADO</p>
         </div>
         
         {/* Header */}
-        <div className="mb-10 pb-8 border-b-2 border-gray-900">
+        <div className="mb-10 pb-8 border-b-2 border-gray-900 cabecera-doc">
             <div className="flex justify-between items-start">
                 <div className="flex-1">
                     {businessLogo && (
@@ -914,9 +914,9 @@ const ReceiptTemplate = ({ data, businessLogo, userProfile, signature, scale, po
 );
 
 const ExpenseReceiptTemplate = ({ data, businessLogo, userProfile, signature, scale, position, showSignature, onDragStart, onDrag, onDragEnd }: { data: ReceiptData, businessLogo?: string, userProfile?: UserProfileData | null } & Partial<SignatureProps>) => (
-    <div className="p-16 h-full relative bg-white">
+    <div className="p-16 h-full relative bg-white cuerpo-doc">
         {/* Header */}
-        <div className="mb-10 pb-8 border-b-2 border-gray-900">
+        <div className="mb-10 pb-8 border-b-2 border-gray-900 cabecera-doc">
             <div className="flex justify-between items-start">
                 <div className="flex-1">
                     {businessLogo && (

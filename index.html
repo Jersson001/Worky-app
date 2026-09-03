@@ -309,6 +309,21 @@
           page-break-inside: avoid;
         }
 
+        /* La caja del documento lleva 64px de aire por lado. Los de arriba y
+           abajo sobran en papel, donde @page ya pone su propio margen: eran
+           dos dedos de blanco antes del título. Los laterales se dejan como
+           están, que son los que fijan el ancho de las columnas. */
+        body.imprimiendo-documento #printable-area .cuerpo-doc {
+          padding-top: 24px !important;
+          padding-bottom: 16px !important;
+          height: auto !important;
+        }
+        /* Y la cabecera, otros 72px entre el título y la raya de color. */
+        body.imprimiendo-documento #printable-area .cabecera-doc {
+          margin-bottom: 18px !important;
+          padding-bottom: 16px !important;
+        }
+
         /* El cierre —total, vigencia, firma y pie— va más junto en papel que
            en pantalla. Son unos 200px de aire que en la pantalla se agradecen
            y en la hoja empujaban el final a una segunda página casi vacía.
