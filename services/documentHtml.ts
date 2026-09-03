@@ -10,6 +10,7 @@
  */
 import { formatCurrency } from '../utils/currency';
 import { computeLineSubtotal, computeMaterialSubtotal, computeManoDeObraTotal, computeMaterialesTotal, esLineaUsada, describeCantidad, describeMaterial } from '../utils/carpentryCalculations';
+import { ORDEN_CONDICIONES, lineasDe, hayCondiciones, repartoDePago } from '../utils/condicionesCotizacion';
 
 type DocType = 'quote' | 'invoice' | 'receipt' | 'collection_account' | 'expense_receipt';
 
@@ -125,6 +126,61 @@ const tablaSecciones = (sections: any[]): string =>
     </table>`;
   }).join('');
 
+/**
+ * Cómo se paga: el reparto entre anticipo y saldo, y dónde consignar.
+ *
+ * Es lo que el cliente busca cuando aprueba, y hasta ahora tocaba escribirlo
+ * a mano en el chat después de mandar la cotización.
+ */
+const formaDePago = (d: any): string => {
+  const fp = d.formaPago;
+  if (!fp) return '';
+  const r = repartoDePago(d.total || 0, fp.anticipoPorcentaje);
+  const c = fp.cuenta;
+
+  return `
+    <h3 class="seccion">Forma de pago</h3>
+    <div class="pago">
+      <div class="cuota">
+        <span class="cuota-t">Anticipo · ${r.porcentajeAnticipo}%</span>
+        <span class="cuota-v">${formatCurrency(r.anticipo)}</span>
+      </div>
+      <div class="cuota">
+        <span class="cuota-t">Contra entrega · ${r.porcentajeSaldo}%</span>
+        <span class="cuota-v">${formatCurrency(r.saldo)}</span>
+      </div>
+    </div>
+    ${c ? `
+    <div class="cuenta">
+      <p class="cuenta-t">Consignar a</p>
+      <p class="cuenta-l"><strong>${esc(c.bankName)}</strong> · ${esc(c.accountType)}</p>
+      <p class="cuenta-n">${esc(c.accountNumber)}</p>
+      <p class="cuenta-l">${esc(c.holderName)}${c.documentId ? ` · ${esc(c.documentId)}` : ''}</p>
+      ${c.qrImage ? `<img class="cuenta-qr" src="${esc(c.qrImage)}" alt="Código QR para pagar">` : ''}
+    </div>` : ''}`;
+};
+
+/** El pliego de condiciones. Solo sale lo que se dejó encendido. */
+const condicionesHtml = (d: any): string => {
+  if (!hayCondiciones(d.condiciones)) return '';
+  const bloques = ORDEN_CONDICIONES
+    .map(k => {
+      const b = d.condiciones[k];
+      const lineas = lineasDe(b);
+      if (!lineas.length) return '';
+      return `
+      <div class="cond">
+        <p class="cond-t">${esc(b.titulo)}</p>
+        <ul>${lineas.map(l => `<li>${esc(l)}</li>`).join('')}</ul>
+      </div>`;
+    })
+    .join('');
+
+  return `
+    <h3 class="seccion">Condiciones de negociación</h3>
+    <div class="conds">${bloques}</div>`;
+};
+
 const totales = (d: any): string => {
   const filas: string[] = [];
 
@@ -154,7 +210,9 @@ const cuerpo = (type: DocType, d: any): string => {
         ${fila('Teléfono', d.clientPhone)}
         ${fila('Válida hasta', fecha(d.validUntil))}
         ${d.sections?.length ? tablaSecciones(d.sections) : tablaItems(d.items || [])}
-        ${totales(d)}`;
+        ${totales(d)}
+        ${formaDePago(d)}
+        ${condicionesHtml(d)}`;
 
     case 'invoice':
       return `
@@ -257,6 +315,20 @@ export const buildDocumentHtml = (doc: DocumentoCompartido, pieCatalogo = ''): s
   .totales{margin-top:18px;border-top:2px solid #e2e8f0;padding-top:12px}
   .tot{display:flex;justify-content:space-between;padding:5px 0;font-size:.9rem;color:#475569}
   .tot.total{font-size:1.15rem;font-weight:700;color:#2563eb;border-top:1px solid #e2e8f0;margin-top:6px;padding-top:10px}
+  .pago{display:flex;gap:10px;margin:10px 0}
+  .cuota{flex:1;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px}
+  .cuota-t{display:block;color:#64748b;font-size:.72rem;text-transform:uppercase;letter-spacing:.03em;font-weight:700}
+  .cuota-v{display:block;color:#0f172a;font-size:1rem;font-weight:700;margin-top:3px}
+  .cuenta{background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:12px 14px;margin-top:8px}
+  .cuenta-t{color:#1d4ed8;font-size:.7rem;text-transform:uppercase;letter-spacing:.04em;font-weight:700;margin-bottom:4px}
+  .cuenta-l{color:#334155;font-size:.85rem}
+  .cuenta-n{color:#0f172a;font-size:1.05rem;font-weight:700;letter-spacing:.02em;margin:2px 0}
+  .cuenta-qr{width:110px;height:110px;margin-top:8px;border:1px solid #bfdbfe;border-radius:8px;background:#fff}
+  .conds{margin-top:8px}
+  .cond{margin-bottom:12px}
+  .cond-t{color:#0f172a;font-size:.82rem;font-weight:700;margin-bottom:3px}
+  .cond ul{margin:0;padding-left:18px}
+  .cond li{color:#475569;font-size:.82rem;line-height:1.45;margin-bottom:2px}
   .firma{margin-top:26px;text-align:center}
   .firma img{max-width:190px;max-height:80px}
   .fotos{display:flex;gap:6px;flex-shrink:0}
@@ -281,7 +353,7 @@ export const buildDocumentHtml = (doc: DocumentoCompartido, pieCatalogo = ''): s
     /* Que no se parta lo que se lee junto. Una fila cortada entre dos páginas
        deja la foto arriba y su precio abajo, y el material separado del
        trabajo al que pertenece. */
-    tr,.media,.totales,.firma{break-inside:avoid;page-break-inside:avoid}
+    tr,.media,.totales,.firma,.cuota,.cuenta,.cond{break-inside:avoid;page-break-inside:avoid}
     /* El encabezado de la tabla se repite en cada página: sin él, la segunda
        hoja son cifras en columnas sin nombre. */
     thead{display:table-header-group}

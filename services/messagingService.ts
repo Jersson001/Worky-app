@@ -717,6 +717,15 @@ export const saveUserProfile = async (profile: any): Promise<void> => {
       address: profile.address,
       city: profile.city,
       country: profile.country,
+      // Las condiciones de la cotización viven en el perfil: son del negocio,
+      // no de cada cliente. Solo se escriben si vienen, para no borrar la
+      // plantilla al guardar desde una pantalla que no las edita.
+      ...(profile.condicionesCotizacion !== undefined
+        ? { condiciones_cotizacion: profile.condicionesCotizacion }
+        : {}),
+      ...(profile.anticipoPorcentaje !== undefined
+        ? { anticipo_porcentaje: profile.anticipoPorcentaje }
+        : {}),
     },
     { onConflict: 'id' }
   );
@@ -797,6 +806,9 @@ export const getUserProfile = (callback: (profile: any) => void): (() => void) =
       trialEndsAt: data.trial_ends_at ?? null,
       subscriptionEndsAt: data.subscription_ends_at ?? null,
       isAdmin: data.is_admin ?? false,
+      // Nulas mientras no las haya tocado: entonces salen las de fábrica.
+      condicionesCotizacion: data.condiciones_cotizacion ?? undefined,
+      anticipoPorcentaje: data.anticipo_porcentaje ?? undefined,
     });
   };
 

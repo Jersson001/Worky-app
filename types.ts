@@ -34,6 +34,17 @@ export interface UserProfileData {
   trialEndsAt?: string | null;
   subscriptionEndsAt?: string | null;
   isAdmin?: boolean;
+  /**
+   * Las condiciones de negociación que salen por defecto en cada cotización.
+   *
+   * Se guardan en el perfil porque un carpintero manda las mismas siempre:
+   * volver a escribir «la obra deberá garantizar la seguridad de los
+   * materiales» en cada cotización es trabajo que nadie hace dos veces.
+   * Se pueden retocar en una cotización concreta sin tocar esta plantilla.
+   */
+  condicionesCotizacion?: CondicionesCotizacion;
+  /** El anticipo que se pide de costumbre, en porcentaje. */
+  anticipoPorcentaje?: number;
 }
 
 export interface PaymentAccount {
@@ -149,6 +160,48 @@ export interface QuoteData {
   validUntil: Date;
   mode?: QuoteMode;
   sections?: CarpentrySection[];
+  /** Cómo y dónde se paga. Va en todos los oficios. */
+  formaPago?: FormaDePago;
+  /** El pie de condiciones. Solo carpintería y obra. */
+  condiciones?: CondicionesCotizacion;
+}
+
+// ─── Condiciones de negociación ─────────────────────────────────────────────
+
+/**
+ * Cómo se paga lo cotizado.
+ *
+ * La cuenta se copia aquí entera, no por referencia: si mañana se borra de la
+ * libreta de datos de pago, la cotización que ya se mandó tiene que seguir
+ * diciendo a dónde consignar.
+ */
+export interface FormaDePago {
+  /** Qué parte se cobra por adelantado. El saldo es el resto. */
+  anticipoPorcentaje: number;
+  cuenta?: {
+    bankName: string;
+    accountType: string;
+    accountNumber: string;
+    holderName: string;
+    documentId?: string;
+    qrImage?: string;
+  };
+}
+
+/** Un apartado del pie: se enciende, se apaga y se edita. */
+export interface BloqueCondiciones {
+  activo: boolean;
+  titulo: string;
+  /** Una línea por renglón. */
+  texto: string;
+}
+
+export interface CondicionesCotizacion {
+  entrega: BloqueCondiciones;
+  noIncluye: BloqueCondiciones;
+  suministros: BloqueCondiciones;
+  garantia: BloqueCondiciones;
+  notas: BloqueCondiciones;
 }
 
 // ─── Cotización personalizada (carpintería) ─────────────────────────────────

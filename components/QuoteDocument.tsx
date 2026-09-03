@@ -8,6 +8,7 @@ import { shareQuoteViaWhatsApp, shareInvoiceViaWhatsApp, openWhatsApp, generateD
 import { publishCatalogForCurrentUser, catalogPageUrl, qrImageUrl, WORKY_APP_URL } from '../services/catalogShareService';
 import { getCurrentUserId } from '../services/messagingService';
 import { computeLineSubtotal, computeMaterialSubtotal, computeManoDeObraTotal, computeMaterialesTotal, computeGroupSubtotal, computeSectionSubtotal, seccionesConContenido, describeCantidad, describeMaterial } from '../utils/carpentryCalculations';
+import { ORDEN_CONDICIONES, lineasDe, hayCondiciones, repartoDePago } from '../utils/condicionesCotizacion';
 
 interface DocumentViewerProps {
   type: 'quote' | 'invoice' | 'receipt' | 'collection_account' | 'expense_receipt';
@@ -558,6 +559,62 @@ const QuoteTemplate = ({ data, businessLogo, userProfile, signature, scale, posi
                 </div>
             </div>
         </div>
+
+        {/* Forma de pago: en todos los oficios. Es lo que el cliente busca
+            cuando aprueba, y antes tocaba escribirlo a mano en el chat. */}
+        {data.formaPago && (() => {
+          const r = repartoDePago(data.total || 0, data.formaPago.anticipoPorcentaje);
+          const c = data.formaPago.cuenta;
+          return (
+            <div className="mb-8 cierre-doc">
+              <h3 className="text-xs font-bold text-blue-600 uppercase tracking-wider mb-2">Forma de pago</h3>
+              <div className="flex gap-3 mb-2">
+                <div className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-4 py-3">
+                  <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Anticipo · {r.porcentajeAnticipo}%</div>
+                  <div className="text-base font-bold text-gray-900">{formatCurrency(r.anticipo)}</div>
+                </div>
+                <div className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-4 py-3">
+                  <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Contra entrega · {r.porcentajeSaldo}%</div>
+                  <div className="text-base font-bold text-gray-900">{formatCurrency(r.saldo)}</div>
+                </div>
+              </div>
+              {c && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
+                  <p className="text-[10px] font-bold text-blue-700 uppercase tracking-wider mb-1">Consignar a</p>
+                  <p className="text-sm text-gray-700"><strong>{c.bankName}</strong> · {c.accountType}</p>
+                  <p className="text-lg font-bold text-gray-900 tracking-wide">{c.accountNumber}</p>
+                  <p className="text-sm text-gray-700">{c.holderName}{c.documentId ? ` · ${c.documentId}` : ''}</p>
+                  {c.qrImage && (
+                    <img src={c.qrImage} alt="Código QR para pagar" className="w-28 h-28 mt-2 rounded border border-blue-200 bg-white" />
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
+        {/* Y bajo qué condiciones. Solo sale lo que se dejó encendido: es la
+            parte que no es el precio pero es la que evita el pleito. */}
+        {hayCondiciones(data.condiciones) && (
+          <div className="mb-8 cierre-doc">
+            <h3 className="text-xs font-bold text-blue-600 uppercase tracking-wider mb-2">Condiciones de negociación</h3>
+            {ORDEN_CONDICIONES.map(clave => {
+              const b = data.condiciones![clave];
+              const lineas = lineasDe(b);
+              if (!lineas.length) return null;
+              return (
+                <div key={clave} className="mb-3">
+                  <p className="text-sm font-bold text-gray-900 mb-0.5">{b.titulo}</p>
+                  <ul className="list-disc pl-5 space-y-0.5">
+                    {lineas.map((l, i) => (
+                      <li key={i} className="text-[13px] text-gray-600 leading-snug">{l}</li>
+                    ))}
+                  </ul>
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         {/* Valid Until */}
         <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded mb-8 cierre-doc">

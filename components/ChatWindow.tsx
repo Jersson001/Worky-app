@@ -13,6 +13,8 @@ import { flattenSectionsToQuoteItems, computeGrandTotal } from '../utils/carpent
 import { useChatFormState } from '../hooks/useChatFormState';
 import { useFileUpload } from '../hooks/useFileUpload';
 import { uploadQuotePhotos } from '../services/storageService';
+import { saveUserProfile } from '../services/messagingService';
+import { hayCondiciones, repartoDePago } from '../utils/condicionesCotizacion';
 
 // Sub-components
 import { ChatHeader } from './chat/ChatHeader';
@@ -99,13 +101,50 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
   const [viewingDocument, setViewingDocument] = useState<{ type: 'quote' | 'invoice' | 'receipt' | 'collection_account', data: any } | null>(null);
   /** Subiendo las fotos de la cotización antes de mandarla. */
   const [enviandoCotizacion, setEnviandoCotizacion] = useState(false);
+  const [guardandoPlantilla, setGuardandoPlantilla] = useState(false);
+  const [plantillaGuardada, setPlantillaGuardada] = useState(false);
+
 
   // ── Hooks ──
   const forms = useChatFormState(
     contact.clientName,
     contact.phone || '',
-    contact.projects[0]?.id || ''
+    contact.projects[0]?.id || '',
+    // Las condiciones del negocio y su anticipo de costumbre, para que cada
+    // cotización nueva salga ya con ellos puestos.
+    {
+      condiciones: userProfile?.condicionesCotizacion,
+      anticipoPorcentaje: userProfile?.anticipoPorcentaje,
+    },
   );
+
+  /**
+   * Deja las condiciones de esta cotización como las de siempre.
+   *
+   * Van al perfil, que es donde las lee cada cotización nueva. Sin esto habría
+   * que reescribir el pliego de garantías y suministros en cada una, que es
+   * trabajo que nadie hace dos veces.
+   */
+  const guardarCondicionesComoPlantilla = useCallback(async () => {
+    if (!userProfile) return;
+    setGuardandoPlantilla(true);
+    try {
+      await saveUserProfile({
+        ...userProfile,
+        condicionesCotizacion: forms.quote.condiciones,
+        anticipoPorcentaje: Number(forms.quote.anticipoPorcentaje) || 0,
+      });
+      setPlantillaGuardada(true);
+      // El acuse se apaga solo: si se queda fijo, la próxima vez que abra el
+      // formulario parece que ya guardó algo que no ha tocado.
+      setTimeout(() => setPlantillaGuardada(false), 4000);
+    } catch (error) {
+      console.error('Error guardando las condiciones:', error);
+      alert('No se pudieron guardar las condiciones. Revisa la conexión.');
+    } finally {
+      setGuardandoPlantilla(false);
+    }
+  }, [userProfile, forms.quote.condiciones, forms.quote.anticipoPorcentaje]);
 
   const fileUpload = useFileUpload({
     contactId: contact.id,
@@ -224,7 +263,7 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
 
   const handleSendQuote = useCallback(async () => {
     if (enviandoCotizacion) return;
-    const { items, taxType, taxPercentage, aiuAdmin, aiuImprevistos, aiuUtilidad, aiuIva, clientAddress, clientPhone, validDays, mode, sections } = forms.quote;
+    const { items, taxType, taxPercentage, aiuAdmin, aiuImprevistos, aiuUtilidad, aiuIva, clientAddress, clientPhone, validDays, mode, sections, anticipoPorcentaje, cuentaCobroId, condiciones } = forms.quote;
 
     const isPersonalizada = mode === 'personalizada';
     const validItemsSinSubir = isPersonalizada ? flattenSectionsToQuoteItems(sections) : items.filter(i => i.description && i.price > 0);
@@ -280,6 +319,8 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
       aiu: { adminPercent: parseFloat(aiuAdmin) || 5, imprevistosPercent: parseFloat(aiuImprevistos) || 5, utilidadPercent: parseFloat(aiuUtilidad) || 5, ivaPercent: parseFloat(aiuIva) || 19 },
     });
 
+    const cuentaSeleccionada = paymentAccounts.find(c => c.id === cuentaCobroId);
+
     const validDate = new Date();
     validDate.setDate(validDate.getDate() + parseInt(validDays || '15'));
 
@@ -291,6 +332,25 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
       clientPhone: clientPhone.trim() || undefined,
       items: validItems, subtotal, total: result.total,
       mode, sections: isPersonalizada ? sectionsSubidas : undefined,
+      // La cuenta se copia entera, no por referencia: si mañana se borra de la
+      // libreta, la cotización que ya se mandó tiene que seguir diciendo a
+      // dónde consignar. Mismo criterio que el QR de los recibos.
+      formaPago: {
+        anticipoPorcentaje: Number(anticipoPorcentaje) || 0,
+        ...(cuentaSeleccionada ? {
+          cuenta: {
+            bankName: cuentaSeleccionada.bankName,
+            accountType: cuentaSeleccionada.accountType,
+            accountNumber: cuentaSeleccionada.accountNumber,
+            holderName: cuentaSeleccionada.holderName,
+            documentId: cuentaSeleccionada.documentId,
+            qrImage: cuentaSeleccionada.qrImage,
+          },
+        } : {}),
+      },
+      // Solo si hay algo que decir: un pie de condiciones vacío es una raya y
+      // un título en medio del documento.
+      ...(hayCondiciones(condiciones) ? { condiciones } : {}),
       taxType, taxPercentage: taxType === 'percentage' ? parseFloat(taxPercentage) : undefined,
       taxAmount: (taxType !== 'none') ? result.taxAmount : undefined,
       aiuAdmin: taxType === 'aiu' ? parseFloat(aiuAdmin) : undefined,
@@ -302,7 +362,7 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
 
     forms.resetQuote(contact.phone || '');
     forms.closeModal('quote');
-  }, [forms.quote, contact, onSendMessage, enviandoCotizacion]);
+  }, [forms.quote, contact, onSendMessage, enviandoCotizacion, paymentAccounts]);
 
   const handleSendCollection = useCallback(() => {
     const { amount, concept, directedTo, nit, selectedAccount, selectedProject } = forms.collection;
@@ -551,6 +611,16 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
           onSetValidDays={(v) => forms.setQuoteField('validDays', v)} onSetTaxType={(v) => forms.setQuoteField('taxType', v as any)} onSetTaxPercentage={(v) => forms.setQuoteField('taxPercentage', v)}
           onSetAIUAdmin={(v) => forms.setQuoteField('aiuAdmin', v)} onSetAIUImprevistos={(v) => forms.setQuoteField('aiuImprevistos', v)} onSetAIUUtilidad={(v) => forms.setQuoteField('aiuUtilidad', v)} onSetAIUIva={(v) => forms.setQuoteField('aiuIva', v)}
           onSetClientAddress={(v) => forms.setQuoteField('clientAddress', v)} onSetClientPhone={(v) => forms.setQuoteField('clientPhone', v)}
+          paymentAccounts={paymentAccounts}
+          anticipoPorcentaje={forms.quote.anticipoPorcentaje}
+          cuentaCobroId={forms.quote.cuentaCobroId}
+          condiciones={forms.quote.condiciones}
+          onSetAnticipo={(v) => forms.setQuoteField('anticipoPorcentaje', v)}
+          onSetCuentaCobro={(v) => forms.setQuoteField('cuentaCobroId', v)}
+          onSetCondicion={forms.setCondicion}
+          onGuardarPlantilla={guardarCondicionesComoPlantilla}
+          guardandoPlantilla={guardandoPlantilla}
+          plantillaGuardada={plantillaGuardada}
           onSend={handleSendQuote}
           enviando={enviandoCotizacion}
           isPro={userProfile?.isPro} trialEndsAt={userProfile?.trialEndsAt}

@@ -9,7 +9,8 @@ import { DecimalInput } from './DecimalInput';
 import { CurrencyInput } from './CurrencyInput';
 import ProFeatureGuard from '../../ProFeatureGuard';
 import { CatalogPickerOverlay } from './CatalogPicker';
-import { QuoteItem, Product, ProductCategory, ContactRole, QuoteMode, CarpentrySection, CarpentryCategoryKey, CarpentryLineItem, CarpentryMaterial, CarpentryUnit, MaterialUnit } from '../../../types';
+import { FormaDePagoCampos, CondicionesEditor } from './CondicionesCotizacion';
+import { QuoteItem, Product, ProductCategory, ContactRole, QuoteMode, CarpentrySection, CarpentryCategoryKey, CarpentryLineItem, CarpentryMaterial, CarpentryUnit, MaterialUnit, PaymentAccount, CondicionesCotizacion, BloqueCondiciones } from '../../../types';
 import { formatCurrency } from '../../../utils/currency';
 import { leerImagenReducida } from '../../../utils/imagen';
 import { calculateTax } from '../../../utils/taxCalculations';
@@ -54,6 +55,19 @@ interface QuoteModalProps {
   onSetAIUIva: (value: string) => void;
   onSetClientAddress: (value: string) => void;
   onSetClientPhone: (value: string) => void;
+  // Forma de pago y condiciones
+  /** Las cuentas de la libreta, para adjuntar uno donde consignar. */
+  paymentAccounts: PaymentAccount[];
+  anticipoPorcentaje: string;
+  cuentaCobroId: string;
+  condiciones: CondicionesCotizacion;
+  onSetAnticipo: (valor: string) => void;
+  onSetCuentaCobro: (id: string) => void;
+  onSetCondicion: (clave: keyof CondicionesCotizacion, campo: keyof BloqueCondiciones, valor: boolean | string) => void;
+  /** Guarda las condiciones en el perfil, para las próximas cotizaciones. */
+  onGuardarPlantilla?: () => void;
+  guardandoPlantilla?: boolean;
+  plantillaGuardada?: boolean;
   onSend: () => void;
   /** Subiendo las fotos antes de mandar: el botón lo dice y no deja repetir. */
   enviando?: boolean;
@@ -381,6 +395,9 @@ export const QuoteModal: React.FC<QuoteModalProps> = React.memo(({
   onSetValidDays, onSetTaxType, onSetTaxPercentage,
   onSetAIUAdmin, onSetAIUImprevistos, onSetAIUUtilidad, onSetAIUIva,
   onSetClientAddress, onSetClientPhone, onSend, enviando,
+  paymentAccounts, anticipoPorcentaje, cuentaCobroId, condiciones,
+  onSetAnticipo, onSetCuentaCobro, onSetCondicion,
+  onGuardarPlantilla, guardandoPlantilla, plantillaGuardada,
   isPro, trialEndsAt, businessType, mode, sections, onSetMode, onAddSection, onRemoveSection,
   onAddCarpentryItem, onUpdateCarpentryItem, onRemoveCarpentryItem,
 }) => {
@@ -1057,6 +1074,30 @@ export const QuoteModal: React.FC<QuoteModalProps> = React.memo(({
           )}
           <div className="flex justify-between text-sm font-bold text-slate-900 border-t border-slate-200 pt-2"><span>Total:</span><span className="text-blue-600">{formatCurrency(result.total)}</span></div>
         </div>
+
+        {/* Cómo se paga: en todos los oficios. Se cobra un anticipo lo mismo
+            cotizando una cocina que un domicilio. */}
+        <FormaDePagoCampos
+          total={result.total}
+          anticipoPorcentaje={anticipoPorcentaje}
+          cuentaCobroId={cuentaCobroId}
+          cuentas={paymentAccounts}
+          onSetAnticipo={onSetAnticipo}
+          onSetCuenta={onSetCuentaCobro}
+        />
+
+        {/* Y bajo qué condiciones: solo en los oficios que tienen capítulos,
+            que son carpintería y obra. Donde se cotiza y se entrega el mismo
+            día, un pliego de garantías y suministros no viene a cuento. */}
+        {gremios.length > 0 && (
+          <CondicionesEditor
+            condiciones={condiciones}
+            onSetCondicion={onSetCondicion}
+            onGuardarPlantilla={onGuardarPlantilla}
+            guardandoPlantilla={guardandoPlantilla}
+            plantillaGuardada={plantillaGuardada}
+          />
+        )}
 
         <button
           onClick={onSend}

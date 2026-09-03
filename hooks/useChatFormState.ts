@@ -3,9 +3,19 @@
  * Extracts 30+ useState calls from the monolithic component.
  */
 import { useState, useCallback } from 'react';
-import { InvoiceItem, QuoteItem, Product, QuoteMode, CarpentrySection, CarpentryCategoryKey, CarpentryLineItem } from '../types';
+import { InvoiceItem, QuoteItem, Product, QuoteMode, CarpentrySection, CarpentryCategoryKey, CarpentryLineItem, CondicionesCotizacion, BloqueCondiciones } from '../types';
 import { createCarpentrySection, createBlankCarpentryItem, computeM2FromDimensions } from '../utils/carpentryCalculations';
+import { CONDICIONES_POR_DEFECTO } from '../utils/condicionesCotizacion';
 import { parseAmount } from '../utils/currency';
+
+/**
+ * Lo que el negocio pone de su parte en cada cotización: sus condiciones y el
+ * anticipo que suele pedir. Viene del perfil.
+ */
+export interface PlantillaDelNegocio {
+  condiciones?: CondicionesCotizacion;
+  anticipoPorcentaje?: number;
+}
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -35,6 +45,16 @@ export interface QuoteFormState {
   showProductPicker: boolean;
   mode: QuoteMode;
   sections: CarpentrySection[];
+  /** Qué parte se cobra por adelantado. El saldo es el resto. */
+  anticipoPorcentaje: string;
+  /** Cuál de las cuentas de cobro se adjunta. Vacío = ninguna. */
+  cuentaCobroId: string;
+  /**
+   * Las condiciones de este documento. Arrancan de la plantilla del perfil y
+   * se pueden retocar aquí sin tocarla: lo que se cambia vale para esta
+   * cotización y ya.
+   */
+  condiciones: CondicionesCotizacion;
 }
 
 export interface CollectionFormState {
@@ -92,6 +112,8 @@ export interface ChatFormActions {
   setQuoteField: <K extends keyof QuoteFormState>(field: K, value: QuoteFormState[K]) => void;
   resetQuote: (contactPhone?: string) => void;
   setQuoteMode: (mode: QuoteMode) => void;
+  /** Enciende, apaga o reescribe un apartado de las condiciones. */
+  setCondicion: (clave: keyof CondicionesCotizacion, campo: keyof BloqueCondiciones, valor: boolean | string) => void;
   addCarpentrySection: (category: CarpentryCategoryKey) => void;
   removeCarpentrySection: (sectionId: string) => void;
   addCarpentryItem: (sectionId: string, groupId: string) => void;
@@ -130,7 +152,15 @@ export interface ChatFormActions {
 
 const DEFAULT_EXPENSE: ExpenseFormState = { amount: '', description: '', targetProjectId: '' };
 const DEFAULT_INVOICE: InvoiceFormState = { items: [{ description: '', quantity: 1, price: 0 }], selectedProject: '', taxType: 'none' };
-const DEFAULT_QUOTE_BASE: Omit<QuoteFormState, 'clientPhone'> = {
+/**
+ * Una cotización en blanco.
+ *
+ * Es función y no constante porque las condiciones son un objeto que luego se
+ * edita: compartir la misma instancia entre cotizaciones haría que retocar una
+ * cambiara las demás. Y porque arrancan de la plantilla del negocio, que no se
+ * conoce hasta que carga el perfil.
+ */
+const quoteEnBlanco = (plantilla?: PlantillaDelNegocio): Omit<QuoteFormState, 'clientPhone'> => ({
   items: [{ description: '', quantity: 1, price: 0 }],
   validDays: '15',
   taxType: 'none',
@@ -143,7 +173,10 @@ const DEFAULT_QUOTE_BASE: Omit<QuoteFormState, 'clientPhone'> = {
   showProductPicker: false,
   mode: 'basica',
   sections: [],
-};
+  anticipoPorcentaje: String(plantilla?.anticipoPorcentaje ?? 50),
+  cuentaCobroId: '',
+  condiciones: structuredClone(plantilla?.condiciones ?? CONDICIONES_POR_DEFECTO()),
+});
 const DEFAULT_RECEIPT: ReceiptFormState = { amount: '', concept: '', selectedAccount: '' };
 const DEFAULT_MODALS: ModalVisibility = {
   expense: false, invoice: false, quote: false,
@@ -156,7 +189,9 @@ const DEFAULT_MODALS: ModalVisibility = {
 export const useChatFormState = (
   initialClientName: string,
   initialPhone: string,
-  initialProjectId: string
+  initialProjectId: string,
+  /** Lo que el negocio trae puesto: sus condiciones y su anticipo. */
+  plantilla?: PlantillaDelNegocio,
 ): ChatFormActions => {
   // ── Expense ──
   const [expense, setExpense] = useState<ExpenseFormState>({ ...DEFAULT_EXPENSE, targetProjectId: initialProjectId });
@@ -186,7 +221,7 @@ export const useChatFormState = (
   const resetInvoice = useCallback(() => setInvoice({ ...DEFAULT_INVOICE, items: [{ description: '', quantity: 1, price: 0 }] }), []);
 
   // ── Quote ──
-  const [quote, setQuote] = useState<QuoteFormState>({ ...DEFAULT_QUOTE_BASE, clientPhone: initialPhone });
+  const [quote, setQuote] = useState<QuoteFormState>({ ...quoteEnBlanco(plantilla), clientPhone: initialPhone });
   const addQuoteItem = useCallback(() => {
     setQuote(prev => ({ ...prev, items: [...prev.items, { description: '', quantity: 1, price: 0 }] }));
   }, []);
@@ -274,12 +309,21 @@ export const useChatFormState = (
     setQuote(prev => ({ ...prev, [field]: value }));
   }, []);
   const resetQuote = useCallback((contactPhone?: string) => {
-    setQuote({ ...DEFAULT_QUOTE_BASE, clientPhone: contactPhone || initialPhone, items: [{ description: '', quantity: 1, price: 0 }] });
-  }, [initialPhone]);
+    setQuote({ ...quoteEnBlanco(plantilla), clientPhone: contactPhone || initialPhone });
+  }, [initialPhone, plantilla]);
 
   const setQuoteMode = useCallback((mode: QuoteMode) => {
     setQuote(prev => ({ ...prev, mode }));
   }, []);
+  const setCondicion = useCallback(
+    (clave: keyof CondicionesCotizacion, campo: keyof BloqueCondiciones, valor: boolean | string) => {
+      setQuote(prev => ({
+        ...prev,
+        condiciones: { ...prev.condiciones, [clave]: { ...prev.condiciones[clave], [campo]: valor } },
+      }));
+    },
+    [],
+  );
   const addCarpentrySection = useCallback((category: CarpentryCategoryKey) => {
     setQuote(prev => ({ ...prev, sections: [...prev.sections, createCarpentrySection(category)] }));
   }, []);
@@ -384,7 +428,7 @@ export const useChatFormState = (
     expense, setExpenseField, resetExpense,
     invoice, addInvoiceItem, updateInvoiceItem, deleteInvoiceItem, setInvoiceField, resetInvoice,
     quote, addQuoteItem, addProductToQuote, updateQuoteItem, updateQuoteItemPrice,
-    deleteQuoteItem, addQuoteItemImages, addPhotoToQuote, removeQuoteItemImage, updateQuoteItemImage, setQuoteField, resetQuote,
+    deleteQuoteItem, addQuoteItemImages, addPhotoToQuote, removeQuoteItemImage, updateQuoteItemImage, setQuoteField, resetQuote, setCondicion,
     setQuoteMode, addCarpentrySection, removeCarpentrySection, addCarpentryItem, updateCarpentryItem, removeCarpentryItem,
     collection, setCollectionField, resetCollection,
     receipt, setReceiptField, resetReceipt,
