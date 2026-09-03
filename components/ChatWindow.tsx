@@ -238,11 +238,14 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
 
     setEnviandoCotizacion(true);
     try {
+      console.log('[handleSendQuote] Iniciando envío de cotización, modo:', isPersonalizada ? 'personalizada' : 'basica');
+
       validItems = await Promise.all(
         validItemsSinSubir.map(async item => ({ ...item, images: await uploadQuotePhotos(item.images) })),
       );
 
       if (isPersonalizada) {
+        console.log('[handleSendQuote] Procesando secciones personalizada...');
         sectionsSubidas = await Promise.all(
           sections.map(async section => ({
             ...section,
@@ -257,11 +260,13 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
           })),
         );
       }
+      console.log('[handleSendQuote] Fotos procesadas exitosamente');
     } catch (error) {
       // No se manda a medias: sin las fotos, el cliente recibe una cotización
       // distinta de la que se preparó.
       console.error('Error subiendo las fotos de la cotización:', error);
-      alert('No se pudieron subir las fotos, así que la cotización no se envió. Revisa la conexión y vuelve a intentarlo.');
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      alert(`Error al enviar la cotización: ${errorMsg}\n\nRevisa la conexión y vuelve a intentarlo.`);
       return;
     } finally {
       setEnviandoCotizacion(false);

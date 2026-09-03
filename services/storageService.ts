@@ -89,19 +89,26 @@ export const uploadFileForChat = async (
  * reducirla— y la convierte en archivo para subirla.
  */
 export const uploadPhoto = async (dataUrl: string, carpeta: string): Promise<string> => {
-  const userId = getCurrentUserId();
-  const blob = await (await fetch(dataUrl)).blob();
-  const extension = blob.type === 'image/png' ? 'png' : 'jpg';
-  const filePath = `${userId}/${carpeta}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${extension}`;
+  try {
+    const userId = getCurrentUserId();
+    const response = await fetch(dataUrl);
+    if (!response.ok) throw new Error(`Fetch failed: ${response.statusText}`);
+    const blob = await response.blob();
+    const extension = blob.type === 'image/png' ? 'png' : 'jpg';
+    const filePath = `${userId}/${carpeta}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${extension}`;
 
-  const { error } = await supabase.storage
-    .from('chat_media')
-    .upload(filePath, blob, { contentType: blob.type || 'image/jpeg' });
+    const { error } = await supabase.storage
+      .from('chat_media')
+      .upload(filePath, blob, { contentType: blob.type || 'image/jpeg' });
 
-  if (error) throw error;
+    if (error) throw error;
 
-  const { data } = supabase.storage.from('chat_media').getPublicUrl(filePath);
-  return data.publicUrl;
+    const { data } = supabase.storage.from('chat_media').getPublicUrl(filePath);
+    return data.publicUrl;
+  } catch (err) {
+    console.error('Error en uploadPhoto:', err);
+    throw err;
+  }
 };
 
 /** Foto de producto del catálogo. */
