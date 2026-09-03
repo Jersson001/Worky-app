@@ -2,7 +2,7 @@ import { supabase, PUBLIC_BUCKET } from './supabaseConfig';
 import { qrImageUrl, WORKY_APP_URL } from './catalogShareService';
 import { buildDocumentHtml } from './documentHtml';
 import { formatCurrency } from '../utils/currency';
-import { describeCantidad } from '../utils/carpentryCalculations';
+import { describeCantidad, seccionesConContenido } from '../utils/carpentryCalculations';
 import { CarpentrySection } from '../types';
 
 /**
@@ -213,16 +213,21 @@ export const generateQuoteMessage = (quoteData: {
 }, documentLink?: string, catalogLink?: string): string => {
   let itemsText: string;
 
-  if (quoteData.sections && quoteData.sections.length > 0) {
-    itemsText = quoteData.sections
+  // Mismo filtro que el documento: si aquí se filtrara aparte, el mensaje y el
+  // documento dirían cosas distintas de la misma cotización.
+  const seccionesVisibles = seccionesConContenido(quoteData.sections || []);
+
+  if (seccionesVisibles.length > 0) {
+    itemsText = seccionesVisibles
       .map(section => {
         const groupsText = section.groups
-          .filter(g => g.items.some(i => i.description))
           .map(group => {
             const groupItemsText = group.items
-              .filter(i => i.description)
               .map(item => {
-                return `  • ${item.description} ${describeCantidad(item)}`;
+                // En un mensaje de texto no cabe la foto, así que la línea sin
+                // nombre se anuncia con su grupo: una viñeta vacía no dice nada.
+                const que = item.description.trim() || group.label;
+                return `  • ${que} ${describeCantidad(item)}`;
               })
               .join('\n');
             return `_${group.label}_\n${groupItemsText}`;
