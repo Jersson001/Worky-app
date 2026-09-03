@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { FAMILIAS, tiposDe } from '../utils/tiposDeNegocio';
 import { UserProfileData } from '../types';
 
 interface WelcomeOnboardingProps {
@@ -157,15 +158,17 @@ export const WelcomeOnboarding: React.FC<WelcomeOnboardingProps> = ({ onComplete
                   className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition font-medium text-slate-800"
                 >
                   <option value="">Selecciona una opción</option>
-                  <option value="carpinteria">🪚 Carpintería</option>
-                  <option value="construccion">🏗️ Construcción</option>
-                  <option value="electricidad">⚡ Electricidad</option>
-                  <option value="plomeria">🔧 Plomería</option>
-                  <option value="pintura">🎨 Pintura</option>
-                  <option value="decoracion">🪴 Decoración</option>
-                  <option value="muebles">🛋️ Muebles</option>
-                  <option value="reformas">🏠 Reformas</option>
-                  <option value="otro">💼 Otro</option>
+                  {FAMILIAS.map(f => {
+                    const tipos = tiposDe(f.key);
+                    if (!tipos.length) return null;
+                    const opciones = tipos.map(t => (
+                      <option key={t.value} value={t.value}>{t.emoji} {t.label}</option>
+                    ));
+                    // «Otro» no necesita encabezado: va suelto al final.
+                    return f.label
+                      ? <optgroup key={f.key} label={f.label}>{opciones}</optgroup>
+                      : <React.Fragment key={f.key}>{opciones}</React.Fragment>;
+                  })}
                 </select>
               </div>
 

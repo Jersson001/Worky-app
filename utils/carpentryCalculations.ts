@@ -6,6 +6,7 @@
  * la misma lógica sin casos especiales por categoría.
  */
 import { CarpentryCategoryKey, CarpentryItemGroup, CarpentryLineItem, CarpentryMaterial, CarpentrySection, CarpentryUnit, GremioKey, MaterialUnit, QuoteItem } from '../types';
+import { GREMIOS_POR_OFICIO } from './tiposDeNegocio';
 
 // ─── Identificadores ─────────────────────────────────────────────────────────
 
@@ -239,19 +240,9 @@ export const GREMIOS: { key: GremioKey; label: string }[] = [
  *
  * Las claves son los `value` del selector de WelcomeOnboarding.
  */
-const GREMIOS_POR_OFICIO: Record<string, GremioKey[]> = {
-  carpinteria: ['carpinteria'],
-  muebles: ['carpinteria'],
-  // Quien decora suele encargar tanto el mueble como la obra.
-  decoracion: ['carpinteria', 'obra_civil'],
-  construccion: ['obra_civil'],
-  reformas: ['obra_civil'],
-  pintura: ['obra_civil'],
-  plomeria: ['obra_civil'],
-  electricidad: ['obra_civil'],
-  // Aquí es donde cae quien no es de obra. Solo cotización básica.
-  otro: [],
-};
+// La tabla vive en utils/tiposDeNegocio, junto a la lista que se le enseña
+// a quien se registra: separadas, añadir un oficio en una y olvidarlo en la
+// otra no daba error, solo le enseñaba capítulos de obra a una tienda.
 
 /**
  * Los gremios que debe ver alguien, según su tipo de negocio.
