@@ -1,5 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { QuoteData, InvoiceData, ReceiptData, CollectionAccountData, UserProfileData } from '../types';
 import { formatCurrency } from '../utils/currency';
 import { describeError } from '../utils/errorMessage';
@@ -42,6 +43,18 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({ type, data, onCl
     medir();
     window.addEventListener('resize', medir);
     return () => window.removeEventListener('resize', medir);
+  }, []);
+
+  /**
+   * Mientras el documento está abierto, el body lo dice.
+   *
+   * Es lo que mira la hoja de impresión para esconder la aplicación entera y
+   * dejar solo el documento. Se hace con una clase y no con `:has()`, que en
+   * el WebView de Android no se puede dar por sentado.
+   */
+  useEffect(() => {
+    document.body.classList.add('imprimiendo-documento');
+    return () => document.body.classList.remove('imprimiendo-documento');
   }, []);
 
   const [signatureScale, setSignatureScale] = useState(1);
@@ -175,7 +188,19 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({ type, data, onCl
     }
   };
 
-  return (
+  /**
+   * El documento se monta colgado del body, no donde se le invoca.
+   *
+   * Al imprimir, lo que no cabía en la primera hoja se perdía en vez de pasar
+   * a la segunda: el documento vive dentro del árbol de la aplicación, y para
+   * poder imprimirlo solo a él había que sacarlo del flujo con `position:
+   * absolute`. Lo posicionado en absoluto no pagina —el navegador lo pinta en
+   * la primera página y corta—, así que la cotización salía sin su final.
+   *
+   * Colgándolo del body se puede esconder la aplicación entera y dejar el
+   * documento en flujo normal, que es lo único que sabe repartirse en hojas.
+   */
+  return createPortal((
     <div id="document-overlay" className="fixed inset-0 bg-[#0b141a]/95 z-[100] flex flex-col items-center overflow-y-auto animate-fade-in backdrop-blur-sm">
       {/* Toolbar */}
       {/* flex-wrap: en una ventana estrecha esta barra no cabía en una línea y
@@ -243,7 +268,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({ type, data, onCl
         </div>
       </div>
     </div>
-  );
+  ), document.body);
 };
 
 // --- TEMPLATES ---

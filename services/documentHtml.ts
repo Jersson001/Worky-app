@@ -267,8 +267,8 @@ export const buildDocumentHtml = (doc: DocumentoCompartido, pieCatalogo = ''): s
      El cliente imprime esto o se lo guarda en PDF, así que tiene que salir en
      A4 completo. Antes solo se le quitaba el fondo y la sombra.
 
-     El ancho nunca se cortó —la maquetación es fluida y `max-width` cede ante
-     un papel más estrecho—, pero todo lo demás quedaba al azar del navegador:
+     El ancho nunca se cortó —la maquetación es fluida y el ancho máximo cede
+     ante un papel más estrecho—, pero lo demás quedaba al azar del navegador:
      los fondos de color se descartaban, las filas se partían por la mitad
      entre dos hojas y la segunda página llegaba sin encabezado de tabla. */
   @page{size:A4;margin:12mm}

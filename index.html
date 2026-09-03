@@ -229,6 +229,23 @@
         #printable-area, #printable-area * {
           visibility: visible;
         }
+
+        /* Con un documento abierto se esconde la aplicación entera y el
+           documento queda solo en la hoja. Puede hacerse porque va colgado del
+           body, fuera de #root (ver el portal en QuoteDocument).
+
+           Es lo que permite quitarle el `position: absolute` de abajo: lo
+           posicionado en absoluto no se reparte en páginas —el navegador lo
+           pinta en la primera y corta—, y por eso la cotización salía sin su
+           final. En flujo normal sí pagina. */
+        body.imprimiendo-documento #root {
+          display: none !important;
+        }
+        body.imprimiendo-documento #printable-area {
+          position: static !important;
+          margin: 0 auto !important;
+        }
+
         #printable-area {
           position: absolute;
           left: 0;
