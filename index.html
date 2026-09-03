@@ -300,6 +300,14 @@
         #printable-area thead {
           display: table-header-group;
         }
+        /* La firma entera o nada. Al partirse caía el garabato al final de una
+           hoja y su raya con «Firma Autorizada» al principio de la siguiente,
+           que en un documento que el cliente firma queda pésimo.
+           `no-print-controls` son justo los cinco bloques de firma. */
+        #printable-area .no-print-controls {
+          break-inside: avoid;
+          page-break-inside: avoid;
+        }
         /* El documento se muestra en una capa fija a pantalla completa, y lo
            fijo no pagina: al imprimir vuelve a ser flujo normal. */
         #document-overlay {
