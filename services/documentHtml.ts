@@ -11,6 +11,7 @@
 import { formatCurrency } from '../utils/currency';
 import { computeLineSubtotal, computeMaterialSubtotal, computeManoDeObraTotal, computeMaterialesTotal, esLineaUsada, describeCantidad, describeMaterial } from '../utils/carpentryCalculations';
 import { ORDEN_CONDICIONES, lineasDe, hayCondiciones, repartoDePago } from '../utils/condicionesCotizacion';
+import { hayTallas, resumenDeTallas } from '../utils/tallas';
 
 type DocType = 'quote' | 'invoice' | 'receipt' | 'collection_account' | 'expense_receipt';
 
@@ -41,13 +42,17 @@ const fecha = (v: unknown): string => {
 const fila = (etiqueta: string, valor: string): string =>
   valor ? `<div class="dato"><span>${esc(etiqueta)}</span><strong>${esc(valor)}</strong></div>` : '';
 
-const tablaItems = (items: Array<{ description: string; quantity: number; price: number }>): string => `
+const tablaItems = (items: any[]): string => `
   <table>
     <thead><tr><th>Descripción</th><th class="num">Cant.</th><th class="num">Precio</th><th class="num">Subtotal</th></tr></thead>
     <tbody>
       ${items.filter(i => i?.description).map(i => `
       <tr>
-        <td>${esc(i.description)}</td>
+        <td>${esc(i.description)}${
+          // El desglose por tallas, bajo el nombre de la prenda. Es lo que el
+          // cliente revisa y lo que se manda a producción.
+          hayTallas(i.tallas) ? `<span class="tallas">${esc(resumenDeTallas(i.tallas))}</span>` : ''
+        }${fotos(i.images)}</td>
         <td class="num">${i.quantity}</td>
         <td class="num">${formatCurrency(i.price || 0)}</td>
         <td class="num">${formatCurrency((i.price || 0) * (i.quantity || 0))}</td>
@@ -308,6 +313,7 @@ export const buildDocumentHtml = (doc: DocumentoCompartido, pieCatalogo = ''): s
   .num{text-align:right;white-space:nowrap}
   .grupo td{background:#f8fafc;font-weight:700;font-size:.75rem;text-transform:uppercase;color:#64748b;letter-spacing:.03em}
   .detalle{display:block;color:#94a3b8;font-size:.78rem;margin-top:2px}
+  .tallas{display:block;color:#4338ca;font-size:.78rem;font-weight:600;margin-top:3px;letter-spacing:.01em}
   .media{display:flex;gap:10px;align-items:flex-start;margin-top:6px}
   .nota{flex:1;min-width:0;color:#0f172a;font-size:14px;line-height:1.4;white-space:pre-line;overflow-wrap:anywhere}
   .material td{color:#475569;font-size:.82rem;padding-top:2px;padding-bottom:9px}

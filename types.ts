@@ -139,6 +139,23 @@ export interface QuoteItem {
   price: number;
   image?: string; // Mantener para compatibilidad hacia atrás
   images?: string[]; // Nuevo: array de imágenes
+  /**
+   * El desglose por tallas, cuando la línea es una prenda.
+   *
+   * Con él, `quantity` deja de escribirse y sale de sumar las tallas: en
+   * confección un pedido no son «20 camisas», son 3 S, 8 M, 6 L y 3 XL.
+   */
+  tallas?: CuadroDeTallas;
+}
+
+/** Qué rejilla de tallas usa una prenda. */
+export type TipoDeTalla = 'letra' | 'pantalon' | 'calzado';
+
+export interface CuadroDeTallas {
+  activo: boolean;
+  tipo: TipoDeTalla;
+  /** Cuántas de cada talla, por su nombre: { S: 3, M: 8 }. */
+  cantidades: Record<string, number>;
 }
 
 export interface QuoteData {

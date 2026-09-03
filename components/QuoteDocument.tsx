@@ -9,6 +9,7 @@ import { publishCatalogForCurrentUser, catalogPageUrl, qrImageUrl, WORKY_APP_URL
 import { getCurrentUserId } from '../services/messagingService';
 import { computeLineSubtotal, computeMaterialSubtotal, computeManoDeObraTotal, computeMaterialesTotal, computeGroupSubtotal, computeSectionSubtotal, seccionesConContenido, describeCantidad, describeMaterial } from '../utils/carpentryCalculations';
 import { ORDEN_CONDICIONES, lineasDe, hayCondiciones, repartoDePago } from '../utils/condicionesCotizacion';
+import { hayTallas, resumenDeTallas } from '../utils/tallas';
 
 interface DocumentViewerProps {
   type: 'quote' | 'invoice' | 'receipt' | 'collection_account' | 'expense_receipt';
@@ -459,7 +460,16 @@ const QuoteTemplate = ({ data, businessLogo, userProfile, signature, scale, posi
                                     ) : item.image && (
                                         <img src={item.image} className="w-24 h-24 rounded object-cover border border-gray-200" />
                                     )}
-                                    <span className="text-gray-800 text-sm font-medium">{item.description}</span>
+                                    <div className="min-w-0">
+                                        <span className="text-gray-800 text-sm font-medium">{item.description}</span>
+                                        {/* El desglose por tallas, bajo el nombre de la prenda: es lo
+                                            que el cliente revisa y lo que se manda a producción. */}
+                                        {hayTallas(item.tallas) && (
+                                            <div className="text-[13px] font-semibold text-indigo-700 mt-0.5">
+                                                {resumenDeTallas(item.tallas)}
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             </td>
                             <td className="py-3 px-2 text-center text-sm text-gray-700">{item.quantity}</td>

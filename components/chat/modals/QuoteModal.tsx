@@ -10,8 +10,10 @@ import { CurrencyInput } from './CurrencyInput';
 import ProFeatureGuard from '../../ProFeatureGuard';
 import { CatalogPickerOverlay } from './CatalogPicker';
 import { FormaDePagoCampos, CondicionesEditor } from './CondicionesCotizacion';
+import { CuadroDeTallasCampos } from './CuadroDeTallasCampos';
 import { QuoteItem, Product, ProductCategory, ContactRole, QuoteMode, CarpentrySection, CarpentryCategoryKey, CarpentryLineItem, CarpentryMaterial, CarpentryUnit, MaterialUnit, PaymentAccount, CondicionesCotizacion, BloqueCondiciones } from '../../../types';
 import { formatCurrency } from '../../../utils/currency';
+import { totalDeTallas } from '../../../utils/tallas';
 import { leerImagenReducida } from '../../../utils/imagen';
 import { calculateTax } from '../../../utils/taxCalculations';
 import { CARPENTRY_CATEGORIES, GREMIOS, CarpentryCategoryConfig, computeGrandTotal, computeSectionSubtotal, computeGroupSubtotal, computeLineSubtotal, computeMaterialSubtotal, materialSugerido, cantidadSugerida, usaMedida, gremiosVisibles } from '../../../utils/carpentryCalculations';
@@ -857,12 +859,20 @@ export const QuoteModal: React.FC<QuoteModalProps> = React.memo(({
                   />
                   <div className="flex gap-2">
                     <div className="w-20">
+                      {/* Con tallas la cantidad no se escribe: sale de sumarlas,
+                          y dejarla editable permitía que dijeran cosas
+                          distintas en el mismo documento. */}
                       <input
                         type="number"
                         placeholder="Cant."
-                        value={item.quantity}
+                        value={item.tallas?.activo ? totalDeTallas(item.tallas) : item.quantity}
+                        readOnly={!!item.tallas?.activo}
                         onChange={e => onUpdateItem(idx, 'quantity', Number(e.target.value))}
-                        className="w-full bg-white p-2.5 rounded-xl border border-slate-200 text-sm text-slate-900 font-semibold text-center placeholder-slate-400 outline-none focus:border-blue-500 transition"
+                        className={`w-full p-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-center placeholder-slate-400 outline-none focus:border-blue-500 transition ${
+                          item.tallas?.activo
+                            ? 'bg-indigo-50 text-indigo-700 cursor-default'
+                            : 'bg-white text-slate-900'
+                        }`}
                       />
                     </div>
                     <div className="flex-1 relative">
@@ -909,6 +919,10 @@ export const QuoteModal: React.FC<QuoteModalProps> = React.memo(({
                         ))}
                       </div>
                     )}
+                    <CuadroDeTallasCampos
+                      tallas={item.tallas}
+                      onChange={t => onUpdateItem(idx, 'tallas', t)}
+                    />
                     {(!item.images || item.images.length === 0) && item.image && (
                       <div className="relative inline-block mt-2 rounded-lg overflow-hidden border border-slate-200">
                         <img src={item.image} className="w-full h-20 object-cover" />
