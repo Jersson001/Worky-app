@@ -252,7 +252,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({ type, data, onCl
       </div>
 
       {/* Printable Area */}
-      <div ref={marco} className="py-8 w-full flex justify-center"
+      <div ref={marco} className="py-8 w-full flex justify-center marco-doc"
         onMouseMove={(e) => isDragging && setSignaturePosition({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y })}
         onMouseUp={() => setIsDragging(false)}
       >

@@ -315,6 +315,17 @@
           page-break-inside: avoid;
         }
 
+        /* El marco que centra la hoja en pantalla lleva 32px arriba y abajo.
+           Mientras el documento se imprimía posicionado en absoluto daba
+           igual, porque se los saltaba; desde que va en flujo normal —lo que
+           hizo falta para que pagine— esos 32px empujan la hoja hacia abajo y
+           dejan una franja en blanco antes del título. En papel no pintan
+           nada: el margen ya lo pone @page. */
+        body.imprimiendo-documento .marco-doc {
+          padding-top: 0 !important;
+          padding-bottom: 0 !important;
+        }
+
         /* La caja del documento lleva 64px de aire por lado. Los de arriba y
            abajo sobran en papel, donde @page ya pone su propio margen: eran
            dos dedos de blanco antes del título. Los laterales se dejan como
