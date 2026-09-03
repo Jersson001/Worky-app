@@ -130,9 +130,15 @@ export const computeMaterialesTotal = (sections: CarpentrySection[]): number =>
  * Y se pide además que sume: una línea a cero es una que se empezó y se dejó a
  * medias —falta el precio, la cantidad o la medida—, y en el documento salía
  * como «$0», que al cliente le dice algo que no es.
+ *
+ * No se pide nombre. Se pedía, y dejaba fuera del documento a quien adjunta la
+ * foto del clóset y le pone el precio sin escribirle nada: la sección entera se
+ * quedaba sin líneas, el documento se caía a la tabla plana y las fotos —que
+ * solo se pintan en la vista por secciones— desaparecían. Entre esas dos cosas,
+ * `isTemplate` y que sume ya dicen si la línea está usada.
  */
 export const esLineaUsada = (item: CarpentryLineItem): boolean =>
-  !!item.description && !item.isTemplate && computeLineTotal(item) > 0;
+  !item.isTemplate && computeLineTotal(item) > 0;
 
 /**
  * Las secciones tal como deben salir en el documento: sin líneas de plantilla,
@@ -582,9 +588,12 @@ export const flattenSectionsToQuoteItems = (sections: CarpentrySection[]): Quote
         // computeGrandTotal sí la contaba—. Quien adjunta la foto del clóset y
         // le pone el precio ya dijo lo que era.
         const desc = item.description.trim();
-        const base = desc
-          ? `${section.name} · ${group.label} · ${desc}`
+        // El capítulo, sin repetirse: en «Clósets» el grupo también se llama
+        // «Clósets», y la línea salía como «Clósets · Clósets».
+        const capitulo = group.label === section.name
+          ? section.name
           : `${section.name} · ${group.label}`;
+        const base = desc ? `${capitulo} · ${desc}` : capitulo;
         const manoDeObra = computeLineSubtotal(item);
         if (manoDeObra > 0) {
           flat.push({ description: base, quantity: 1, price: manoDeObra });
