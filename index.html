@@ -262,18 +262,24 @@
              Se conserva el ancho real y se reduce la hoja completa con zoom,
              que es lo que mantiene la proporción.
 
-             0.80 y no el 0.86 que daría la cuenta exacta: 850px al 0.86 son
+             Nunca el 0.86 que daría la cuenta exacta: 850px al 0.86 son
              193,4mm y un A4 con estos márgenes deja 190mm, así que iba
              rozando. Casi ninguna impresora imprime hasta el borde —tienen su
              propio margen físico— y ese pelo de diferencia se comía la
-             columna de la derecha. Al 0.80 son 180mm y sobra un centímetro. */
+             columna de la derecha.
+
+             Estuvo en 0.80 —180mm, un centímetro de sobra— y se bajó a 0.74
+             para ganar alto: encoger la hoja un 7% más es lo que termina de
+             meter en una sola página una cotización que se pasaba por poco,
+             después de haberle quitado el aire de arriba y del cierre. Son
+             166mm de ancho, con 24mm de margen, y la letra sigue leyéndose. */
           width: 850px !important;
           max-width: none !important;
           /* `!important` obligatorio: la hoja lleva un `zoom` en línea desde
              React —el que la encoge para caber en pantalla— y un estilo en
              línea gana a la hoja de estilos. Sin esto se imprime a sus 850px
              reales, más ancha que el papel, y se corta por la derecha. */
-          zoom: 0.80 !important;
+          zoom: 0.74 !important;
           /* Y tiene que poder crecer: con el alto fijo y el desbordamiento
              oculto de la pantalla, lo que no cabía en la primera página no
              pasaba a la segunda, se perdía. */
