@@ -263,7 +263,32 @@ export const buildDocumentHtml = (doc: DocumentoCompartido, pieCatalogo = ''): s
   .fotos img{width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid #e2e8f0}
   .firma p{border-top:1px solid #94a3b8;display:inline-block;padding-top:5px;margin-top:5px;color:#64748b;font-size:.8rem}
   footer{text-align:center;color:#94a3b8;font-size:.75rem;padding:20px}
-  @media print{body{background:#fff;padding:0}.hoja{box-shadow:none}}
+  /* ── Impresión y «guardar como PDF» ───────────────────────────────────────
+     El cliente imprime esto o se lo guarda en PDF, así que tiene que salir en
+     A4 completo. Antes solo se le quitaba el fondo y la sombra.
+
+     El ancho nunca se cortó —la maquetación es fluida y `max-width` cede ante
+     un papel más estrecho—, pero todo lo demás quedaba al azar del navegador:
+     los fondos de color se descartaban, las filas se partían por la mitad
+     entre dos hojas y la segunda página llegaba sin encabezado de tabla. */
+  @page{size:A4;margin:12mm}
+  @media print{
+    body{background:#fff;padding:0}
+    .hoja{max-width:none;width:100%;box-shadow:none;border-radius:0}
+    /* Sin esto el navegador descarta los fondos: la cabecera azul, las bandas
+       de cada capítulo y el total salen en blanco sobre blanco. */
+    *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    /* Que no se parta lo que se lee junto. Una fila cortada entre dos páginas
+       deja la foto arriba y su precio abajo, y el material separado del
+       trabajo al que pertenece. */
+    tr,.media,.totales,.firma{break-inside:avoid;page-break-inside:avoid}
+    /* El encabezado de la tabla se repite en cada página: sin él, la segunda
+       hoja son cifras en columnas sin nombre. */
+    thead{display:table-header-group}
+    /* Un título de capítulo solo al pie de una página no dice nada: baja con
+       su tabla. */
+    .seccion{break-after:avoid;page-break-after:avoid}
+  }
 </style>
 </head>
 <body>

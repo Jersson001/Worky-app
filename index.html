@@ -268,6 +268,21 @@
           -webkit-print-color-adjust: exact;
           print-color-adjust: exact;
         }
+        /* Que no se parta lo que se lee junto. Una cotización larga pasa de
+           página, y sin esto el corte cae donde quiera: la foto de un ítem en
+           una hoja y su precio en la siguiente, o el material separado del
+           trabajo al que pertenece. */
+        #printable-area tr,
+        #printable-area .totales,
+        #printable-area .firma {
+          break-inside: avoid;
+          page-break-inside: avoid;
+        }
+        /* El encabezado de la tabla se repite en cada hoja: sin él, la segunda
+           son cifras en columnas sin nombre. */
+        #printable-area thead {
+          display: table-header-group;
+        }
         /* El documento se muestra en una capa fija a pantalla completa, y lo
            fijo no pagina: al imprimir vuelve a ser flujo normal. */
         #document-overlay {
