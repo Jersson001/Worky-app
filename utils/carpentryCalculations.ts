@@ -26,23 +26,55 @@ export const usaMedida = (unit: CarpentryUnit): boolean =>
   unit === 'ML' || unit === 'M2' || unit === 'M3';
 
 /**
+ * Un número como se lee aquí: coma decimal y un decimal como mucho.
+ *
+ * El área sale de multiplicar ancho por alto, y en coma flotante 2,6 × 2,2 da
+ * 5.720000000000001. Eso llegaba tal cual al documento del cliente, que leía
+ * una cifra de dieciséis decimales donde debía ver 5,7 m².
+ */
+export const formatMedida = (n: number): string =>
+  n.toLocaleString('es-CO', { maximumFractionDigits: 1 });
+
+/** Cómo se nombra cada unidad de cara al cliente. */
+const UNIDAD_CORTA: Record<CarpentryUnit, string> = {
+  ML: 'ml',
+  M2: 'm²',
+  M3: 'm³',
+  UND: 'und',
+  PUNTO: 'punto',
+  VIAJE: 'viaje',
+  GLOBAL: '',
+};
+
+/** Solo las que se cuentan de a una pluralizan: «12 puntos», pero «5,7 m²». */
+const PLURALIZA: CarpentryUnit[] = ['PUNTO', 'VIAJE'];
+
+/**
  * Cómo se lee la cantidad de una línea en el documento del cliente.
  *
- *   80 m² de pintura   ->  x1 · 80 M2
- *   12 puntos          ->  x12 PUNTO
- *   3 viajes           ->  x3 VIAJE
- *   un global          ->  x1
+ *   80 m² de pintura        ->  80 m²
+ *   3 clósets de 5,7 m²     ->  3 × 5,7 m²
+ *   12 puntos               ->  12 puntos
+ *   una puerta              ->  1 und
+ *   un global               ->  (nada)
  *
- * La unidad se escribe también cuando no multiplica. Antes solo salía en ML y
- * M2, así que tres viajes de escombro llegaban al cliente como «x3», sin decir
- * tres qué. GLOBAL se calla porque «x1 GLOBAL» no añade nada.
+ * Sin la «x» delante cuando no multiplica: «x1 UND» leído por un cliente parece
+ * un código, no una cantidad. La unidad se escribe siempre —tres viajes de
+ * escombro como «x3» no decían tres qué— salvo GLOBAL, que no añade nada.
  */
 export const describeCantidad = (item: Pick<CarpentryLineItem, 'unit' | 'quantity' | 'measure'>): string => {
-  const cantidad = `x${item.quantity ?? 1}`;
+  const cantidad = item.quantity ?? 1;
+  const unidad = UNIDAD_CORTA[item.unit];
+
   if (usaMedida(item.unit)) {
-    return item.measure ? `${cantidad} · ${item.measure} ${item.unit}` : cantidad;
+    if (!item.measure) return cantidad > 1 ? `${cantidad} und` : '';
+    const medida = `${formatMedida(item.measure)} ${unidad}`;
+    return cantidad > 1 ? `${cantidad} × ${medida}` : medida;
   }
-  return item.unit === 'GLOBAL' ? cantidad : `${cantidad} ${item.unit}`;
+
+  if (!unidad) return cantidad > 1 ? `${cantidad} ×` : '';
+  const nombre = cantidad > 1 && PLURALIZA.includes(item.unit) ? `${unidad}s` : unidad;
+  return `${cantidad} ${nombre}`;
 };
 
 /**
@@ -52,7 +84,7 @@ export const describeCantidad = (item: Pick<CarpentryLineItem, 'unit' | 'quantit
  * unidad con el trabajo: son 80 m² de muro, pero 3 galones de pintura.
  */
 export const describeMaterial = (material?: CarpentryMaterial): string =>
-  material ? `${material.quantity ?? 1} ${material.unit || 'UND'}` : '';
+  material ? `${formatMedida(material.quantity ?? 1)} ${material.unit || 'UND'}` : '';
 
 /** Solo la mano de obra de una línea. */
 export const computeLineSubtotal = (item: CarpentryLineItem): number => {

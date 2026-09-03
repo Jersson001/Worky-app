@@ -227,7 +227,11 @@ export const generateQuoteMessage = (quoteData: {
                 // En un mensaje de texto no cabe la foto, así que la línea sin
                 // nombre se anuncia con su grupo: una viñeta vacía no dice nada.
                 const que = item.description.trim() || group.label;
-                return `  • ${que} ${describeCantidad(item)}`;
+                // El comentario lleva las condiciones del trabajo, y en el
+                // mensaje es lo único que las cuenta: aquí no hay fotos.
+                const nota = item.comments?.trim();
+                return `  • ${que} ${describeCantidad(item)}`
+                  + (nota ? `\n    _${nota.replace(/\n+/g, ' ')}_` : '');
               })
               .join('\n');
             return `_${group.label}_\n${groupItemsText}`;

@@ -345,6 +345,15 @@ const QuoteTemplate = ({ data, businessLogo, userProfile, signature, scale, posi
                                                     <tr className="border-t border-gray-100">
                                                         <td className="py-2 px-3 text-sm text-gray-800">
                                                             {item.description}
+                                                            {/* Los comentarios: se escribían en el formulario y
+                                                                no salían por ninguna parte. Son las condiciones
+                                                                del trabajo —«según sugerencia enviada»— y sin
+                                                                ellas el cliente aprueba una foto y un precio. */}
+                                                            {item.comments?.trim() && (
+                                                                <div className="text-xs text-gray-500 whitespace-pre-line mt-0.5">
+                                                                    {item.comments.trim()}
+                                                                </div>
+                                                            )}
                                                             {/* Las fotos del ítem: se podían adjuntar en el
                                                                 formulario pero no llegaban al documento. */}
                                                             {item.images && item.images.length > 0 && (

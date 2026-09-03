@@ -65,6 +65,16 @@ const fotos = (imagenes?: string[]): string =>
         .join('')}</div>`
     : '';
 
+/**
+ * Los comentarios de la línea. Se escribían en el formulario y no salían por
+ * ninguna parte: son las condiciones del trabajo —«según sugerencia enviada»—
+ * y sin ellas el cliente aprueba una foto y un precio, nada más.
+ */
+const comentario = (item: any): string =>
+  item?.comments?.trim()
+    ? `<div class="nota">${esc(item.comments.trim())}</div>`
+    : '';
+
 /** Modo personalizado de cotización: secciones → grupos → ítems. */
 const tablaSecciones = (sections: any[]): string =>
   sections.map(section => {
@@ -81,7 +91,7 @@ const tablaSecciones = (sections: any[]): string =>
           // una fila de trabajo en cero.
           const filaTrabajo = manoDeObra > 0 || material === 0
             ? `<tr>
-            <td>${esc(i.description)}<span class="detalle">${esc(describeCantidad(i))}</span>${fotos(i.images)}</td>
+            <td>${esc(i.description)}<span class="detalle">${esc(describeCantidad(i))}</span>${comentario(i)}${fotos(i.images)}</td>
             <td class="num">${formatCurrency(i.unitCost || 0)}</td>
             <td class="num">${formatCurrency(manoDeObra)}</td>
           </tr>`
@@ -234,6 +244,7 @@ export const buildDocumentHtml = (doc: DocumentoCompartido, pieCatalogo = ''): s
   .num{text-align:right;white-space:nowrap}
   .grupo td{background:#f8fafc;font-weight:700;font-size:.75rem;text-transform:uppercase;color:#64748b;letter-spacing:.03em}
   .detalle{display:block;color:#94a3b8;font-size:.78rem;margin-top:2px}
+  .nota{color:#475569;font-size:.82rem;margin-top:4px;white-space:pre-line}
   .material td{color:#475569;font-size:.82rem;padding-top:2px;padding-bottom:9px}
   .material td:first-child{padding-left:22px}
   .totales{margin-top:18px;border-top:2px solid #e2e8f0;padding-top:12px}
