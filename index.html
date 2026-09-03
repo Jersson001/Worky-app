@@ -308,6 +308,23 @@
           break-inside: avoid;
           page-break-inside: avoid;
         }
+
+        /* El cierre —total, vigencia, firma y pie— va más junto en papel que
+           en pantalla. Son unos 200px de aire que en la pantalla se agradecen
+           y en la hoja empujaban el final a una segunda página casi vacía.
+           Solo se aprieta al imprimir: en pantalla el documento se sigue
+           viendo igual de holgado. */
+        #printable-area .cierre-doc {
+          margin-top: 14px !important;
+          margin-bottom: 12px !important;
+          padding-top: 12px !important;
+        }
+        /* Ese hueco de abajo lo pide el pie «Generado con Worky», que va
+           anclado al fondo. Al imprimir el pie fluye con el contenido y el
+           hueco solo empuja. */
+        body.imprimiendo-documento #printable-area {
+          padding-bottom: 0 !important;
+        }
         /* El documento se muestra en una capa fija a pantalla completa, y lo
            fijo no pagina: al imprimir vuelve a ser flujo normal. */
         #document-overlay {

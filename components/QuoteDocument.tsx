@@ -472,7 +472,7 @@ const QuoteTemplate = ({ data, businessLogo, userProfile, signature, scale, posi
         </div>
 
         {/* Total Section */}
-        <div className="flex justify-end mb-12">
+        <div className="flex justify-end mb-12 cierre-doc">
             <div className="w-96">
                 {/* Cuánto es trabajo y cuánto material. Solo si hay material:
                     en una cotización de pura mano de obra el desglose confunde. */}
@@ -560,7 +560,7 @@ const QuoteTemplate = ({ data, businessLogo, userProfile, signature, scale, posi
         </div>
 
         {/* Valid Until */}
-        <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded mb-8">
+        <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded mb-8 cierre-doc">
             <p className="text-sm text-gray-700">
                 <span className="font-bold">Válida hasta:</span> {new Date(data.validUntil).toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })}
             </p>
@@ -568,7 +568,7 @@ const QuoteTemplate = ({ data, businessLogo, userProfile, signature, scale, posi
 
         {/* Signature */}
         {signature && showSignature && (
-            <div className="mb-8 no-print-controls">
+            <div className="mb-8 no-print-controls cierre-doc">
                 <div className="flex justify-end">
                     <div 
                         className="text-center cursor-move hover:ring-2 hover:ring-blue-500 rounded p-2 transition"
@@ -585,7 +585,7 @@ const QuoteTemplate = ({ data, businessLogo, userProfile, signature, scale, posi
         )}
 
         {/* Footer */}
-        <div className="mt-12 pt-8 border-t border-gray-200 text-center text-sm text-gray-500">
+        <div className="mt-12 pt-8 border-t border-gray-200 text-center text-sm text-gray-500 cierre-doc">
             <p>Gracias por su preferencia</p>
         </div>
     </div>
@@ -652,7 +652,7 @@ const InvoiceTemplate = ({ data, businessLogo, userProfile, signature, scale, po
         </div>
 
         {/* Total Section */}
-        <div className="flex justify-end mb-12">
+        <div className="flex justify-end mb-12 cierre-doc">
             <div className="w-96">
                 <div className="bg-gray-50 p-4 rounded-lg mb-3">
                     <div className="flex justify-between py-2 text-gray-700">
@@ -675,7 +675,7 @@ const InvoiceTemplate = ({ data, businessLogo, userProfile, signature, scale, po
 
         {/* Signature */}
         {signature && showSignature && (
-            <div className="mb-8 no-print-controls">
+            <div className="mb-8 no-print-controls cierre-doc">
                 <div className="flex justify-end">
                     <div 
                         className="text-center cursor-move hover:ring-2 hover:ring-purple-500 rounded p-2 transition"
@@ -692,7 +692,7 @@ const InvoiceTemplate = ({ data, businessLogo, userProfile, signature, scale, po
         )}
 
         {/* Footer */}
-        <div className="mt-12 pt-8 border-t border-gray-200 text-center text-sm text-gray-500">
+        <div className="mt-12 pt-8 border-t border-gray-200 text-center text-sm text-gray-500 cierre-doc">
             <p>Gracias por su confianza</p>
         </div>
     </div>
