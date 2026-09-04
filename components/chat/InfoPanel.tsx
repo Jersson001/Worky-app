@@ -57,13 +57,22 @@ export const InfoPanel: React.FC<InfoPanelProps> = React.memo(({
     }
   };
 
-  // Helper: get project income from paid messages
-  const getProjectIncome = (projectName: string) => {
-    return messages.filter(m =>
-      ((m.type === 'invoice' && m.isPaid) || (m.type === 'collection_account' && m.isPaid)) &&
-      m.metadata?.projectName === projectName
-    ).reduce((sum, m) => sum + (m.metadata?.total || m.metadata?.amount || 0), 0);
-  };
+  /**
+   * Los cobros de un proyecto que ya están pagados.
+   *
+   * Se emparejan por id y, si no lo llevan, por nombre. Atarlos solo al nombre
+   * —como se hacía— rompe el balance en cuanto se renombra un proyecto, y deja
+   * fuera los cobros que se emitieron antes de que existiera.
+   */
+  const cobrosPagadosDe = (project: Project) => messages.filter(m =>
+    ((m.type === 'invoice' && m.isPaid) || (m.type === 'collection_account' && m.isPaid)) &&
+    (m.metadata?.projectId
+      ? m.metadata.projectId === project.id
+      : m.metadata?.projectName === project.name),
+  );
+
+  const getProjectIncome = (project: Project) =>
+    cobrosPagadosDe(project).reduce((sum, m) => sum + (m.metadata?.total || m.metadata?.amount || 0), 0);
 
   if (!show) return null;
 
@@ -255,27 +264,70 @@ export const InfoPanel: React.FC<InfoPanelProps> = React.memo(({
                     : uniqueApprovedProjects.find(p => p.id === (selectedProjectForCosts || uniqueApprovedProjects[0]?.id));
                   if (!selectedProject) return null;
 
-                  const projectIncome = getProjectIncome(selectedProject.name);
+                  // Lo que vale el trabajo, lo que ya entró y lo que falta por
+                  // cobrar. Antes solo se enseñaba «ingresos menos gastos», que
+                  // no dice lo que se pregunta al abrir esta pantalla: cuánto
+                  // queda por cobrarle a este cliente.
+                  const valorProyecto = selectedProject.value || 0;
+                  const projectIncome = getProjectIncome(selectedProject);
+                  const porCobrar = Math.max(0, valorProyecto - projectIncome);
                   const projectExpenses = selectedProject.expenses.reduce((s, e) => s + e.amount, 0);
-                  const balance = projectIncome - projectExpenses;
+                  const utilidad = valorProyecto - projectExpenses;
 
-                  const incomes = messages.filter(m =>
-                    ((m.type === 'invoice' && m.isPaid) || (m.type === 'collection_account' && m.isPaid)) &&
-                    m.metadata?.projectName === selectedProject.name
-                  );
+                  const incomes = cobrosPagadosDe(selectedProject);
 
                   return (
                     <div>
                       <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-3 mb-4">
                         {uniqueApprovedProjects.length === 1 && <div className="font-bold text-slate-800 text-sm mb-3">{selectedProject.name}</div>}
-                        <div className="grid grid-cols-2 gap-2 text-xs">
-                          <div><span className="text-slate-500">Ingresos: </span><span className="font-bold text-emerald-500">{formatCurrency(projectIncome)}</span></div>
-                          <div><span className="text-slate-500">Gastos: </span><span className="font-bold text-rose-500">{formatCurrency(projectExpenses)}</span></div>
+
+                        {/* Lo que se pregunta al abrir esto: cuánto vale, cuánto
+                            entró y cuánto falta. Por eso «Falta por cobrar» va
+                            grande y los otros dos pequeños encima. */}
+                        <div className="space-y-1.5 text-xs">
+                          <div className="flex justify-between">
+                            <span className="text-slate-500">Valor del proyecto</span>
+                            <span className="font-bold text-slate-800">{formatCurrency(valorProyecto)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-slate-500">Cobrado</span>
+                            <span className="font-bold text-emerald-600">{formatCurrency(projectIncome)}</span>
+                          </div>
                         </div>
-                        <div className="mt-2 pt-2 border-t border-indigo-300">
-                          <span className="text-slate-500 text-xs">Balance: </span>
-                          <span className={`font-bold text-sm ${balance >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>{formatCurrency(balance)}</span>
+
+                        <div className="mt-2 pt-2 border-t border-indigo-300 flex justify-between items-baseline">
+                          <span className="text-slate-600 text-xs font-semibold">
+                            {porCobrar > 0 ? 'Falta por cobrar' : 'Cobrado por completo'}
+                          </span>
+                          <span className={`font-bold text-lg ${porCobrar > 0 ? 'text-slate-900' : 'text-emerald-600'}`}>
+                            {porCobrar > 0 ? formatCurrency(porCobrar) : formatCurrency(projectIncome)}
+                          </span>
                         </div>
+
+                        {/* Sin valor no hay nada que restar: es un proyecto al
+                            que todavía no se le ha puesto precio. */}
+                        {valorProyecto === 0 && (
+                          <p className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1 mt-2">
+                            Este proyecto no tiene valor asignado. Ponlo en «Resumen» para saber cuánto falta por cobrar.
+                          </p>
+                        )}
+
+                        {/* El gasto y lo que queda, cuando hay gastos: en una
+                            obra sin gastos apuntados este desglose sobra. */}
+                        {projectExpenses > 0 && (
+                          <div className="mt-2 pt-2 border-t border-indigo-200 space-y-1.5 text-xs">
+                            <div className="flex justify-between">
+                              <span className="text-slate-500">Gastos</span>
+                              <span className="font-bold text-rose-500">−{formatCurrency(projectExpenses)}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-slate-500">Utilidad estimada</span>
+                              <span className={`font-bold ${utilidad >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                {formatCurrency(utilidad)}
+                              </span>
+                            </div>
+                          </div>
+                        )}
                       </div>
 
                       <div className="space-y-3">
@@ -325,8 +377,20 @@ export const InfoPanel: React.FC<InfoPanelProps> = React.memo(({
             )}
             <div className="space-y-3">
               {(() => {
+                // Solo lo que es un documento de verdad.
+                //
+                // Se listaba por descarte —todo menos texto y producto—, así
+                // que las fotos y los archivos del chat entraban aquí. Salían
+                // como «Documento» sin nombre, porque no hay icono para ellos,
+                // y al pulsarlos no pasaba nada, porque no llevan metadata:
+                // parecían archivos rotos. Enumerar los que sí valen deja
+                // fuera también lo que se añada mañana al chat.
+                const TIPOS_DOCUMENTO = [
+                  'quote', 'invoice', 'collection_account',
+                  'receipt', 'expense', 'expense_receipt',
+                ];
                 const docMessages = messages.filter(m => {
-                  if (m.type === 'text' || m.type === 'product') return false;
+                  if (!TIPOS_DOCUMENTO.includes(m.type)) return false;
                   if (m.type === 'expense' && !showSystemMessages) return false;
                   if (selectedProjectForDocuments === 'all') return true;
                   return m.metadata?.projectName === selectedProjectForDocuments;

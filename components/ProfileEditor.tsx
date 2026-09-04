@@ -7,9 +7,44 @@ interface ProfileEditorProps {
   userProfile: UserProfileData;
   onSave: (userData: UserProfileData) => void;
   onClose: () => void;
+  /** La cuenta entró solo con un alias y todavía no se puede recuperar. */
+  esAnonimo?: boolean;
+  /** Le pone correo y contraseña a la cuenta, que es lo que la vuelve permanente. */
+  onCompletarRegistro?: (email: string, password: string) => Promise<void>;
 }
 
-export const ProfileEditor: React.FC<ProfileEditorProps> = ({ userProfile, onSave, onClose }) => {
+export const ProfileEditor: React.FC<ProfileEditorProps> = ({
+  userProfile, onSave, onClose, esAnonimo, onCompletarRegistro,
+}) => {
+  // Completar el registro de una cuenta de alias
+  const [correoNuevo, setCorreoNuevo] = useState('');
+  const [claveNueva, setClaveNueva] = useState('');
+  const [registrando, setRegistrando] = useState(false);
+  const [errorRegistro, setErrorRegistro] = useState('');
+  const [registroHecho, setRegistroHecho] = useState(false);
+
+  const completar = async () => {
+    setErrorRegistro('');
+    if (!correoNuevo.trim() || !claveNueva) {
+      setErrorRegistro('Escribe tu correo y una contraseña.');
+      return;
+    }
+    if (claveNueva.length < 6) {
+      setErrorRegistro('La contraseña necesita al menos 6 caracteres.');
+      return;
+    }
+    setRegistrando(true);
+    try {
+      await onCompletarRegistro!(correoNuevo, claveNueva);
+      setRegistroHecho(true);
+      setClaveNueva('');
+    } catch (e: any) {
+      setErrorRegistro(e?.message || 'No se pudo completar el registro.');
+    } finally {
+      setRegistrando(false);
+    }
+  };
+
   const [businessName, setBusinessName] = useState(userProfile.businessName || '');
   const [ownerName, setOwnerName] = useState(userProfile.ownerName || '');
   const [phone, setPhone] = useState(userProfile.phone || '');
@@ -100,6 +135,74 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ userProfile, onSav
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          {/* Completar el registro — solo para quien entró con un alias.
+              Va lo primero y no al final: es a lo que viene quien llega aquí
+              desde la cinta de aviso, y enterrarlo bajo el logo y la dirección
+              del negocio era pedirle que lo buscara. */}
+          {esAnonimo && onCompletarRegistro && (
+            <div className={`rounded-2xl border p-5 ${registroHecho ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-300'}`}>
+              {registroHecho ? (
+                <div className="flex items-start gap-3">
+                  <i className="fa-solid fa-circle-check text-emerald-600 text-xl mt-0.5"></i>
+                  <div>
+                    <h3 className="font-bold text-emerald-900">Cuenta registrada</h3>
+                    <p className="text-sm text-emerald-800 mt-1">
+                      Ya puedes entrar con tu correo y tu contraseña desde cualquier
+                      teléfono, y tu conversación no se pierde.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-start gap-3 mb-4">
+                    <i className="fa-solid fa-triangle-exclamation text-amber-500 text-xl mt-0.5"></i>
+                    <div>
+                      <h3 className="font-bold text-amber-900">Completa tu registro</h3>
+                      <p className="text-sm text-amber-800 mt-1">
+                        Entraste solo con un alias. Ponle un correo y una contraseña a tu
+                        cuenta: sin eso, si cambias de teléfono o borras los datos, pierdes
+                        esta conversación y no hay forma de recuperarla.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2.5">
+                    <input
+                      type="email"
+                      value={correoNuevo}
+                      onChange={e => setCorreoNuevo(e.target.value)}
+                      placeholder="tu@email.com"
+                      autoComplete="email"
+                      className="w-full p-3 bg-white border border-amber-300 rounded-xl outline-none focus:border-amber-500 text-slate-900 font-medium placeholder-slate-400"
+                    />
+                    <input
+                      type="password"
+                      value={claveNueva}
+                      onChange={e => setClaveNueva(e.target.value)}
+                      placeholder="Contraseña (mínimo 6 caracteres)"
+                      autoComplete="new-password"
+                      className="w-full p-3 bg-white border border-amber-300 rounded-xl outline-none focus:border-amber-500 text-slate-900 font-medium placeholder-slate-400"
+                    />
+                    {errorRegistro && (
+                      <p className="text-xs font-semibold text-red-600 bg-red-50 border border-red-200 rounded-lg p-2.5">
+                        {errorRegistro}
+                      </p>
+                    )}
+                    <button
+                      onClick={completar}
+                      disabled={registrando}
+                      className="w-full py-3 bg-amber-500 text-white rounded-xl font-bold hover:bg-amber-600 transition disabled:opacity-60 flex items-center justify-center gap-2"
+                    >
+                      {registrando
+                        ? <><i className="fa-solid fa-circle-notch fa-spin"></i> Registrando…</>
+                        : <><i className="fa-solid fa-shield-halved"></i> Registrar mi cuenta</>}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
           {/* Foto de perfil */}
           <div className="flex flex-col items-center">
             <div className="relative">

@@ -1189,6 +1189,29 @@ const App: React.FC = () => {
     }
   };
 
+  /**
+   * Convierte en permanente la cuenta de quien entró solo con un alias.
+   *
+   * Hasta ahora la cinta de «Completa el registro» llevaba al editor de perfil,
+   * que guarda el correo en `user_profiles` y nada más: la cuenta seguía siendo
+   * anónima, la cinta no se iba, y quien la rellenaba se quedaba pensando que
+   * ya estaba registrado cuando su conversación seguía sin poder recuperarse.
+   * Lo que la vuelve permanente es esto, `updateUser` sobre la cuenta de
+   * autenticación.
+   */
+  const completarRegistro = async (email: string, password: string) => {
+    const correo = email.trim().toLowerCase();
+    const { error } = await supabase.auth.updateUser({ email: correo, password });
+    if (error) throw error;
+
+    // El estado local se adelanta al evento de auth para que la cinta
+    // desaparezca en cuanto termina, que es lo que la persona espera ver.
+    setEsAnonimo(false);
+    if (userProfile) {
+      await saveUserProfile({ ...userProfile, email: correo });
+    }
+  };
+
   const handleUpdateMessageMetadata = async (messageId: string, updatedMessage: any) => {
     if (!selectedContactId) return;
 
@@ -1248,14 +1271,15 @@ const App: React.FC = () => {
           metadata: { quoteCode: quoteCode }
         };
 
-        // Add Project to Contact
-        setContacts(prev => prev.map(c =>
-          c.id === selectedContactId
-            ? { ...c, projects: [newProject, ...c.projects] } // Add to top
-            : c
-        ));
-
-        // Guardar proyecto en Supabase asociando a contratista y cliente (doble vía)
+        // Se guarda ANTES de pintarlo y de anunciarlo.
+        //
+        // Antes se hacía al revés: el proyecto se metía en el estado, se le
+        // mandaba al cliente «Se ha creado el proyecto», y el guardado iba
+        // después dentro de un try/catch que solo escribía en la consola. Si
+        // fallaba —y fallaba siempre con un cliente de verdad, porque el
+        // contact_id no era el que espera la clave foránea— el proyecto se veía
+        // en pantalla hasta recargar y no existía en ninguna parte. El cliente
+        // recibía el aviso igual.
         try {
           const currentUserId = getCurrentUserId();
           const contractorId = targetMessage.sender === 'me' ? currentUserId : selectedContactId;
@@ -1263,7 +1287,19 @@ const App: React.FC = () => {
           await saveProject(selectedContactId, newProject, contractorId, clientId);
         } catch (error) {
           console.error('Error guardando proyecto en Supabase:', error);
+          alert(
+            'La cotización quedó aprobada, pero no se pudo crear el proyecto.\n\n' +
+            describeError(error) +
+            '\n\nPuedes crearlo a mano desde la ficha del contacto.',
+          );
+          return;
         }
+
+        setContacts(prev => prev.map(c =>
+          c.id === selectedContactId
+            ? { ...c, projects: [newProject, ...c.projects] } // Add to top
+            : c
+        ));
 
         setTimeout(() => {
           handleSendMessage(`✅ Cotización Aprobada. Se ha creado el proyecto: "${newProject.name}"`, 'text', { isSystem: true });
@@ -2782,6 +2818,8 @@ ${describeError(error)}
           userProfile={userProfile}
           onSave={handleSaveProfile}
           onClose={() => setShowProfileEditor(false)}
+          esAnonimo={esAnonimo}
+          onCompletarRegistro={completarRegistro}
         />
       )}
 

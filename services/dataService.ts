@@ -180,6 +180,39 @@ const loadCategories = async (
 
 // ============ PROYECTOS ============
 
+/**
+ * El id de la fila de contactos que le corresponde a un contacto de la app.
+ *
+ * No son el mismo número. Al cargar los contactos se les pone como `id` el uid
+ * del otro usuario —`contact_user_id || id`, en messagingService—, porque es lo
+ * único estable entre las dos agendas. Pero `projects.contact_id` apunta a
+ * `contacts.id`, que es el de la fila.
+ *
+ * Solo coinciden en los contactos manuales, que no tienen cuenta. Por eso
+ * guardar el proyecto de un cliente de verdad rompía la clave foránea y no se
+ * guardaba nada: los únicos proyectos que existían eran de contactos manuales.
+ */
+const filaDeContacto = async (contactId: string): Promise<string | null> => {
+  const currentUserId = getCurrentUserId();
+  const esUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(contactId);
+
+  const { data, error } = await supabase
+    .from('contacts')
+    .select('id')
+    .eq('user_id', currentUserId)
+    // Un id que no es uuid solo puede ser el de la fila: metérselo a
+    // `contact_user_id`, que es uuid, revienta la consulta entera.
+    .or(esUuid ? `contact_user_id.eq.${contactId},id.eq.${contactId}` : `id.eq.${contactId}`)
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error('Error resolviendo el contacto del proyecto:', error.message);
+    return null;
+  }
+  return data?.id ?? null;
+};
+
 export const saveProject = async (
   contactId: string,
   project: Project,
@@ -192,9 +225,19 @@ export const saveProject = async (
     const isLeadContact = contactId.startsWith('lead_');
     const finalClientId = clientId || (contactId !== currentUserId && !isLeadContact ? contactId : null);
 
+    // El proyecto cuelga de la fila de contactos, no del uid con el que la app
+    // maneja al contacto. Sin esto la clave foránea rechaza la inserción.
+    const contactRowId = await filaDeContacto(contactId);
+    if (!contactRowId) {
+      throw new Error(
+        'No se encontró el contacto al que pertenece el proyecto. ' +
+        'Vuelve a abrir la conversación e inténtalo de nuevo.',
+      );
+    }
+
     const projectPayload: any = {
       id: project.id,
-      contact_id: contactId,
+      contact_id: contactRowId,
       name: project.name,
       value: project.value,
       stage: project.stage,
@@ -223,20 +266,25 @@ export const saveProject = async (
       error = fallbackRes.error;
     }
 
+    // El fallo se avisa, no se traga. Antes se registraba y se seguía como si
+    // nada, y arriba había otro try/catch que hacía lo mismo: el proyecto se
+    // pintaba en pantalla, se le anunciaba al cliente que estaba creado, y no
+    // existía en ninguna parte. Dos capturas silenciosas seguidas escondieron
+    // durante meses que esto no funcionaba.
     if (error) {
       console.error('Error guardando proyecto en Supabase:', error);
-      // No lanzar excepción fatal para evitar alertas molestas si el contacto ya se creó
-      return;
+      throw new Error(`No se pudo guardar el proyecto: ${error.message}`);
     }
 
     // Guardar gastos del proyecto
     if (project.expenses) {
       for (const expense of project.expenses) {
-        await saveExpense(contactId, project.id, expense);
+        await saveExpense(contactRowId, project.id, expense);
       }
     }
   } catch (error) {
     console.error('Error saving project:', error);
+    throw error;
   }
 };
 
