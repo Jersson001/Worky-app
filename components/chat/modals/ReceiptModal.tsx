@@ -15,15 +15,18 @@ interface ReceiptModalProps {
   amount: string;
   concept: string;
   selectedAccount: string;
+  /** A qué obra se le abona el avance. */
+  selectedProject: string;
   onAmountChange: (value: string) => void;
   onConceptChange: (value: string) => void;
   onAccountChange: (value: string) => void;
+  onProjectChange: (value: string) => void;
   onSend: () => void;
 }
 
 export const ReceiptModal: React.FC<ReceiptModalProps> = React.memo(({
   show, onClose, contactRole, uniqueApprovedProjects, paymentAccounts,
-  amount, concept, selectedAccount,
+  amount, concept, selectedAccount, selectedProject, onProjectChange,
   onAmountChange, onConceptChange, onAccountChange, onSend,
 }) => {
   const title = contactRole === 'supplier' ? 'Enviar Recibo de Pago' : 'Recibo de Caja';
@@ -37,6 +40,25 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = React.memo(({
             <select className="w-full bg-slate-50 text-slate-900 font-semibold rounded-xl p-3 outline-none border border-slate-200 focus:border-emerald-500 focus:bg-white transition text-sm">
               <option value="" className="text-slate-900 bg-white">-- Seleccionar proyecto --</option>
               {uniqueApprovedProjects.map(p => (<option key={p.id} value={p.id} className="text-slate-900 bg-white">{p.name}</option>))}
+            </select>
+          </div>
+        )}
+
+        {/* A qué obra se abona. Con un solo proyecto no se pregunta: se da por
+            hecho al enviar, que preguntarlo sin elección es una casilla de más.
+            Sin esto el avance no entra en el balance de ningún proyecto. */}
+        {uniqueApprovedProjects.length > 1 && (
+          <div>
+            <label className="text-xs text-slate-700 font-bold uppercase mb-1.5 block tracking-wide">Abonar al proyecto</label>
+            <select
+              value={selectedProject}
+              onChange={e => onProjectChange(e.target.value)}
+              className="w-full bg-slate-50 text-slate-900 font-semibold rounded-xl p-3 outline-none border border-slate-200 focus:border-emerald-500 focus:bg-white transition text-sm"
+            >
+              <option value="">Sin proyecto</option>
+              {uniqueApprovedProjects.map(p => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
             </select>
           </div>
         )}

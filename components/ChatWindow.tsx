@@ -391,8 +391,13 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
   }, [forms.collection, contact, paymentAccounts, onSendMessage]);
 
   const handleSendReceipt = useCallback(() => {
-    const { amount, concept, selectedAccount } = forms.receipt;
+    const { amount, concept, selectedAccount, selectedProject } = forms.receipt;
     if (!amount || !concept) return;
+
+    // El avance se abona a una obra concreta. Con un solo proyecto se da por
+    // hecho: preguntarlo cuando no hay elección es una casilla de más.
+    const proyectoDelAvance = contact.projects.find(p => p.id === selectedProject)
+      || (contact.projects.length === 1 ? contact.projects[0] : undefined);
 
     const selectedAcc = selectedAccount === 'efectivo' ? null : paymentAccounts.find(acc => acc.id === selectedAccount);
 
@@ -409,6 +414,8 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
       // enviar para que el recibo no cambie si luego borra esa cuenta.
       qrImage: selectedAccount === 'efectivo' ? undefined : selectedAcc?.qrImage,
       selectedAccountId: selectedAccount,
+      projectId: proyectoDelAvance?.id,
+      projectName: proyectoDelAvance?.name || '',
     };
 
     if (contact.role === 'supplier') {
@@ -640,7 +647,9 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
           show={forms.modals.receipt} onClose={() => forms.closeModal('receipt')}
           contactRole={contact.role} uniqueApprovedProjects={approvedProjects} paymentAccounts={paymentAccounts}
           amount={forms.receipt.amount} concept={forms.receipt.concept} selectedAccount={forms.receipt.selectedAccount}
+          selectedProject={forms.receipt.selectedProject}
           onAmountChange={(v) => forms.setReceiptField('amount', v)} onConceptChange={(v) => forms.setReceiptField('concept', v)} onAccountChange={(v) => forms.setReceiptField('selectedAccount', v)}
+          onProjectChange={(v) => forms.setReceiptField('selectedProject', v)}
           onSend={handleSendReceipt}
         />
         <ProductPickerModal
@@ -670,6 +679,7 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
         onUpdateProjectInfo={onUpdateProjectInfo}
         onAddProject={onAddProject}
         onDeleteProject={onDeleteProject}
+        esCliente={esCliente}
       />
 
       {/* Hidden file inputs */}

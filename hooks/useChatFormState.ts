@@ -70,6 +70,8 @@ export interface ReceiptFormState {
   amount: string;
   concept: string;
   selectedAccount: string;
+  /** A qué obra se le abona este avance. Sin esto no cuadra ningún balance. */
+  selectedProject: string;
 }
 
 export interface ModalVisibility {
@@ -177,7 +179,7 @@ const quoteEnBlanco = (plantilla?: PlantillaDelNegocio): Omit<QuoteFormState, 'c
   cuentaCobroId: '',
   condiciones: structuredClone(plantilla?.condiciones ?? CONDICIONES_POR_DEFECTO()),
 });
-const DEFAULT_RECEIPT: ReceiptFormState = { amount: '', concept: '', selectedAccount: '' };
+const DEFAULT_RECEIPT: ReceiptFormState = { amount: '', concept: '', selectedAccount: '', selectedProject: '' };
 const DEFAULT_MODALS: ModalVisibility = {
   expense: false, invoice: false, quote: false,
   collection: false, receipt: false, productPicker: false,

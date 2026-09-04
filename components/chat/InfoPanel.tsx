@@ -15,6 +15,15 @@ interface InfoPanelProps {
   onUpdateProjectInfo: (value: number, name: string, projectId: string) => void;
   onAddProject: (name: string) => void;
   onDeleteProject: (projectId: string) => void;
+  /**
+   * Quien mira es el cliente, no quien vende.
+   *
+   * Los gastos son cuentas internas del negocio —lo que cuesta hacer la obra—,
+   * y de ellos sale la utilidad. Enseñárselos al cliente es enseñarle cuánto se
+   * le está ganando. Él ve lo suyo: qué vale el trabajo, qué ha pagado y qué
+   * falta.
+   */
+  esCliente?: boolean;
 }
 
 /**
@@ -32,7 +41,7 @@ const getUniqueApprovedProjects = (contact: Contact): Project[] => {
 
 export const InfoPanel: React.FC<InfoPanelProps> = React.memo(({
   show, onClose, contact, messages, showSystemMessages, onViewDocument, onUpdateProjectInfo,
-  onAddProject, onDeleteProject,
+  onAddProject, onDeleteProject, esCliente = false,
 }) => {
   const [infoTab, setInfoTab] = useState<'overview' | 'costs' | 'documents'>('overview');
   const [selectedProjectForCosts, setSelectedProjectForCosts] = useState<string | null>(null);
@@ -64,12 +73,17 @@ export const InfoPanel: React.FC<InfoPanelProps> = React.memo(({
    * —como se hacía— rompe el balance en cuanto se renombra un proyecto, y deja
    * fuera los cobros que se emitieron antes de que existiera.
    */
-  const cobrosPagadosDe = (project: Project) => messages.filter(m =>
-    ((m.type === 'invoice' && m.isPaid) || (m.type === 'collection_account' && m.isPaid)) &&
-    (m.metadata?.projectId
+  const cobrosPagadosDe = (project: Project) => messages.filter(m => {
+    // El recibo de caja no se marca como pagado: es el comprobante de un avance
+    // que el cliente YA entregó, así que existir es haberse cobrado. La factura
+    // y la cuenta de cobro sí, que se mandan antes de que paguen.
+    const cobrado = m.type === 'receipt'
+      || ((m.type === 'invoice' || m.type === 'collection_account') && m.isPaid);
+    if (!cobrado) return false;
+    return m.metadata?.projectId
       ? m.metadata.projectId === project.id
-      : m.metadata?.projectName === project.name),
-  );
+      : m.metadata?.projectName === project.name;
+  });
 
   const getProjectIncome = (project: Project) =>
     cobrosPagadosDe(project).reduce((sum, m) => sum + (m.metadata?.total || m.metadata?.amount || 0), 0);
@@ -120,7 +134,11 @@ export const InfoPanel: React.FC<InfoPanelProps> = React.memo(({
               <h4 className="text-emerald-600 text-xs font-bold uppercase tracking-wider mb-4">Ingresos Recibidos</h4>
               {(() => {
                 const paidInvoices = messages.filter(m => m.type === 'invoice' && m.isPaid);
-                const paidCollections = messages.filter(m => m.type === 'collection_account' && m.isPaid);
+                // Cuentas de cobro pagadas y recibos de caja: los dos son dinero
+                // que ya entró. El recibo no lleva marca de pagado porque es el
+                // comprobante de un avance que el cliente ya entregó.
+                const paidCollections = messages.filter(m =>
+                  (m.type === 'collection_account' && m.isPaid) || m.type === 'receipt');
                 const totalInvoices = paidInvoices.reduce((sum, m) => sum + (m.metadata?.total || 0), 0);
                 const totalCollections = paidCollections.reduce((sum, m) => sum + (m.metadata?.amount || 0), 0);
                 const totalIncome = totalInvoices + totalCollections;
@@ -136,9 +154,9 @@ export const InfoPanel: React.FC<InfoPanelProps> = React.memo(({
                         <span className="block text-slate-400 text-[10px] mt-1">{paidInvoices.length} factura{paidInvoices.length !== 1 ? 's' : ''}</span>
                       </div>
                       <div className="text-right">
-                        <span className="block text-emerald-600 font-bold uppercase text-[9px] mb-1">Cuentas de Cobro</span>
+                        <span className="block text-emerald-600 font-bold uppercase text-[9px] mb-1">Cobros y avances</span>
                         <span className="font-bold text-slate-800 text-lg">{formatCurrency(totalCollections)}</span>
-                        <span className="block text-slate-400 text-[10px] mt-1">{paidCollections.length} cuenta{paidCollections.length !== 1 ? 's' : ''}</span>
+                        <span className="block text-slate-400 text-[10px] mt-1">{paidCollections.length} pago{paidCollections.length !== 1 ? 's' : ''}</span>
                       </div>
                     </div>
                     <div className="border-t border-emerald-200 pt-3">
@@ -314,7 +332,7 @@ export const InfoPanel: React.FC<InfoPanelProps> = React.memo(({
 
                         {/* El gasto y lo que queda, cuando hay gastos: en una
                             obra sin gastos apuntados este desglose sobra. */}
-                        {projectExpenses > 0 && (
+                        {projectExpenses > 0 && !esCliente && (
                           <div className="mt-2 pt-2 border-t border-indigo-200 space-y-1.5 text-xs">
                             <div className="flex justify-between">
                               <span className="text-slate-500">Gastos</span>
@@ -335,23 +353,34 @@ export const InfoPanel: React.FC<InfoPanelProps> = React.memo(({
                         {incomes.length > 0 ? incomes.map((msg, idx) => (
                           <div key={`income-${msg.id}-${idx}`} className="flex justify-between items-start text-sm border-b border-slate-100 pb-2">
                             <div className="flex flex-col">
-                              <span className="text-slate-700 font-medium">{msg.type === 'invoice' ? `Factura ${msg.metadata?.number}` : `Cta. Cobro ${msg.metadata?.number}`}</span>
+                              <span className="text-slate-700 font-medium">
+                                {msg.type === 'invoice' ? 'Factura'
+                                  : msg.type === 'receipt' ? 'Avance'
+                                  : 'Cta. Cobro'} {msg.metadata?.number}
+                              </span>
                               <span className="text-[10px] text-slate-400">{new Date(msg.paidDate || msg.timestamp).toLocaleDateString()}</span>
                             </div>
                             <span className="text-emerald-500 font-bold whitespace-nowrap">+{formatCurrency(msg.metadata?.total || msg.metadata?.amount || 0)}</span>
                           </div>
                         )) : <div className="text-center py-2 text-slate-400 text-xs italic">Sin ingresos registrados</div>}
 
-                        <h5 className="text-rose-600 text-xs font-bold uppercase mt-4 mb-2">Gastos</h5>
-                        {selectedProject.expenses.length > 0 ? selectedProject.expenses.map((exp, idx) => (
-                          <div key={`${exp.id}-${idx}`} className="flex justify-between items-start text-sm border-b border-slate-100 pb-2">
-                            <div className="flex flex-col">
-                              <span className="text-slate-700 font-medium">{exp.description}</span>
-                              <span className="text-[10px] text-slate-400">{new Date(exp.date).toLocaleDateString()}</span>
-                            </div>
-                            <span className="text-rose-500 font-bold whitespace-nowrap">-{formatCurrency(exp.amount)}</span>
-                          </div>
-                        )) : <div className="text-center py-2 text-slate-400 text-xs italic">Sin gastos registrados</div>}
+                        {/* Los gastos son cuentas de la casa: lo que cuesta hacer
+                            la obra. Al cliente no se le enseñan —de ahí sale lo
+                            que se le está ganando—. */}
+                        {!esCliente && (
+                          <>
+                            <h5 className="text-rose-600 text-xs font-bold uppercase mt-4 mb-2">Gastos</h5>
+                            {selectedProject.expenses.length > 0 ? selectedProject.expenses.map((exp, idx) => (
+                              <div key={`${exp.id}-${idx}`} className="flex justify-between items-start text-sm border-b border-slate-100 pb-2">
+                                <div className="flex flex-col">
+                                  <span className="text-slate-700 font-medium">{exp.description}</span>
+                                  <span className="text-[10px] text-slate-400">{new Date(exp.date).toLocaleDateString()}</span>
+                                </div>
+                                <span className="text-rose-500 font-bold whitespace-nowrap">-{formatCurrency(exp.amount)}</span>
+                              </div>
+                            )) : <div className="text-center py-2 text-slate-400 text-xs italic">Sin gastos registrados</div>}
+                          </>
+                        )}
                       </div>
                     </div>
                   );
@@ -389,8 +418,12 @@ export const InfoPanel: React.FC<InfoPanelProps> = React.memo(({
                   'quote', 'invoice', 'collection_account',
                   'receipt', 'expense', 'expense_receipt',
                 ];
+                const ES_GASTO = ['expense', 'expense_receipt'];
                 const docMessages = messages.filter(m => {
                   if (!TIPOS_DOCUMENTO.includes(m.type)) return false;
+                  // Los gastos son papeles de la casa. Al cliente se le enseñan
+                  // los suyos: la cotización, la cuenta de cobro, el recibo.
+                  if (esCliente && ES_GASTO.includes(m.type)) return false;
                   if (m.type === 'expense' && !showSystemMessages) return false;
                   if (selectedProjectForDocuments === 'all') return true;
                   return m.metadata?.projectName === selectedProjectForDocuments;
