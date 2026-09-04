@@ -1,4 +1,8 @@
 import React, { useState, useEffect } from 'react';
+// Empaquetado, no pedido a un CDN: generar el contrato tenía que
+// funcionar también sin cobertura.
+// @ts-ignore — el paquete no trae tipos.
+import html2pdf from 'html2pdf.js';
 import { createPortal } from 'react-dom';
 
 interface ContractGeneratorProps {
@@ -174,8 +178,10 @@ export default function ContractGenerator({
       jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
     };
 
-    // @ts-ignore
-    const worker = window.html2pdf().from(element).set(opt);
+    // El paquete tipa `format` y `unit` como uniones cerradas y estas opciones
+    // llegan como texto suelto. Son las válidas —carta, en pulgadas— y llevan
+    // años funcionando, así que se afirma en vez de reescribir el objeto.
+    const worker = html2pdf().from(element).set(opt as any);
     return await worker.output('blob');
   };
 

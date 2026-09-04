@@ -1,0 +1,50 @@
+/*
+ * Los estilos de la aplicación, compilados con ella.
+ *
+ * Tailwind, los iconos y la tipografía venían de CDN, pedidos al arrancar. En
+ * el navegador apenas se notaba; dentro del .aab, sin cobertura, la aplicación
+ * salía en crudo: los botones como cuadros blancos con borde negro, el logo a
+ * media pantalla y ningún icono. Ahora todo viaja dentro del paquete y se ve
+ * igual con conexión o sin ella.
+ */
+
+/* Inter, los pesos que se usan. Antes venía de fonts.googleapis.com. */
+@import '@fontsource/inter/300.css';
+@import '@fontsource/inter/400.css';
+@import '@fontsource/inter/500.css';
+@import '@fontsource/inter/600.css';
+@import '@fontsource/inter/700.css';
+
+/* Los iconos. Antes venían de cdnjs. */
+@import '@fortawesome/fontawesome-free/css/all.min.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * La barra de desplazamiento de los paneles con scroll propio.
+ *
+ * La clase se usa en diecinueve sitios y no estaba definida en ninguna parte:
+ * tampoco hacía nada con el CDN. Se le da lo que se esperaba de ella, una
+ * barra fina que no le quite sitio al contenido.
+ */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgb(203 213 225); /* slate-300 */
+  border-radius: 3px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgb(148 163 184); /* slate-400 */
+}
+/* Firefox no entiende las reglas de arriba. */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(203 213 225) transparent;
+}

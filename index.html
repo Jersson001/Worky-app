@@ -5,10 +5,11 @@
     <link rel="icon" type="image/png" href="/worky-logo 2.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Worky - Tu Centro de Operaciones Comercial</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <!-- Tailwind y los iconos ya no se piden por internet: se compilan con la
+         aplicación y entran en el paquete, con la tipografía (ver estilos.css
+         y tailwind.config.js).
+         Pedirlos al arrancar dejaba la app sin estilos cuando no había
+         cobertura, que dentro del .aab es la mitad de las veces. -->
     <style>
       /* ====== WORKY COLOR PALETTE ====== */
       :root {
@@ -403,15 +404,10 @@
         }
       }
     </style>
-  <script type="importmap">
-{
-  "imports": {
-    "react/": "https://aistudiocdn.com/react@^19.2.0/",
-    "react": "https://aistudiocdn.com/react@^19.2.0",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/"
-  }
-}
-</script>
+  <!-- Aquí había un importmap que resolvía React desde un CDN. Es de cuando el
+       proyecto se ejecutaba sin empaquetador; con Vite, React entra en el
+       bundle y ese mapa no lo usaba nadie. Se quita para que no quede la duda
+       de si la aplicación necesita internet para arrancar: no la necesita. -->
 <script>
   // Manejo de errores global para evitar crashes
   window.addEventListener('error', function(e) {
