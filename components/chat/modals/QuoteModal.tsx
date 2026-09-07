@@ -11,6 +11,7 @@ import ProFeatureGuard from '../../ProFeatureGuard';
 import { CatalogPickerOverlay } from './CatalogPicker';
 import { FormaDePagoCampos, CondicionesEditor } from './CondicionesCotizacion';
 import { CuadroDeTallasCampos } from './CuadroDeTallasCampos';
+import { REJILLAS, TIPOS_DE_TALLA, cuadroEnBlanco } from '../../../utils/tallas';
 import { QuoteItem, Product, ProductCategory, ContactRole, QuoteMode, CarpentrySection, CarpentryCategoryKey, CarpentryLineItem, CarpentryMaterial, CarpentryUnit, MaterialUnit, PaymentAccount, CondicionesCotizacion, BloqueCondiciones } from '../../../types';
 import { formatCurrency } from '../../../utils/currency';
 import { totalDeTallas } from '../../../utils/tallas';
@@ -235,8 +236,34 @@ const CarpentryItemRow: React.FC<{
         onChange={e => onUpdate('description', e.target.value)}
         className="w-full bg-transparent text-xs font-semibold text-slate-800 placeholder-slate-400 outline-none border-b border-transparent focus:border-slate-300 transition mb-2 pr-7"
       />
+      {/* Qué prenda es. Ocupa el sitio del selector de unidad, que en confección
+          siempre es UND y no había nada que elegir. Va arriba porque es lo
+          primero que se decide: de ahí sale la rejilla de tallas. */}
+      {esConfeccion && (
+        <div className="flex gap-1 mb-2">
+          {TIPOS_DE_TALLA.map(t => {
+            const activo = (item.tallas?.tipo ?? 'letra') === t;
+            return (
+              <button
+                key={t}
+                type="button"
+                onClick={() => onUpdate('tallas', { activo: true, tipo: t, cantidades: {} })}
+                className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold transition flex items-center justify-center gap-1 ${
+                  activo && item.tallas?.activo
+                    ? 'bg-indigo-600 text-white shadow-sm'
+                    : 'bg-white text-slate-600 border border-slate-200 hover:border-indigo-300'
+                }`}
+              >
+                <i className={`${REJILLAS[t].icono} text-[9px]`}></i>
+                {REJILLAS[t].label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       <div className="flex flex-wrap gap-1.5 items-end">
-        {allowUnitChange && (
+        {allowUnitChange && !esConfeccion && (
           <div className="w-20">
             <label className="text-[9px] text-slate-400 font-semibold uppercase block mb-0.5">Unidad</label>
             <select
@@ -290,20 +317,20 @@ const CarpentryItemRow: React.FC<{
             />
           </div>
         )}
-        <div className="w-14">
-          <label className="text-[9px] text-slate-400 font-semibold uppercase block mb-0.5">Cant.</label>
-          <input
-            type="number"
-            value={item.quantity}
-            readOnly={!!item.tallas?.activo}
-            onChange={e => onUpdate('quantity', Number(e.target.value))}
-            className={`w-full p-1.5 rounded-lg text-[11px] text-center outline-none border transition ${
-              item.tallas?.activo
-                ? 'bg-indigo-50 border-indigo-200 text-indigo-700 cursor-default'
-                : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-blue-500 focus:bg-white'
-            }`}
-          />
-        </div>
+        {/* Con tallas no hay casilla de cantidad: el mismo número se estaría
+            escribiendo dos veces, en la casilla y en la rejilla. El total va en
+            la cabecera de las tallas, que es donde se cuenta. */}
+        {!item.tallas?.activo && (
+          <div className="w-14">
+            <label className="text-[9px] text-slate-400 font-semibold uppercase block mb-0.5">Cant.</label>
+            <input
+              type="number"
+              value={item.quantity}
+              onChange={e => onUpdate('quantity', Number(e.target.value))}
+              className="w-full bg-slate-50 p-1.5 rounded-lg text-[11px] text-slate-900 text-center outline-none border border-slate-200 focus:border-blue-500 focus:bg-white transition"
+            />
+          </div>
+        )}
         <div className="flex-1 min-w-[90px]">
           <label className="text-[9px] text-slate-400 font-semibold uppercase block mb-0.5">Costo unitario</label>
           <CurrencyInput
@@ -379,12 +406,66 @@ const CarpentryItemRow: React.FC<{
           </div>
         )}
       </div>
-      {/* El cuadro de tallas, solo en confección: un muro no tiene tallas. */}
-      {esConfeccion && (
-        <CuadroDeTallasCampos
-          tallas={item.tallas}
-          onChange={t => onUpdate('tallas', t)}
-        />
+      {/* La rejilla, pegada a la cantidad: es de donde sale. Tenerlas separadas
+          —la cantidad arriba y las tallas al final, tras las fotos— obligaba a
+          mirar a dos sitios para entender un número que no se puede escribir. */}
+      {esConfeccion && item.tallas?.activo && (
+        <div className="mt-2 bg-indigo-50/60 border border-indigo-200 rounded-lg p-2">
+          <div className="flex items-center gap-2 mb-1.5">
+            <span className="text-[9px] font-bold text-indigo-700 uppercase tracking-wider flex-1">
+              Tallas
+            </span>
+            <span className="text-[10px] font-bold text-indigo-700">
+              {item.quantity} {item.quantity === 1 ? 'unidad' : 'unidades'}
+            </span>
+            <button
+              type="button"
+              onClick={() => onUpdate('tallas', undefined)}
+              className="text-indigo-400 hover:text-red-500 transition"
+              aria-label="Quitar las tallas"
+            >
+              <i className="fa-solid fa-xmark text-[11px]"></i>
+            </button>
+          </div>
+          <div className="grid grid-cols-6 gap-1">
+            {REJILLAS[item.tallas.tipo].tallas.map(talla => {
+              const n = item.tallas!.cantidades[talla];
+              return (
+                <div key={talla}>
+                  <label className="block text-[8px] font-bold text-slate-500 text-center mb-0.5">{talla}</label>
+                  <input
+                    type="number"
+                    min={0}
+                    inputMode="numeric"
+                    value={n ?? ''}
+                    onChange={e => {
+                      const v = Math.max(0, Math.floor(Number(e.target.value) || 0));
+                      const cantidades = { ...item.tallas!.cantidades };
+                      if (v > 0) cantidades[talla] = v; else delete cantidades[talla];
+                      onUpdate('tallas', { ...item.tallas!, cantidades });
+                    }}
+                    placeholder="—"
+                    className={`w-full p-1 rounded text-[10px] font-bold text-center outline-none border transition ${
+                      n ? 'bg-white border-indigo-300 text-slate-900'
+                        : 'bg-white/60 border-slate-200 text-slate-400 placeholder-slate-300'
+                    } focus:border-indigo-500`}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Sin cuadro todavía: se ofrece encenderlo. */}
+      {esConfeccion && !item.tallas?.activo && (
+        <button
+          type="button"
+          onClick={() => onUpdate('tallas', cuadroEnBlanco())}
+          className="mt-2 w-full py-1.5 rounded-lg text-[10px] font-bold border border-dashed border-slate-300 text-slate-600 hover:bg-slate-50 transition"
+        >
+          <i className="fa-solid fa-shirt text-[9px] mr-1"></i> Cotizar por tallas
+        </button>
       )}
 
       <div className="mt-2.5">
