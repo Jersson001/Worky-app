@@ -247,7 +247,7 @@ const CarpentryItemRow: React.FC<{
               <button
                 key={t}
                 type="button"
-                onClick={() => onUpdate('tallas', { activo: true, tipo: t, cantidades: {} })}
+                onClick={() => onUpdate('tallas', cuadroEnBlanco(t))}
                 className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold transition flex items-center justify-center gap-1 ${
                   activo && item.tallas?.activo
                     ? 'bg-indigo-600 text-white shadow-sm'
@@ -320,7 +320,7 @@ const CarpentryItemRow: React.FC<{
         {/* Con tallas no hay casilla de cantidad: el mismo número se estaría
             escribiendo dos veces, en la casilla y en la rejilla. El total va en
             la cabecera de las tallas, que es donde se cuenta. */}
-        {!item.tallas?.activo && (
+        {!item.tallas?.activo && !esConfeccion && (
           <div className="w-14">
             <label className="text-[9px] text-slate-400 font-semibold uppercase block mb-0.5">Cant.</label>
             <input
@@ -331,17 +331,22 @@ const CarpentryItemRow: React.FC<{
             />
           </div>
         )}
-        <div className="flex-1 min-w-[90px]">
-          <label className="text-[9px] text-slate-400 font-semibold uppercase block mb-0.5">Costo unitario</label>
-          <CurrencyInput
-            symbol
-            value={item.unitCost}
-            onCommit={raw => onUpdate('unitCost', raw === '' ? 0 : Number(raw))}
-            placeholder="$0"
-            className="w-full bg-slate-50 p-1.5 rounded-lg text-[11px] text-slate-900 outline-none border border-slate-200 focus:border-blue-500 focus:bg-white transition"
-          />
-        </div>
-        <div className="w-24 text-right">
+        {/* En confección no hay costo de línea: el precio va en cada talla,
+            porque una XL no cuesta lo mismo que una S. Dejarlo aquí obligaba a
+            escribir un precio que luego no se usaba. */}
+        {!esConfeccion && (
+          <div className="flex-1 min-w-[90px]">
+            <label className="text-[9px] text-slate-400 font-semibold uppercase block mb-0.5">Costo unitario</label>
+            <CurrencyInput
+              symbol
+              value={item.unitCost}
+              onCommit={raw => onUpdate('unitCost', raw === '' ? 0 : Number(raw))}
+              placeholder="$0"
+              className="w-full bg-slate-50 p-1.5 rounded-lg text-[11px] text-slate-900 outline-none border border-slate-200 focus:border-blue-500 focus:bg-white transition"
+            />
+          </div>
+        )}
+        <div className={`text-right ${esConfeccion ? 'flex-1' : 'w-24'}`}>
           <label className="text-[9px] text-slate-400 font-semibold uppercase block mb-0.5">Subtotal</label>
           <div className={`text-xs font-bold py-1.5 ${subtotal > 0 ? 'text-slate-900' : 'text-slate-400'}`}>
             {formatCurrency(subtotal)}

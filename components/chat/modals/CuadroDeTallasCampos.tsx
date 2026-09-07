@@ -6,9 +6,12 @@
  * un pedido de confección.
  *
  * Cada talla lleva su propio costo, y no una rejilla con un precio único: una
- * XL lleva más tela que una S y un 40 más que un 30. El costo arranca con el de
- * la línea —así no hay que escribirlo en cada fila— y solo se toca donde se
- * sale de lo normal; esa fila queda marcada para que se vea de un vistazo.
+ * XL lleva más tela que una S y un 40 más que un 30.
+ *
+ * En los capítulos de confección no hay costo de línea encima, así que cada
+ * talla nueva hereda el precio de la anterior: se escribe una vez y solo se
+ * toca donde cambia. En la cotización básica sí lo hay —es el precio del
+ * ítem—, y las tallas que no traigan el suyo caen a él; esas se marcan.
  *
  * Y solo se enseñan las tallas que van en el pedido. La rejilla de calzado son
  * once casillas y normalmente se usan cuatro.
@@ -163,7 +166,12 @@ export const CuadroDeTallasCampos: React.FC<Props> = ({
       {libres.length > 0 && (
         <button
           type="button"
-          onClick={() => guardar([...lineas, { talla: libres[0], cantidad: 1 }])}
+          onClick={() => guardar([
+            ...lineas,
+            // Hereda el precio de la anterior. Sin costo de línea arriba, sin
+            // esto habría que escribir el mismo precio en cada talla.
+            { talla: libres[0], cantidad: 1, costo: lineas[lineas.length - 1]?.costo },
+          ])}
           className="mt-2 w-full py-1.5 rounded-lg text-[10px] font-bold border border-dashed border-indigo-300 text-indigo-700 hover:bg-white transition"
         >
           <i className="fa-solid fa-plus text-[9px] mr-1"></i> Añadir talla
