@@ -120,3 +120,48 @@ export const subtotalDeItem = (
   item.tallas?.activo
     ? subtotalDeTallas(item.tallas, item.price || 0)
     : (item.price || 0) * (item.quantity || 0);
+
+/**
+ * Cambia de prenda sin perder lo escrito.
+ *
+ * Camisa, pantalón y calzado no comparten rejilla —una M no es una 32— así que
+ * al cambiar hay que dejar unas tallas y coger otras. Antes se borraba lo que
+ * hubiera: bastaba con darle sin querer al botón de al lado para quedarse sin
+ * el pedido. Ahora lo de cada prenda se guarda y vuelve si se vuelve.
+ */
+export const cambiarTipoDeTalla = (
+  cuadro: CuadroDeTallas,
+  tipo: TipoDeTalla,
+): CuadroDeTallas => {
+  if (cuadro.tipo === tipo) return cuadro;
+
+  const guardadas = { ...(cuadro.guardadas ?? {}) };
+  const actuales = lineasDe(cuadro);
+
+  // La fila tal como nace —una sola, cantidad 1 y sin precio— no se guarda:
+  // anunciar «guardado en Camisa» cuando no se escribió nada es ruido.
+  const sinTocar = actuales.length <= 1
+    && (actuales[0]?.cantidad ?? 1) === 1
+    && actuales[0]?.costo === undefined;
+
+  if (sinTocar) delete guardadas[cuadro.tipo];
+  else guardadas[cuadro.tipo] = actuales;
+
+  const recuperadas = guardadas[tipo];
+  delete guardadas[tipo];
+
+  return {
+    activo: true,
+    tipo,
+    lineas: recuperadas?.length
+      ? recuperadas
+      : [{ talla: REJILLAS[tipo].tallas[0], cantidad: 1 }],
+    ...(Object.keys(guardadas).length ? { guardadas } : {}),
+  };
+};
+
+/** Si hay algo escrito en otra prenda, para poder avisar de que sigue ahí. */
+export const tiposConDatos = (cuadro?: CuadroDeTallas): TipoDeTalla[] =>
+  Object.entries(cuadro?.guardadas ?? {})
+    .filter(([, lineas]) => (lineas as LineaDeTalla[])?.length)
+    .map(([t]) => t as TipoDeTalla);

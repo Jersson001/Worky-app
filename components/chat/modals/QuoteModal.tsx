@@ -11,7 +11,7 @@ import ProFeatureGuard from '../../ProFeatureGuard';
 import { CatalogPickerOverlay } from './CatalogPicker';
 import { FormaDePagoCampos, CondicionesEditor } from './CondicionesCotizacion';
 import { CuadroDeTallasCampos } from './CuadroDeTallasCampos';
-import { REJILLAS, TIPOS_DE_TALLA, cuadroEnBlanco } from '../../../utils/tallas';
+import { REJILLAS, TIPOS_DE_TALLA, cuadroEnBlanco, cambiarTipoDeTalla } from '../../../utils/tallas';
 import { QuoteItem, Product, ProductCategory, ContactRole, QuoteMode, CarpentrySection, CarpentryCategoryKey, CarpentryLineItem, CarpentryMaterial, CarpentryUnit, MaterialUnit, PaymentAccount, CondicionesCotizacion, BloqueCondiciones } from '../../../types';
 import { formatCurrency } from '../../../utils/currency';
 import { totalDeTallas, subtotalDeItem } from '../../../utils/tallas';
@@ -247,7 +247,9 @@ const CarpentryItemRow: React.FC<{
               <button
                 key={t}
                 type="button"
-                onClick={() => onUpdate('tallas', cuadroEnBlanco(t))}
+                onClick={() => onUpdate('tallas', item.tallas?.activo
+                  ? cambiarTipoDeTalla(item.tallas, t)
+                  : cuadroEnBlanco(t))}
                 className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold transition flex items-center justify-center gap-1 ${
                   activo && item.tallas?.activo
                     ? 'bg-indigo-600 text-white shadow-sm'
@@ -346,12 +348,17 @@ const CarpentryItemRow: React.FC<{
             />
           </div>
         )}
-        <div className={`text-right ${esConfeccion ? 'flex-1' : 'w-24'}`}>
+        {/* En confección el subtotal se lee dentro del cuadro de tallas, al pie
+            de las filas que lo forman. Aquí arriba era el mismo número dos
+            veces, como pasaba con la cantidad. */}
+        {!esConfeccion && (
+        <div className="w-24 text-right">
           <label className="text-[9px] text-slate-400 font-semibold uppercase block mb-0.5">Subtotal</label>
           <div className={`text-xs font-bold py-1.5 ${subtotal > 0 ? 'text-slate-900' : 'text-slate-400'}`}>
             {formatCurrency(subtotal)}
           </div>
         </div>
+        )}
       </div>
       {/* Image upload buttons */}
       <div className="mt-2.5">
