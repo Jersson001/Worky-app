@@ -1,6 +1,6 @@
 # Estado de funcionalidades — Worky
 
-Última revisión: 3 de septiembre de 2026.
+Última revisión: 7 de septiembre de 2026.
 
 > Este documento describía el proyecto cuando corría sobre Firebase y decía que
 > los clientes no podían tener cuenta, que Storage no estaba implementado y que
@@ -458,21 +458,30 @@ llegue a publicarse, así que cada intento fallido quema un número:
 | 15 | Enviado el 29/08/2026 |
 | 16 | Rechazado por apuntar a API 35, y aun así se quedó con el número |
 | 17 (2.2) | Catálogo en la cotización, «Cotizar» sobre una foto, datos de pago con QR, API 36 |
-| **18 (2.3)** | Políticas y apartado legal, forma de pago y condiciones, cotizar por tallas, oficios de comercio, impresión en A4 |
+| 18 (2.3) | Políticas y apartado legal, forma de pago y condiciones, cotizar por tallas, oficios de comercio, impresión en A4 |
+| **19 (2.4)** | Los estilos empaquetados en vez de pedidos a un CDN, los cuatro fallos de la primera prueba con un cliente real, el botón de responder en el documento, y la cotización de confección |
 
 Play exige **API 36** desde el 1 de septiembre de 2026.
 
-**Lo que falta antes de subir el 18**, al 3 de septiembre de 2026:
+**El 19 está probado en un teléfono**, un Motorola G13, y **en modo avión**: se
+ve con sus estilos, sus iconos y su tipografía. Hasta el 18 la aplicación se los
+pedía a un CDN al arrancar y sin cobertura salía en crudo. Cómo se compila y se
+prueba está en
+[GENERAR-APK-ANDROID-STUDIO.md](GENERAR-APK-ANDROID-STUDIO.md) — con la
+distinción entre el `.aab`, que solo se sube a Play, y el `.apk`, que es el que
+se instala.
 
-1. **Probarlo en un teléfono.** Nada de lo que entró en el 18 se ha visto
-   funcionando con sesión iniciada: se verificaron los documentos generados y
-   que todo compila, no la aplicación en marcha.
-2. **Desplegar en Vercel.** La ficha de Play pide una URL viva de política de
-   privacidad y `worky-app-khaki.vercel.app/privacidad.html` aún no lo está.
-3. **Llenar «Seguridad de los datos»** en Play Console. Es un formulario aparte
+**No hay prisa por publicar.** Al 7 de septiembre de 2026 la 2.4 se reparte como
+`.apk` a mano, para pruebas y feedback: el ciclo es más corto y no quema un
+`versionCode` por intento. Lo que quedaría pendiente el día que se suba:
+
+1. **Llenar «Seguridad de los datos»** en Play Console. Es un formulario aparte
    de la política y **tiene que coincidir con ella**: declarar de menos es
    motivo de rechazo.
-4. **Rotar la clave de subida**, que quedó expuesta en el historial público de
+2. **Rotar la clave de subida**, que quedó expuesta en el historial público de
    git.
+3. Mirar si la cuenta de Play es personal o de organización. Si es personal
+   piden el **D-U-N-S**, que tarda semanas.
+4. Que un abogado lea una vez la política y los términos.
 
 Ver [GUIA-GOOGLE-PLAY-STORE.md](GUIA-GOOGLE-PLAY-STORE.md).

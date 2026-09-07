@@ -4,6 +4,55 @@ Guía paso a paso para generar el APK de Worky desde Android Studio.
 
 ---
 
+## ⚠️ Lo primero: `.aab` y `.apk` no son lo mismo
+
+Se confunden porque salen del mismo código, pero sirven para cosas distintas:
+
+| | `.apk` | `.aab` |
+|---|---|---|
+| Se instala en el teléfono | **Sí** | **No** |
+| Se sube a Google Play | No | **Sí** |
+| Comando | `gradlew assembleRelease` | `gradlew bundleRelease` |
+| Dónde queda | `android/app/build/outputs/apk/release/` | `android/app/build/outputs/bundle/release/` |
+
+Un `.aab` es un paquete que Play abre para armar un APK a la medida de cada
+teléfono. Por eso Android no lo instala: no es una app todavía. **Para probar en
+el teléfono siempre se compila el `.apk`.**
+
+---
+
+## 📲 Pasar el APK al teléfono y probarlo
+
+Lo que funciona y lo que no, probado en un Motorola G13:
+
+- **WhatsApp y Gmail no sirven** — los dos bloquean los archivos `.apk`.
+- **Google Drive sí**: se sube desde el PC, y en el teléfono se abre la app
+  Drive → tres puntos → **Descargar**.
+- **Cable USB también**: al conectar, en el teléfono se baja la barra de
+  notificaciones y en «Cargando por USB» se elige **Transferencia de archivos**.
+  Copiarlo a la carpeta **Download**.
+
+En el teléfono **no se busca la carpeta a mano**: se abre la app **Archivos**,
+la **lupa 🔍**, y se escribe el nombre del archivo. Al tocarlo, Android avisa de
+«apps desconocidas» → **Configuración** → activar el permiso → atrás →
+**Instalar**.
+
+### La prueba en modo avión
+
+Es la que destapó el fallo de la v17, cuando la app pedía Tailwind, los iconos y
+la tipografía a un CDN al arrancar y en el teléfono salía en crudo:
+
+1. Abrirla **con internet**, iniciar sesión, dejar que cargue.
+2. Cerrarla del todo, deslizándola fuera de las apps recientes.
+3. **Modo avión.**
+4. Abrirla otra vez.
+
+Lo que se mira es solo que **se vea bien**: colores, botones redondeados,
+iconos, tipografía. Que no pueda iniciar sesión ni sincronizar es normal y
+esperado. Un error de conexión bien pintado es un aprobado.
+
+---
+
 ## 📋 Paso 1: Abrir el Proyecto en Android Studio
 
 1. Abre **Android Studio**
