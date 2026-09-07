@@ -398,6 +398,25 @@ export const SharedDocumentViewer: React.FC<SharedDocumentViewerProps> = ({ docu
           </div>
         )}
 
+        {/* El catálogo, después de lo suyo.
+            Se le ofrece cuando ya vio el precio, no compitiendo con él, y solo
+            si de verdad hay catálogo publicado. */}
+        {document?.catalogoUrl && (
+          <div className="mt-4 bg-slate-50 border border-slate-200 rounded-3xl p-6 text-center">
+            <h3 className="text-base font-extrabold text-slate-900 mb-1">Conoce todo nuestro catálogo</h3>
+            <p className="text-slate-500 text-sm mb-4">
+              Mira todo lo que hacemos. Tampoco necesitas registrarte.
+            </p>
+            <a
+              href={document.catalogoUrl}
+              className="inline-flex items-center justify-center gap-2.5 w-full sm:w-auto bg-white text-slate-700 px-7 py-3.5 rounded-2xl font-bold text-sm hover:bg-slate-100 transition border border-slate-300"
+            >
+              <i className="fa-solid fa-store text-slate-500"></i>
+              <span>Ver catálogo</span>
+            </a>
+          </div>
+        )}
+
         {/* Worky, al pie y sin gritar.
             Aquí había un banner a toda página con degradado y un botón enorme:
             publicidad nuestra dentro del documento comercial de otro, y encima

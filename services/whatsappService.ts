@@ -176,6 +176,10 @@ export const saveSharedDocument = async (
     ...documentData,
     vendedorId,
     documentId,
+    // La dirección del catálogo se guarda, no se deduce del vendedor: solo la
+    // hay si tiene productos publicados, y un botón que lleve a un catálogo
+    // vacío es peor que no ponerlo.
+    catalogoUrl: catalogo?.url,
     createdAt: new Date().toISOString(),
     expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // Expira en 30 días
   };
