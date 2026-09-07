@@ -36,8 +36,16 @@ android {
         // condiciones de negociación en la cotización, cotizar por tallas para
         // confección y calzado, oficios de comercio, y el documento arreglado
         // para imprimir en A4 sin perder el final.
-        versionCode 18
-        versionName "2.3"
+        //
+        // El 19 (2.4) es el primero que se ve bien sin cobertura: hasta el 18 la
+        // aplicación pedía Tailwind, los iconos y la tipografía a un CDN al
+        // arrancar, y en el teléfono salía en crudo. Lleva además los cuatro
+        // fallos que destapó la primera prueba con un cliente de verdad —el
+        // proyecto no se creaba al aprobar la cotización—, el botón para
+        // responder desde el documento, y la cotización de confección: capítulos
+        // propios, tallas con su precio y condiciones del sector.
+        versionCode 19
+        versionName "2.4"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
