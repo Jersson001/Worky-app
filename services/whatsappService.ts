@@ -1,21 +1,66 @@
 import { supabase, PUBLIC_BUCKET } from './supabaseConfig';
-import { qrImageUrl, WORKY_APP_URL } from './catalogShareService';
+import { getCurrentUserId } from './messagingService';
+import { qrImageUrl, WORKY_APP_URL, chatInviteUrl } from './catalogShareService';
 import { buildDocumentHtml } from './documentHtml';
 import { formatCurrency } from '../utils/currency';
 import { describeCantidad, seccionesConContenido } from '../utils/carpentryCalculations';
 import { CarpentrySection } from '../types';
 
 /**
- * Pie del documento con el enlace y el QR del catálogo.
- * Quien lo escanee entra sin registrarse; solo hace falta cuenta para chatear.
+ * El pie del documento: responder, ver el catálogo, y quién lo hizo.
+ *
+ * Antes era el enlace del catálogo escrito en letra pequeña bajo un QR. En un
+ * celular hay que apuntarle a ese texto para tocarlo, y sobre todo: no había
+ * forma de contestar. Alguien recibía una cotización, la leía y se quedaba sin
+ * saber cómo responder —pasó con una clienta de verdad—, así que lo primero es
+ * el botón de responder.
+ *
+ * `vendedorId` es quien manda el documento y `documentId` el documento mismo:
+ * los dos viajan en el enlace para que, al entrar, la conversación se abra con
+ * la cotización ya dentro en vez de en blanco.
  */
-const bloqueCatalogo = ({ url, negocio }: { url: string; negocio: string }): string => `
-      <div style="margin-top:28px;padding:22px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;text-align:center">
-        <p style="font-size:1rem;font-weight:700;color:#1e293b;margin:0 0 4px">Conoce todo nuestro catálogo</p>
-        <p style="color:#64748b;font-size:.84rem;margin:0 0 14px">Escanea el código o abre el enlace — no necesitas registrarte.</p>
-        <img src="${qrImageUrl(url, 200)}" alt="QR del catálogo de ${negocio}" width="150" height="150" style="display:block;margin:0 auto 10px;background:#fff;padding:8px;border-radius:8px">
-        <a href="${url}" style="color:#2563eb;font-size:.8rem;word-break:break-all">${url}</a>
+const boton = (href: string, texto: string, principal = false): string => `
+        <a href="${href}" style="display:block;text-decoration:none;font-weight:700;padding:15px 20px;
+           border-radius:12px;font-size:1rem;text-align:center;${principal
+             ? 'background:#2563eb;color:#fff;box-shadow:0 4px 14px rgba(37,99,235,.28)'
+             : 'background:#fff;color:#334155;border:1px solid #e2e8f0'}">${texto}</a>`;
+
+const bloqueCatalogo = (
+  { url, negocio }: { url: string; negocio: string },
+  vendedorId?: string,
+  documentId?: string,
+): string => {
+  const responder = vendedorId ? chatInviteUrl(vendedorId, documentId) : '';
+
+  return `
+      ${responder ? `
+      <div style="margin-top:28px;padding:22px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:14px;text-align:center">
+        <p style="font-size:1.05rem;font-weight:700;color:#0f172a;margin:0 0 4px">¿Tienes dudas o quieres aceptar?</p>
+        <p style="color:#475569;font-size:.86rem;margin:0 0 16px">Respóndenos por el chat. No necesitas registrarte.</p>
+        ${boton(responder, 'Responder por el chat', true)}
+      </div>` : ''}
+
+      ${!url ? '' : `
+      <div style="margin-top:${responder ? '12' : '28'}px;padding:22px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;text-align:center">
+        <p style="font-size:1.05rem;font-weight:700;color:#0f172a;margin:0 0 4px">Conoce todo nuestro catálogo</p>
+        <p style="color:#64748b;font-size:.86rem;margin:0 0 16px">Mira todo lo que hacemos. No necesitas registrarte.</p>
+        ${boton(url, 'Ver catálogo')}
+        <div style="display:flex;align-items:center;gap:10px;margin:16px 0 12px">
+          <span style="flex:1;height:1px;background:#e2e8f0"></span>
+          <span style="color:#94a3b8;font-size:.72rem;text-transform:uppercase;letter-spacing:.05em">o escanea</span>
+          <span style="flex:1;height:1px;background:#e2e8f0"></span>
+        </div>
+        <img src="${qrImageUrl(url, 200)}" alt="QR del catálogo de ${negocio}" width="110" height="110" style="display:block;margin:0 auto;background:#fff;padding:7px;border-radius:10px;border:1px solid #e2e8f0">
+      </div>`}
+
+      <div style="margin-top:12px;padding:14px 18px;background:#fff;border:1px solid #e2e8f0;border-radius:12px;display:flex;align-items:center;gap:12px">
+        <div style="flex:1;text-align:left">
+          <p style="font-size:.8rem;font-weight:700;color:#334155;margin:0">Cotización hecha con Worky</p>
+          <p style="color:#94a3b8;font-size:.72rem;margin:2px 0 0">Cotiza y cobra desde el celular</p>
+        </div>
+        <a href="${WORKY_PLAY_STORE_URL}" style="background:#f1f5f9;color:#334155;text-decoration:none;font-weight:700;font-size:.78rem;padding:9px 14px;border-radius:9px;border:1px solid #e2e8f0;white-space:nowrap">Descargar</a>
       </div>`;
+};
 
 /**
  * Formatea un número de teléfono para WhatsApp
@@ -146,7 +191,22 @@ export const saveSharedDocument = async (
 
   // 3. Subir HTML renderizado para visualización directa en navegador/móvil
   try {
-    const htmlContent = buildDocumentHtml(docWithMeta, catalogo ? bloqueCatalogo(catalogo) : '');
+    // Quien sube el documento es siempre quien lo manda, así que su id sale de
+    // la propia sesión. Es lo que hace falta para el botón de responder: sin
+    // saber a quién, no hay chat que abrir.
+    let vendedorId: string | undefined;
+    try {
+      vendedorId = getCurrentUserId();
+    } catch {
+      // Sin sesión no se puede ofrecer el chat, pero el documento se sube igual.
+    }
+
+    const htmlContent = buildDocumentHtml(
+      docWithMeta,
+      catalogo || vendedorId
+        ? bloqueCatalogo(catalogo ?? { url: '', negocio: '' }, vendedorId, documentId)
+        : '',
+    );
 
     const htmlBlob = new Blob([htmlContent], { type: 'text/html' });
     await supabase.storage
@@ -246,8 +306,13 @@ export const generateQuoteMessage = (quoteData: {
       .join('\n');
   }
 
-  const linkText = documentLink ? `\n\n📄 *Ver documento completo:*\n${documentLink}\n` : '';
-  const catalogText = catalogLink ? `\n🛒 *Mira nuestro catálogo:*\n${catalogLink}\n` : '';
+  // Un solo enlace, el del documento.
+  //
+  // Llevaba tres —documento, catálogo y Google Play— compitiendo en el mismo
+  // mensaje: quedaba largo, parecía publicidad y el que importa se perdía entre
+  // los otros dos. El catálogo y la descarga viven ahora dentro del documento,
+  // como botones, y se le ofrecen después de que haya visto el precio.
+  const linkText = documentLink ? `\n\n📄 *Ver la cotización:*\n${documentLink}\n` : '';
 
   return `📋 *Cotización #${quoteData.quoteNumber}*
 
@@ -257,13 +322,10 @@ Te envío la cotización solicitada:
 
 ${itemsText}
 
-*Total: ${formatCurrency(quoteData.total)}*${linkText}${catalogText}
-¿Te parece bien? Puedo ajustar cualquier detalle.
+*Total: ${formatCurrency(quoteData.total)}*${linkText}
+¿Te parece bien? Puedo ajustar cualquier detalle. Puedes responderme desde ahí mismo.
 
-Saludos!
-
-📲 *Descarga Worky App en Google Play:*
-${WORKY_PLAY_STORE_URL}`;
+Saludos!`;
 };
 
 /**
@@ -279,8 +341,7 @@ export const generateInvoiceMessage = (invoiceData: {
     ? `\n*Fecha de vencimiento:* ${invoiceData.dueDate.toLocaleDateString()}`
     : '';
   
-  const linkText = documentLink ? `\n\n📄 *Ver documento completo:*\n${documentLink}\n` : '';
-  const catalogText = catalogLink ? `\n🛒 *Mira nuestro catálogo:*\n${catalogLink}\n` : '';
+  const linkText = documentLink ? `\n\n📄 *Ver la factura:*\n${documentLink}\n` : '';
 
   return `🧾 *Factura #${invoiceData.invoiceNumber}*
 
@@ -288,13 +349,10 @@ Hola ${invoiceData.clientName},
 
 Te envío la factura correspondiente:
 
-*Total: ${formatCurrency(invoiceData.total)}*${dueDateText}${linkText}${catalogText}
+*Total: ${formatCurrency(invoiceData.total)}*${dueDateText}${linkText}
 Por favor, realiza el pago a la brevedad posible.
 
-¡Gracias por tu preferencia!
-
-📲 *Descarga Worky App en Google Play:*
-${WORKY_PLAY_STORE_URL}`;
+¡Gracias por tu preferencia!`;
 };
 
 /**

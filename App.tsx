@@ -6,7 +6,8 @@ import ContractGenerator from './components/ContractGenerator';
 import ProFeatureGuard from './components/ProFeatureGuard';
 import AdminPanel from './components/AdminPanel';
 import CatalogShareModal from './components/CatalogShareModal';
-import { recordarVendedorDeLaUrl, vendedorPendiente, olvidarVendedorPendiente, pedidoPendiente, olvidarPedidoPendiente, llegoInvitado, olvidarLlegadaInvitada } from './services/catalogShareService';
+import { getSharedDocument } from './services/whatsappService';
+import { recordarVendedorDeLaUrl, vendedorPendiente, olvidarVendedorPendiente, pedidoPendiente, olvidarPedidoPendiente, llegoInvitado, olvidarLlegadaInvitada, recordarDocumentoDeLaUrl, documentoPendiente, olvidarDocumentoPendiente } from './services/catalogShareService';
 import { uploadFileForChat } from './services/storageService';
 import { describeError } from './utils/errorMessage';
 import { leerImagenReducida } from './utils/imagen';
@@ -223,6 +224,9 @@ const App: React.FC = () => {
   // la URL no sobrevive a ese viaje.
   useEffect(() => {
     const vendedor = recordarVendedorDeLaUrl();
+    // Se lee siempre, aunque no haya vendedor: la URL se limpia al leerla y
+    // recargar no debe revivir un documento ya colocado.
+    recordarDocumentoDeLaUrl();
     if (!vendedor) return;
     getPublicInfoById(vendedor).then(info => {
       if (info) setInvitadoPor({ name: info.name, avatar: info.avatar });
@@ -236,6 +240,47 @@ const App: React.FC = () => {
    * la que mandarlo, ni sesión con la que subir las fotos. Primero la nota,
    * para que el vendedor lea qué le piden antes de ver las imágenes.
    */
+  /**
+   * Pone en el chat la cotización con la que llegó, si vino desde su botón.
+   *
+   * Quien toca «Responder por el chat» acaba de leer un documento; aterrizar en
+   * una conversación en blanco es el enredo que el botón venía a quitar. El
+   * documento ya está subido y es público, así que se recupera y se publica
+   * como primer mensaje del hilo, de parte de quien lo mandó.
+   *
+   * El vendedor lo recibe en el mismo hilo, así que ve por dónde entró.
+   */
+  const colocarDocumentoPendiente = async (vendedor: string) => {
+    const docId = documentoPendiente();
+    if (!docId) return;
+    // Se gasta al intentarlo: si algo falla, mejor un chat vacío que la misma
+    // cotización repetida cada vez que abra la aplicación.
+    olvidarDocumentoPendiente();
+
+    try {
+      const doc = await getSharedDocument(docId);
+      if (!doc?.data || !doc?.type) return;
+
+      const nombres: Record<string, string> = {
+        quote: 'Cotización', invoice: 'Factura', receipt: 'Recibo de Caja',
+        collection_account: 'Cuenta de Cobro', expense_receipt: 'Comprobante de Gasto',
+      };
+      const numero = doc.data.number ? ` ${doc.data.number}` : '';
+
+      // Va como enviado por el vendedor, que es de quien es: en el hilo tiene
+      // que verse a su lado, no al de quien acaba de entrar.
+      await sendMessageToFirebase(vendedor, {
+        text: `📋 ${nombres[doc.type] || 'Documento'}${numero}`,
+        sender: 'other',
+        timestamp: new Date(),
+        type: doc.type,
+        metadata: doc.data,
+      } as any);
+    } catch (e) {
+      console.warn('No se pudo colocar el documento con el que llegó:', e);
+    }
+  };
+
   const enviarPedidoPendiente = async (vendedor: string) => {
     const pedido = pedidoPendiente();
     if (!pedido || pedido.vendedor !== vendedor) return;
@@ -350,6 +395,7 @@ const App: React.FC = () => {
         void supabase.auth.updateUser({ data: { vendedor: null } });
 
         await enviarPedidoPendiente(vendedor);
+        await colocarDocumentoPendiente(vendedor);
       } catch (e) {
         // Si falla se deja pendiente: lo volverá a intentar la próxima vez que
         // entre, en vez de perder la vinculación en silencio.

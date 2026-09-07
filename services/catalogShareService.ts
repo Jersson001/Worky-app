@@ -129,8 +129,8 @@ export const catalogPageUrl = (userId: string): string =>
  * abre el chat: sin esto aterrizaba en una app vacía sin saber con quién
  * estaba hablando.
  */
-export const chatInviteUrl = (userId: string): string =>
-  `${WORKY_APP_URL}/?vendedor=${userId}`;
+export const chatInviteUrl = (userId: string, documentId?: string): string =>
+  `${WORKY_APP_URL}/?vendedor=${userId}` + (documentId ? `&doc=${documentId}` : '');
 
 /** Baja la instantánea vigente. La usa la página pública del catálogo. */
 export const fetchCatalogHtml = async (userId: string): Promise<string | null> => {
@@ -195,6 +195,48 @@ export const llegoInvitado = (): boolean => {
 export const olvidarLlegadaInvitada = (): void => {
   try {
     localStorage.removeItem(INVITADO_KEY);
+  } catch {
+    /* nada que olvidar */
+  }
+};
+
+/**
+ * El documento con el que llegó, cuando entra desde el botón de una cotización.
+ *
+ * Se guarda por lo mismo que el vendedor: entre que toca «Responder» y termina
+ * de entrar hay un camino largo y la URL se pierde. Sin esto aterrizaría en un
+ * chat en blanco justo después de leer la cotización, que es exactamente el
+ * enredo que el botón venía a quitar.
+ */
+const DOCUMENTO_KEY = 'worky:documento-pendiente';
+
+export const recordarDocumentoDeLaUrl = (): string | null => {
+  try {
+    const url = new URL(window.location.href);
+    const doc = url.searchParams.get('doc');
+    if (doc) {
+      localStorage.setItem(DOCUMENTO_KEY, doc);
+      url.searchParams.delete('doc');
+      window.history.replaceState({}, '', url.toString());
+    }
+    return doc || localStorage.getItem(DOCUMENTO_KEY);
+  } catch {
+    return null;
+  }
+};
+
+export const documentoPendiente = (): string | null => {
+  try {
+    return localStorage.getItem(DOCUMENTO_KEY);
+  } catch {
+    return null;
+  }
+};
+
+/** Se gasta al usarlo: si no, cada vez que entrara le saldría de nuevo. */
+export const olvidarDocumentoPendiente = (): void => {
+  try {
+    localStorage.removeItem(DOCUMENTO_KEY);
   } catch {
     /* nada que olvidar */
   }
