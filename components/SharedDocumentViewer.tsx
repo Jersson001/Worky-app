@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { getSharedDocument, WORKY_PLAY_STORE_URL } from '../services/whatsappService';
+import { chatInviteUrl } from '../services/catalogShareService';
 import { esLineaUsada, usaMedida, computeMaterialSubtotal, computeManoDeObraTotal, computeMaterialesTotal, describeMaterial } from '../utils/carpentryCalculations';
 
 interface SharedDocumentViewerProps {
@@ -374,26 +375,47 @@ export const SharedDocumentViewer: React.FC<SharedDocumentViewerProps> = ({ docu
           )}
         </div>
 
-        {/* Google Play Store CTA Banner */}
-        <div className="mt-8 bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 rounded-3xl p-6 sm:p-8 text-white text-center shadow-xl shadow-blue-500/10 relative overflow-hidden">
-          <div className="relative z-10 max-w-lg mx-auto">
-            <div className="w-14 h-14 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <i className="fa-brands fa-google-play text-3xl"></i>
-            </div>
-            <h3 className="text-2xl font-extrabold mb-2">Worky App está en Google Play</h3>
-            <p className="text-blue-100 text-sm mb-6 leading-relaxed">
-              Crea cotizaciones profesionales, gestiona facturas, recibos y proyectos desde tu celular.
+        {/* Responder.
+            Lo primero al terminar de leer, y con diferencia lo más importante
+            de este pie: una clienta recibió una cotización de verdad y se quedó
+            sin saber cómo contestar, porque aquí abajo solo había publicidad de
+            Worky. Lleva al mismo sitio que el QR del catálogo —se entra con un
+            alias, sin registrarse— y con el documento a cuestas, para que el
+            chat no se abra en blanco justo después de leerlo. */}
+        {document?.vendedorId && (
+          <div className="mt-8 bg-blue-50 border border-blue-200 rounded-3xl p-6 sm:p-8 text-center">
+            <h3 className="text-xl font-extrabold text-slate-900 mb-1.5">¿Tienes dudas o quieres aceptar?</h3>
+            <p className="text-slate-600 text-sm mb-5">
+              Respóndele directo por el chat. No necesitas registrarte.
             </p>
-            <a 
-              href={WORKY_PLAY_STORE_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-3 bg-white text-slate-900 px-8 py-4 rounded-2xl font-extrabold text-base hover:bg-slate-50 transition-all shadow-lg active:scale-[0.99]"
+            <a
+              href={chatInviteUrl(document.vendedorId, document.documentId || documentId)}
+              className="inline-flex items-center justify-center gap-3 w-full sm:w-auto bg-blue-600 text-white px-8 py-4 rounded-2xl font-extrabold text-base hover:bg-blue-700 transition shadow-lg shadow-blue-500/25 active:scale-[0.99]"
             >
-              <i className="fa-brands fa-google-play text-blue-600 text-xl"></i>
-              <span>Descargar Worky en Google Play</span>
+              <i className="fa-solid fa-comments text-lg"></i>
+              <span>Responder por el chat</span>
             </a>
           </div>
+        )}
+
+        {/* Worky, al pie y sin gritar.
+            Aquí había un banner a toda página con degradado y un botón enorme:
+            publicidad nuestra dentro del documento comercial de otro, y encima
+            lo último que veía el cliente. Va después de lo suyo y en pequeño. */}
+        <div className="mt-4 bg-white border border-slate-200 rounded-2xl px-5 py-4 flex items-center gap-4">
+          <div className="flex-1 text-left">
+            <p className="text-sm font-bold text-slate-700">Documento hecho con Worky</p>
+            <p className="text-xs text-slate-400 mt-0.5">Cotiza y cobra desde el celular</p>
+          </div>
+          <a
+            href={WORKY_PLAY_STORE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 bg-slate-100 text-slate-700 px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-slate-200 transition whitespace-nowrap border border-slate-200"
+          >
+            <i className="fa-brands fa-google-play text-blue-600"></i>
+            Descargar
+          </a>
         </div>
 
         {/* Footer Branding */}

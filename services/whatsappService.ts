@@ -161,8 +161,21 @@ export const saveSharedDocument = async (
   /** Si se pasa, el documento lleva al pie el enlace y el QR del catálogo. */
   catalogo?: { url: string; negocio: string },
 ): Promise<void> => {
+  // Quien sube el documento es quien lo manda. Su id va DENTRO del documento,
+  // no solo en el HTML de Storage: el enlace que se comparte es `?view=`, que
+  // abre la aplicación y pinta el documento con React, así que el HTML de
+  // Storage casi nadie lo ve. Sin este id, el visor no sabe a quién responder.
+  let vendedorId: string | undefined;
+  try {
+    vendedorId = getCurrentUserId();
+  } catch {
+    // Sin sesión no se puede ofrecer el chat; el documento se comparte igual.
+  }
+
   const docWithMeta = {
     ...documentData,
+    vendedorId,
+    documentId,
     createdAt: new Date().toISOString(),
     expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // Expira en 30 días
   };
@@ -191,16 +204,6 @@ export const saveSharedDocument = async (
 
   // 3. Subir HTML renderizado para visualización directa en navegador/móvil
   try {
-    // Quien sube el documento es siempre quien lo manda, así que su id sale de
-    // la propia sesión. Es lo que hace falta para el botón de responder: sin
-    // saber a quién, no hay chat que abrir.
-    let vendedorId: string | undefined;
-    try {
-      vendedorId = getCurrentUserId();
-    } catch {
-      // Sin sesión no se puede ofrecer el chat, pero el documento se sube igual.
-    }
-
     const htmlContent = buildDocumentHtml(
       docWithMeta,
       catalogo || vendedorId
