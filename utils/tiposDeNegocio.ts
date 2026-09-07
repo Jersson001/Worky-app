@@ -37,11 +37,12 @@ export const TIPOS_DE_NEGOCIO: TipoDeNegocio[] = [
   { value: 'electricidad', label: 'Electricidad', emoji: '⚡', gremios: ['obra_civil'], familia: 'obra' },
 
   // ── Comercio ──
-  // Sin capítulos: aquí se vende de catálogo y se cotiza por cantidad, no por
-  // metro lineal de mesón. Los porcentajes de pago y la cuenta sí los ven,
-  // que cobrar se cobra en todos los oficios.
-  { value: 'moda_textiles', label: 'Moda y textiles', emoji: '🧵', gremios: [], familia: 'comercio' },
-  { value: 'calzado', label: 'Calzado', emoji: '👟', gremios: [], familia: 'comercio' },
+  // Moda y calzado tienen capítulos propios —los de confección— y no ven los de
+  // obra: quien hace uniformes no tiene nada que ver con quien enchapa un baño.
+  // Belleza y artículos varios se quedan con la cotización básica, que es lo
+  // que necesita quien vende cosas hechas.
+  { value: 'moda_textiles', label: 'Moda y textiles', emoji: '🧵', gremios: ['confeccion'], familia: 'comercio' },
+  { value: 'calzado', label: 'Calzado', emoji: '👟', gremios: ['confeccion'], familia: 'comercio' },
   { value: 'belleza', label: 'Belleza', emoji: '💄', gremios: [], familia: 'comercio' },
   { value: 'articulos_varios', label: 'Artículos varios', emoji: '📦', gremios: [], familia: 'comercio' },
 

@@ -235,7 +235,7 @@ export type QuoteMode = 'basica' | 'personalizada';
 export type CarpentryUnit = 'ML' | 'M2' | 'M3' | 'UND' | 'PUNTO' | 'VIAJE' | 'GLOBAL';
 
 /** A qué oficio pertenece una categoría. Agrupa el selector de la cotización. */
-export type GremioKey = 'carpinteria' | 'obra_civil';
+export type GremioKey = 'carpinteria' | 'obra_civil' | 'confeccion';
 
 export type CarpentryCategoryKey =
   // Carpintería
@@ -252,7 +252,15 @@ export type CarpentryCategoryKey =
   | 'puntos_instalaciones'
   | 'demoliciones'
   | 'impermeabilizacion'
-  | 'aparatos_materiales';
+  | 'aparatos_materiales'
+  // Confección y moda. No se cruzan con los de obra: quien hace uniformes no
+  // tiene nada que ver con quien enchapa un baño, y verse capítulos ajenos en
+  // el formulario es lo que hace dudar de si la aplicación es para uno.
+  | 'uniformes_empresariales'
+  | 'uniformes_escolares'
+  | 'dotacion_epp'
+  | 'prendas_a_medida'
+  | 'personalizacion';
 
 /**
  * El material que lleva una línea de mano de obra.
@@ -304,6 +312,14 @@ export interface CarpentryLineItem {
   isTemplate?: boolean;
   images?: string[];
   comments?: string;
+  /**
+   * El desglose por tallas, en los capítulos de confección.
+   *
+   * Cuando lo lleva, `quantity` sale de sumarlo: un pedido de uniformes no son
+   * «20 camisas», son 3 S, 8 M, 6 L y 3 XL, y ese desglose es lo que se manda
+   * a producción. En los capítulos de obra no aparece: un muro no tiene tallas.
+   */
+  tallas?: CuadroDeTallas;
 }
 
 export interface CarpentryItemGroup {

@@ -215,7 +215,9 @@ const CarpentryItemRow: React.FC<{
   onUpdate: (field: keyof CarpentryLineItem, value: any) => void;
   onRemove: () => void;
   allowUnitChange?: boolean;
-}> = ({ item, onUpdate, onRemove, allowUnitChange = true }) => {
+  /** En confección la cantidad se cuenta por tallas, no se escribe. */
+  esConfeccion?: boolean;
+}> = ({ item, onUpdate, onRemove, allowUnitChange = true, esConfeccion = false }) => {
   const subtotal = computeLineSubtotal(item);
 
   return (
@@ -293,8 +295,13 @@ const CarpentryItemRow: React.FC<{
           <input
             type="number"
             value={item.quantity}
+            readOnly={!!item.tallas?.activo}
             onChange={e => onUpdate('quantity', Number(e.target.value))}
-            className="w-full bg-slate-50 p-1.5 rounded-lg text-[11px] text-slate-900 text-center outline-none border border-slate-200 focus:border-blue-500 focus:bg-white transition"
+            className={`w-full p-1.5 rounded-lg text-[11px] text-center outline-none border transition ${
+              item.tallas?.activo
+                ? 'bg-indigo-50 border-indigo-200 text-indigo-700 cursor-default'
+                : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-blue-500 focus:bg-white'
+            }`}
           />
         </div>
         <div className="flex-1 min-w-[90px]">
@@ -372,6 +379,14 @@ const CarpentryItemRow: React.FC<{
           </div>
         )}
       </div>
+      {/* El cuadro de tallas, solo en confección: un muro no tiene tallas. */}
+      {esConfeccion && (
+        <CuadroDeTallasCampos
+          tallas={item.tallas}
+          onChange={t => onUpdate('tallas', t)}
+        />
+      )}
+
       <div className="mt-2.5">
         <label className="text-[9px] text-slate-400 font-semibold uppercase block mb-1">Comentarios (Opcional)</label>
         <textarea
@@ -701,6 +716,7 @@ export const QuoteModal: React.FC<QuoteModalProps> = React.memo(({
                                     <CarpentryItemRow
                                       key={item.id}
                                       item={item}
+                                      esConfeccion={config.gremio === 'confeccion'}
                                       allowUnitChange={!config.fixedGroups}
                                       onUpdate={(field, value) => onUpdateCarpentryItem(section.id, group.id, item.id, field, value)}
                                       onRemove={() => onRemoveCarpentryItem(section.id, group.id, item.id)}

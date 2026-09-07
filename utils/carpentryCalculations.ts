@@ -5,8 +5,9 @@
  * Así ML/M2 (que usan medida) y UND/GLOBAL (medida implícita 1) comparten
  * la misma lógica sin casos especiales por categoría.
  */
-import { CarpentryCategoryKey, CarpentryItemGroup, CarpentryLineItem, CarpentryMaterial, CarpentrySection, CarpentryUnit, GremioKey, MaterialUnit, QuoteItem } from '../types';
+import { CarpentryCategoryKey, CarpentryItemGroup, CarpentryLineItem, CarpentryMaterial, CarpentrySection, CarpentryUnit, CuadroDeTallas, GremioKey, MaterialUnit, QuoteItem } from '../types';
 import { GREMIOS_POR_OFICIO } from './tiposDeNegocio';
+import { resumenDeTallas, totalDeTallas } from './tallas';
 
 // ─── Identificadores ─────────────────────────────────────────────────────────
 
@@ -63,9 +64,16 @@ const PLURALIZA: CarpentryUnit[] = ['PUNTO', 'VIAJE'];
  * un código, no una cantidad. La unidad se escribe siempre —tres viajes de
  * escombro como «x3» no decían tres qué— salvo GLOBAL, que no añade nada.
  */
-export const describeCantidad = (item: Pick<CarpentryLineItem, 'unit' | 'quantity' | 'measure'>): string => {
+export const describeCantidad = (
+  item: Pick<CarpentryLineItem, 'unit' | 'quantity' | 'measure'> & { tallas?: CuadroDeTallas },
+): string => {
   const cantidad = item.quantity ?? 1;
   const unidad = UNIDAD_CORTA[item.unit];
+
+  // Con cuadro de tallas manda el desglose: «20 und · S 3 · M 8 · L 6 · XL 3».
+  // Es lo que el cliente revisa y lo que se manda a producción.
+  const desglose = resumenDeTallas(item.tallas);
+  if (desglose) return `${cantidad} und · ${desglose}`;
 
   if (usaMedida(item.unit)) {
     if (!item.measure) return cantidad > 1 ? `${cantidad} und` : '';
@@ -227,6 +235,7 @@ export interface CarpentryCategoryConfig {
 export const GREMIOS: { key: GremioKey; label: string }[] = [
   { key: 'carpinteria', label: 'Carpintería' },
   { key: 'obra_civil', label: 'Obra blanca y remodelación' },
+  { key: 'confeccion', label: 'Confección y moda' },
 ];
 
 /**
@@ -279,6 +288,19 @@ export const CARPENTRY_CATEGORIES: CarpentryCategoryConfig[] = [
   { key: 'demoliciones', gremio: 'obra_civil', label: 'Demolición y Aseo', icon: 'fa-solid fa-hammer', colorFrom: 'from-stone-500', colorTo: 'to-stone-600', shadowColor: 'shadow-stone-500/30', defaultUnit: 'M2', fixedGroups: true },
   { key: 'impermeabilizacion', gremio: 'obra_civil', label: 'Impermeabilización', icon: 'fa-solid fa-umbrella', colorFrom: 'from-indigo-500', colorTo: 'to-indigo-600', shadowColor: 'shadow-indigo-500/30', defaultUnit: 'M2', fixedGroups: true },
   { key: 'aparatos_materiales', gremio: 'obra_civil', label: 'Aparatos y Materiales', icon: 'fa-solid fa-faucet', colorFrom: 'from-fuchsia-500', colorTo: 'to-fuchsia-600', shadowColor: 'shadow-fuchsia-500/30', defaultUnit: 'UND', fixedGroups: true, soloMaterial: true },
+
+  // ── Confección y moda ──
+  // Todos en UND: una prenda se cuenta, no se mide. La cantidad sale del cuadro
+  // de tallas de cada línea, que es como se pide de verdad un pedido de
+  // uniformes: no «20 camisas», sino 3 S, 8 M, 6 L y 3 XL.
+  { key: 'uniformes_empresariales', gremio: 'confeccion', label: 'Uniformes Empresariales', icon: 'fa-solid fa-user-tie', colorFrom: 'from-sky-500', colorTo: 'to-sky-600', shadowColor: 'shadow-sky-500/30', defaultUnit: 'UND', fixedGroups: false },
+  { key: 'uniformes_escolares', gremio: 'confeccion', label: 'Uniformes Escolares', icon: 'fa-solid fa-graduation-cap', colorFrom: 'from-indigo-500', colorTo: 'to-indigo-600', shadowColor: 'shadow-indigo-500/30', defaultUnit: 'UND', fixedGroups: false },
+  { key: 'dotacion_epp', gremio: 'confeccion', label: 'Dotación y EPP', icon: 'fa-solid fa-helmet-safety', colorFrom: 'from-amber-500', colorTo: 'to-amber-600', shadowColor: 'shadow-amber-500/30', defaultUnit: 'UND', fixedGroups: false },
+  { key: 'prendas_a_medida', gremio: 'confeccion', label: 'Prendas a la Medida', icon: 'fa-solid fa-scissors', colorFrom: 'from-rose-500', colorTo: 'to-rose-600', shadowColor: 'shadow-rose-500/30', defaultUnit: 'UND', fixedGroups: false },
+  // Lo que se cobra aparte de la prenda. El ponchado —pasar el logo a formato
+  // de bordado— se paga una vez y no por unidad, y es lo que más se olvida
+  // cobrar; por eso tiene su propia línea en vez de esconderse en el precio.
+  { key: 'personalizacion', gremio: 'confeccion', label: 'Personalización', icon: 'fa-solid fa-pen-nib', colorFrom: 'from-violet-500', colorTo: 'to-violet-600', shadowColor: 'shadow-violet-500/30', defaultUnit: 'UND', fixedGroups: true },
 ];
 
 export const getCategoryConfig = (key: CarpentryCategoryKey): CarpentryCategoryConfig =>
@@ -512,8 +534,36 @@ const OBRA_CIVIL: Partial<Record<CarpentryCategoryKey, GrupoPlantilla[]>> = {
   ],
 };
 
+/**
+ * Lo que se cobra aparte de la prenda.
+ *
+ * El ponchado va suelto y en GLOBAL a propósito: digitalizar el logo para
+ * bordarlo se paga UNA vez, no por camisa, y es lo que más se olvida cobrar.
+ * Con su propia línea queda a la vista en la cotización en vez de perderse
+ * dentro del precio unitario.
+ */
+const PERSONALIZACION: GrupoPlantilla[] = [
+  {
+    label: 'Por prenda',
+    items: [
+      { description: 'Bordado del logo', unit: 'UND', quantity: 1 },
+      { description: 'Estampado', unit: 'UND', quantity: 1 },
+      { description: 'Nombre o cargo bordado', unit: 'UND', quantity: 1 },
+      { description: 'Reflectivo', unit: 'UND', quantity: 1 },
+    ],
+  },
+  {
+    label: 'Pago único',
+    items: [
+      { description: 'Ponchado del logo (digitalización)', unit: 'GLOBAL', quantity: 1 },
+      { description: 'Muestra de aprobación', unit: 'UND', quantity: 1 },
+    ],
+  },
+];
+
 /** Todas las categorías que nacen con grupos sembrados, en un solo sitio. */
 const PLANTILLAS_POR_CATEGORIA: Partial<Record<CarpentryCategoryKey, GrupoPlantilla[]>> = {
+  personalizacion: PERSONALIZACION,
   cocinas_integrales: [
     { label: 'Muebles', items: COCINA_TEMPLATES.muebles },
     { label: 'Electrodomésticos', items: COCINA_TEMPLATES.electrodomesticos },

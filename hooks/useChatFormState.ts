@@ -381,6 +381,12 @@ export const useChatFormState = (
                 if ((field === 'width' || field === 'height') && updated.unit === 'M2') {
                   updated.measure = computeM2FromDimensions(updated.width, updated.height);
                 }
+                // Tallas -> cantidad. Igual que en la cotización básica: la
+                // cantidad de una prenda no se escribe, se cuenta.
+                if (field === 'tallas') {
+                  const cuadro = value as CuadroDeTallas | undefined;
+                  updated.quantity = cuadro?.activo ? totalDeTallas(cuadro) : 1;
+                }
                 return updated;
               }),
             };
