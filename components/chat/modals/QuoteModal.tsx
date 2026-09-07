@@ -11,7 +11,7 @@ import ProFeatureGuard from '../../ProFeatureGuard';
 import { CatalogPickerOverlay } from './CatalogPicker';
 import { FormaDePagoCampos, CondicionesEditor } from './CondicionesCotizacion';
 import { CuadroDeTallasCampos } from './CuadroDeTallasCampos';
-import { REJILLAS, TIPOS_DE_TALLA, cuadroEnBlanco, cambiarTipoDeTalla } from '../../../utils/tallas';
+import { REJILLAS, TIPOS_DE_TALLA, cuadroEnBlanco } from '../../../utils/tallas';
 import { QuoteItem, Product, ProductCategory, ContactRole, QuoteMode, CarpentrySection, CarpentryCategoryKey, CarpentryLineItem, CarpentryMaterial, CarpentryUnit, MaterialUnit, PaymentAccount, CondicionesCotizacion, BloqueCondiciones } from '../../../types';
 import { formatCurrency } from '../../../utils/currency';
 import { totalDeTallas, subtotalDeItem } from '../../../utils/tallas';
@@ -218,7 +218,9 @@ const CarpentryItemRow: React.FC<{
   allowUnitChange?: boolean;
   /** En confección la cantidad se cuenta por tallas, no se escribe. */
   esConfeccion?: boolean;
-}> = ({ item, onUpdate, onRemove, allowUnitChange = true, esConfeccion = false }) => {
+  /** Abre el catálogo para traerse la foto de un producto a esta línea. */
+  onPedirCatalogo?: () => void;
+}> = ({ item, onUpdate, onRemove, allowUnitChange = true, esConfeccion = false, onPedirCatalogo }) => {
   const subtotal = computeLineSubtotal(item);
 
   return (
@@ -236,31 +238,42 @@ const CarpentryItemRow: React.FC<{
         onChange={e => onUpdate('description', e.target.value)}
         className="w-full bg-transparent text-xs font-semibold text-slate-800 placeholder-slate-400 outline-none border-b border-transparent focus:border-slate-300 transition mb-2 pr-7"
       />
-      {/* Qué prenda es. Ocupa el sitio del selector de unidad, que en confección
-          siempre es UND y no había nada que elegir. Va arriba porque es lo
-          primero que se decide: de ahí sale la rejilla de tallas. */}
+      {/* Qué prenda es. Una línea es UNA prenda: al elegir, las otras dos se
+          van. Se podía cambiar de botón conservando lo escrito, y eso hacía
+          creer que camisas y pantalones se podían pedir en el mismo ítem —solo
+          contaba la prenda activa, así que el capital salía corto—. Para pedir
+          otra prenda se agrega otro ítem, que es lo que suma.
+
+          Elegida, queda sola y con una equis para corregirse: quien se
+          equivoca de botón tiene que poder volver. */}
       {esConfeccion && (
         <div className="flex gap-1 mb-2">
-          {TIPOS_DE_TALLA.map(t => {
-            const activo = (item.tallas?.tipo ?? 'letra') === t;
-            return (
+          {item.tallas?.activo ? (
+            <div className="flex-1 flex items-center gap-2 bg-indigo-600 text-white rounded-lg py-1.5 px-2.5">
+              <i className={`${REJILLAS[item.tallas.tipo].icono} text-[10px]`}></i>
+              <span className="text-[11px] font-bold flex-1">{REJILLAS[item.tallas.tipo].label}</span>
+              <button
+                type="button"
+                onClick={() => onUpdate('tallas', undefined)}
+                className="text-white/70 hover:text-white transition"
+                aria-label="Cambiar de prenda"
+              >
+                <i className="fa-solid fa-xmark text-[11px]"></i>
+              </button>
+            </div>
+          ) : (
+            TIPOS_DE_TALLA.map(t => (
               <button
                 key={t}
                 type="button"
-                onClick={() => onUpdate('tallas', item.tallas?.activo
-                  ? cambiarTipoDeTalla(item.tallas, t)
-                  : cuadroEnBlanco(t))}
-                className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold transition flex items-center justify-center gap-1 ${
-                  activo && item.tallas?.activo
-                    ? 'bg-indigo-600 text-white shadow-sm'
-                    : 'bg-white text-slate-600 border border-slate-200 hover:border-indigo-300'
-                }`}
+                onClick={() => onUpdate('tallas', cuadroEnBlanco(t))}
+                className="flex-1 py-1.5 rounded-lg text-[10px] font-bold transition flex items-center justify-center gap-1 bg-white text-slate-600 border border-slate-200 hover:border-indigo-300"
               >
                 <i className={`${REJILLAS[t].icono} text-[9px]`}></i>
                 {REJILLAS[t].label}
               </button>
-            );
-          })}
+            ))
+          )}
         </div>
       )}
 
@@ -397,6 +410,15 @@ const CarpentryItemRow: React.FC<{
           >
             <i className="fa-solid fa-image"></i> Galería
           </button>
+          {onPedirCatalogo && (
+            <button
+              type="button"
+              onClick={onPedirCatalogo}
+              className="flex-1 bg-blue-50 text-blue-700 py-2 rounded-lg border border-blue-200 text-xs font-bold hover:bg-blue-100 transition flex items-center justify-center gap-1.5"
+            >
+              <i className="fa-solid fa-box"></i> Catálogo
+            </button>
+          )}
         </div>
         {item.images && item.images.length > 0 && (
           <div className="grid grid-cols-3 gap-2 mt-2">
@@ -461,6 +483,15 @@ export const QuoteModal: React.FC<QuoteModalProps> = React.memo(({
   isPro, trialEndsAt, businessType, mode, sections, onSetMode, onAddSection, onRemoveSection,
   onAddCarpentryItem, onUpdateCarpentryItem, onRemoveCarpentryItem,
 }) => {
+  /**
+   * Qué línea del modo personalizado pidió el catálogo.
+   *
+   * El mismo selector sirve a los dos modos, pero hacen cosas distintas: en la
+   * cotización básica el producto entra como ítem nuevo, y aquí se trae a la
+   * línea que se está llenando —su foto y su nombre— sin crear nada.
+   */
+  const [lineaQuePideCatalogo, setLineaQuePideCatalogo] =
+    useState<{ sectionId: string; groupId: string; itemId: string } | null>(null);
   const [expandedSectionId, setExpandedSectionId] = useState<string | null>(null);
   // grupos activos (toggle ON) dentro de secciones fixedGroups (Cocinas Integrales)
   const [activeGroups, setActiveGroups] = useState<Record<string, boolean>>({});
@@ -691,7 +722,7 @@ export const QuoteModal: React.FC<QuoteModalProps> = React.memo(({
                                                 >
                                                   <i className="fa-solid fa-image"></i> Galería
                                                 </button>
-                                              </div>
+        </div>
                                               {item.images && item.images.length > 0 && (
                                                 <div className="grid grid-cols-3 gap-2 mt-2">
                                                   {item.images.map((imageUrl, imgIdx) => (
@@ -760,6 +791,9 @@ export const QuoteModal: React.FC<QuoteModalProps> = React.memo(({
                                       key={item.id}
                                       item={item}
                                       esConfeccion={config.gremio === 'confeccion'}
+                                      onPedirCatalogo={products.length
+                                        ? () => setLineaQuePideCatalogo({ sectionId: section.id, groupId: group.id, itemId: item.id })
+                                        : undefined}
                                       allowUnitChange={!config.fixedGroups}
                                       onUpdate={(field, value) => onUpdateCarpentryItem(section.id, group.id, item.id, field, value)}
                                       onRemove={() => onRemoveCarpentryItem(section.id, group.id, item.id)}
@@ -823,12 +857,40 @@ export const QuoteModal: React.FC<QuoteModalProps> = React.memo(({
    * formulario: con muchos productos la lista no se podía recorrer, y el
    * panel deja buscar por carpetas sin perder lo ya escrito.
    */
-  const catalogPicker = showProductPicker && (
+  /**
+   * El producto elegido va a la línea que lo pidió, o al listado básico.
+   *
+   * A la línea se le lleva la foto y, si aún no tiene nombre, el del producto:
+   * pisarle una descripción ya escrita sería perderle el trabajo a quien la
+   * escribió. El precio no se toca, que en confección vive en cada talla.
+   */
+  const tomarDelCatalogo = (product: Product) => {
+    if (!lineaQuePideCatalogo) {
+      onAddProductToQuote(product);
+      return;
+    }
+    const { sectionId, groupId, itemId } = lineaQuePideCatalogo;
+    const fotos = product.images?.length ? product.images : (product.image ? [product.image] : []);
+    const actual = sections
+      .find(sec => sec.id === sectionId)?.groups
+      .find(g => g.id === groupId)?.items
+      .find(i => i.id === itemId);
+
+    if (fotos.length) {
+      onUpdateCarpentryItem(sectionId, groupId, itemId, 'images', [...(actual?.images ?? []), ...fotos]);
+    }
+    if (!actual?.description?.trim()) {
+      onUpdateCarpentryItem(sectionId, groupId, itemId, 'description', product.name);
+    }
+    setLineaQuePideCatalogo(null);
+  };
+
+  const catalogPicker = (showProductPicker || lineaQuePideCatalogo) && (
     <CatalogPickerOverlay
       products={products}
       categories={categories}
-      onSelectProduct={onAddProductToQuote}
-      onClose={() => onShowProductPicker(false)}
+      onSelectProduct={tomarDelCatalogo}
+      onClose={() => { setLineaQuePideCatalogo(null); onShowProductPicker(false); }}
     />
   );
 

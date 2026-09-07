@@ -23,7 +23,6 @@ import { CurrencyInput } from './CurrencyInput';
 import {
   REJILLAS, TIPOS_DE_TALLA, cuadroEnBlanco, lineasDe, totalDeTallas,
   subtotalDeTallas, costoDeLinea, tieneCostoPropio, tallasLibres,
-  cambiarTipoDeTalla, tiposConDatos,
 } from '../../../utils/tallas';
 
 interface Props {
@@ -60,8 +59,9 @@ export const CuadroDeTallasCampos: React.FC<Props> = ({
 
   const guardar = (nuevas: LineaDeTalla[]) => onChange({ ...cuadro, lineas: nuevas });
 
-  // Cambiar de prenda no borra lo escrito: se guarda y vuelve si se vuelve.
-  const cambiarTipo = (tipo: TipoDeTalla) => onChange(cambiarTipoDeTalla(cuadro, tipo));
+  // Una línea es una prenda: cambiar de tipo empieza de nuevo. Para pedir
+  // camisas y pantalones se usan dos líneas, que es lo que suma.
+  const cambiarTipo = (tipo: TipoDeTalla) => onChange(cuadroEnBlanco(tipo));
 
   return (
     <div className="mt-2 bg-indigo-50/60 border border-indigo-200 rounded-xl p-2.5">
@@ -175,16 +175,6 @@ export const CuadroDeTallasCampos: React.FC<Props> = ({
         >
           <i className="fa-solid fa-plus text-[9px] mr-1"></i> Añadir talla
         </button>
-      )}
-
-      {/* Que se vea que lo de la otra prenda sigue ahí. Sin esto, cambiar de
-          botón parece haber borrado el pedido aunque vuelva al volver. */}
-      {tiposConDatos(cuadro).length > 0 && (
-        <p className="text-[10px] text-slate-500 mt-2 flex items-center gap-1.5">
-          <i className="fa-solid fa-box-archive text-[9px] text-slate-400"></i>
-          Guardado en {tiposConDatos(cuadro).map(t => REJILLAS[t].label).join(' y ')}.
-          Vuelve al cambiar de prenda.
-        </p>
       )}
 
       {subtotal > 0 && (

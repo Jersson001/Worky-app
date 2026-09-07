@@ -171,15 +171,6 @@ export interface CuadroDeTallas {
   /** Solo las tallas que van en el pedido, en el orden en que se añadieron. */
   lineas?: LineaDeTalla[];
   /**
-   * Lo escrito en los otros tipos de prenda, por si vuelve.
-   *
-   * Cambiar de camisa a pantalón cambia la rejilla entera —una M no es una 32—
-   * y antes se perdía lo que se llevara escrito. Basta con darle sin querer al
-   * botón de al lado para quedarse sin el pedido, así que se guarda y se
-   * recupera al volver.
-   */
-  guardadas?: Partial<Record<TipoDeTalla, LineaDeTalla[]>>;
-  /**
    * Formato viejo, de antes de que cada talla tuviera su costo. No se escribe:
    * se lee para que las cotizaciones ya enviadas se sigan viendo igual.
    * @deprecated
