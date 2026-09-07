@@ -3,9 +3,10 @@
  * Extracts 30+ useState calls from the monolithic component.
  */
 import { useState, useCallback } from 'react';
-import { InvoiceItem, QuoteItem, Product, QuoteMode, CarpentrySection, CarpentryCategoryKey, CarpentryLineItem, CondicionesCotizacion, BloqueCondiciones } from '../types';
+import { InvoiceItem, QuoteItem, Product, QuoteMode, CarpentrySection, CarpentryCategoryKey, CarpentryLineItem, CondicionesCotizacion, BloqueCondiciones, CuadroDeTallas } from '../types';
 import { createCarpentrySection, createBlankCarpentryItem, computeM2FromDimensions } from '../utils/carpentryCalculations';
 import { CONDICIONES_POR_DEFECTO } from '../utils/condicionesCotizacion';
+import { totalDeTallas } from '../utils/tallas';
 import { parseAmount } from '../utils/currency';
 
 /**
@@ -243,7 +244,21 @@ export const useChatFormState = (
   const updateQuoteItem = useCallback((index: number, field: keyof QuoteItem, value: any) => {
     setQuote(prev => {
       const items = [...prev.items];
-      items[index] = { ...items[index], [field]: value };
+      const item: QuoteItem = { ...items[index], [field]: value };
+
+      // Con cuadro de tallas la cantidad no se escribe: sale de sumarlas, y hay
+      // que dejarla escrita en el ítem, no solo enseñarla. Faltaba esto, y el
+      // formulario mostraba «4» mientras el total se calculaba con la cantidad
+      // vieja: cuatro camisas de $5.000 sumaban $5.000.
+      if (field === 'tallas') {
+        const cuadro = value as CuadroDeTallas | undefined;
+        item.quantity = cuadro?.activo
+          ? totalDeTallas(cuadro)
+          // Al quitar el cuadro vuelve a escribirse a mano, desde uno.
+          : 1;
+      }
+
+      items[index] = item;
       return { ...prev, items };
     });
   }, []);
