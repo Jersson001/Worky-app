@@ -15,6 +15,7 @@ import { useFileUpload } from '../hooks/useFileUpload';
 import { uploadQuotePhotos } from '../services/storageService';
 import { saveUserProfile } from '../services/messagingService';
 import { hayCondiciones, repartoDePago } from '../utils/condicionesCotizacion';
+import { subtotalDeItem } from '../utils/tallas';
 
 // Sub-components
 import { ChatHeader } from './chat/ChatHeader';
@@ -232,7 +233,7 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
     const validItems = forms.invoice.items.filter(i => i.description && i.price > 0);
     if (validItems.length === 0) return;
 
-    const subtotal = validItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+    const subtotal = validItems.reduce((acc, item) => acc + subtotalDeItem(item), 0);
     const result = calculateTax(subtotal, forms.invoice.taxType);
     const selectedProject = contact.projects.find(p => p.id === forms.invoice.selectedProject);
 
@@ -313,7 +314,7 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
       setEnviandoCotizacion(false);
     }
 
-    const subtotal = isPersonalizada ? computeGrandTotal(sections) : validItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+    const subtotal = isPersonalizada ? computeGrandTotal(sections) : validItems.reduce((acc, item) => acc + subtotalDeItem(item), 0);
     const result = calculateTax(subtotal, taxType, {
       percentage: parseFloat(taxPercentage) || 19,
       aiu: { adminPercent: parseFloat(aiuAdmin) || 5, imprevistosPercent: parseFloat(aiuImprevistos) || 5, utilidadPercent: parseFloat(aiuUtilidad) || 5, ivaPercent: parseFloat(aiuIva) || 19 },

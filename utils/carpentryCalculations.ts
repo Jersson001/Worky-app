@@ -7,7 +7,7 @@
  */
 import { CarpentryCategoryKey, CarpentryItemGroup, CarpentryLineItem, CarpentryMaterial, CarpentrySection, CarpentryUnit, CuadroDeTallas, GremioKey, MaterialUnit, QuoteItem } from '../types';
 import { GREMIOS_POR_OFICIO } from './tiposDeNegocio';
-import { resumenDeTallas, totalDeTallas } from './tallas';
+import { resumenDeTallas, totalDeTallas, subtotalDeTallas } from './tallas';
 
 // ─── Identificadores ─────────────────────────────────────────────────────────
 
@@ -98,6 +98,12 @@ export const describeMaterial = (material?: CarpentryMaterial): string =>
 /** Solo la mano de obra de una línea. */
 export const computeLineSubtotal = (item: CarpentryLineItem): number => {
   if (item.isTemplate) return 0;
+
+  // Con cuadro de tallas se suma talla por talla: cada una puede llevar su
+  // propio costo —una XL lleva más tela que una S— y multiplicar la cantidad
+  // total por un solo precio se comería esa diferencia.
+  if (item.tallas?.activo) return subtotalDeTallas(item.tallas, item.unitCost || 0);
+
   const measure = usaMedida(item.unit) ? (item.measure || 0) : 1;
   return (item.quantity || 0) * (item.unitCost || 0) * measure;
 };

@@ -14,7 +14,7 @@ import { CuadroDeTallasCampos } from './CuadroDeTallasCampos';
 import { REJILLAS, TIPOS_DE_TALLA, cuadroEnBlanco } from '../../../utils/tallas';
 import { QuoteItem, Product, ProductCategory, ContactRole, QuoteMode, CarpentrySection, CarpentryCategoryKey, CarpentryLineItem, CarpentryMaterial, CarpentryUnit, MaterialUnit, PaymentAccount, CondicionesCotizacion, BloqueCondiciones } from '../../../types';
 import { formatCurrency } from '../../../utils/currency';
-import { totalDeTallas } from '../../../utils/tallas';
+import { totalDeTallas, subtotalDeItem } from '../../../utils/tallas';
 import { leerImagenReducida } from '../../../utils/imagen';
 import { calculateTax } from '../../../utils/taxCalculations';
 import { CARPENTRY_CATEGORIES, GREMIOS, CarpentryCategoryConfig, computeGrandTotal, computeSectionSubtotal, computeGroupSubtotal, computeLineSubtotal, computeMaterialSubtotal, materialSugerido, cantidadSugerida, usaMedida, gremiosVisibles } from '../../../utils/carpentryCalculations';
@@ -406,66 +406,16 @@ const CarpentryItemRow: React.FC<{
           </div>
         )}
       </div>
-      {/* La rejilla, pegada a la cantidad: es de donde sale. Tenerlas separadas
-          —la cantidad arriba y las tallas al final, tras las fotos— obligaba a
-          mirar a dos sitios para entender un número que no se puede escribir. */}
-      {esConfeccion && item.tallas?.activo && (
-        <div className="mt-2 bg-indigo-50/60 border border-indigo-200 rounded-lg p-2">
-          <div className="flex items-center gap-2 mb-1.5">
-            <span className="text-[9px] font-bold text-indigo-700 uppercase tracking-wider flex-1">
-              Tallas
-            </span>
-            <span className="text-[10px] font-bold text-indigo-700">
-              {item.quantity} {item.quantity === 1 ? 'unidad' : 'unidades'}
-            </span>
-            <button
-              type="button"
-              onClick={() => onUpdate('tallas', undefined)}
-              className="text-indigo-400 hover:text-red-500 transition"
-              aria-label="Quitar las tallas"
-            >
-              <i className="fa-solid fa-xmark text-[11px]"></i>
-            </button>
-          </div>
-          <div className="grid grid-cols-6 gap-1">
-            {REJILLAS[item.tallas.tipo].tallas.map(talla => {
-              const n = item.tallas!.cantidades[talla];
-              return (
-                <div key={talla}>
-                  <label className="block text-[8px] font-bold text-slate-500 text-center mb-0.5">{talla}</label>
-                  <input
-                    type="number"
-                    min={0}
-                    inputMode="numeric"
-                    value={n ?? ''}
-                    onChange={e => {
-                      const v = Math.max(0, Math.floor(Number(e.target.value) || 0));
-                      const cantidades = { ...item.tallas!.cantidades };
-                      if (v > 0) cantidades[talla] = v; else delete cantidades[talla];
-                      onUpdate('tallas', { ...item.tallas!, cantidades });
-                    }}
-                    placeholder="—"
-                    className={`w-full p-1 rounded text-[10px] font-bold text-center outline-none border transition ${
-                      n ? 'bg-white border-indigo-300 text-slate-900'
-                        : 'bg-white/60 border-slate-200 text-slate-400 placeholder-slate-300'
-                    } focus:border-indigo-500`}
-                  />
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Sin cuadro todavía: se ofrece encenderlo. */}
-      {esConfeccion && !item.tallas?.activo && (
-        <button
-          type="button"
-          onClick={() => onUpdate('tallas', cuadroEnBlanco())}
-          className="mt-2 w-full py-1.5 rounded-lg text-[10px] font-bold border border-dashed border-slate-300 text-slate-600 hover:bg-slate-50 transition"
-        >
-          <i className="fa-solid fa-shirt text-[9px] mr-1"></i> Cotizar por tallas
-        </button>
+      {/* El cuadro de tallas: talla, cantidad y costo por fila. Va pegado al
+          costo unitario porque es de donde arranca el precio de cada talla.
+          Los botones de prenda ya están arriba, en el sitio de la unidad. */}
+      {esConfeccion && (
+        <CuadroDeTallasCampos
+          tallas={item.tallas}
+          costoBase={item.unitCost || 0}
+          onChange={t => onUpdate('tallas', t)}
+          ocultarTipos
+        />
       )}
 
       <div className="mt-2.5">
@@ -527,7 +477,7 @@ export const QuoteModal: React.FC<QuoteModalProps> = React.memo(({
     });
   };
 
-  const basicaSubtotal = items.reduce((acc, i) => acc + (i.price * i.quantity), 0);
+  const basicaSubtotal = items.reduce((acc, i) => acc + subtotalDeItem(i), 0);
   // Qué capítulos le tocan a este usuario según su oficio. Vacío = ninguno, y
   // entonces solo se le ofrece la cotización básica.
   const gremios = gremiosVisibles(businessType);
@@ -1018,6 +968,7 @@ export const QuoteModal: React.FC<QuoteModalProps> = React.memo(({
                     )}
                     <CuadroDeTallasCampos
                       tallas={item.tallas}
+                      costoBase={item.price || 0}
                       onChange={t => onUpdateItem(idx, 'tallas', t)}
                     />
                     {(!item.images || item.images.length === 0) && item.image && (

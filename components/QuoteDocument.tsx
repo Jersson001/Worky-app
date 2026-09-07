@@ -9,7 +9,7 @@ import { publishCatalogForCurrentUser, catalogPageUrl, qrImageUrl, WORKY_APP_URL
 import { getCurrentUserId } from '../services/messagingService';
 import { computeLineSubtotal, computeMaterialSubtotal, computeManoDeObraTotal, computeMaterialesTotal, computeGroupSubtotal, computeSectionSubtotal, seccionesConContenido, describeCantidad, describeMaterial } from '../utils/carpentryCalculations';
 import { ORDEN_CONDICIONES, lineasDe, hayCondiciones, repartoDePago } from '../utils/condicionesCotizacion';
-import { hayTallas, resumenDeTallas } from '../utils/tallas';
+import { hayTallas, resumenDeTallas, subtotalDeItem } from '../utils/tallas';
 
 interface DocumentViewerProps {
   type: 'quote' | 'invoice' | 'receipt' | 'collection_account' | 'expense_receipt';
@@ -474,7 +474,7 @@ const QuoteTemplate = ({ data, businessLogo, userProfile, signature, scale, posi
                             </td>
                             <td className="py-3 px-2 text-center text-sm text-gray-700">{item.quantity}</td>
                             <td className="py-3 px-3 text-right text-sm text-gray-700">{formatCurrency(item.price)}</td>
-                            <td className="py-3 px-3 text-right text-sm font-bold text-gray-900">{formatCurrency((item.price * item.quantity))}</td>
+                            <td className="py-3 px-3 text-right text-sm font-bold text-gray-900">{formatCurrency(subtotalDeItem(item))}</td>
                         </tr>
                     ))}
                 </tbody>

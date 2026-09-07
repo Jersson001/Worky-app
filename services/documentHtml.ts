@@ -11,7 +11,7 @@
 import { formatCurrency } from '../utils/currency';
 import { computeLineSubtotal, computeMaterialSubtotal, computeManoDeObraTotal, computeMaterialesTotal, esLineaUsada, describeCantidad, describeMaterial } from '../utils/carpentryCalculations';
 import { ORDEN_CONDICIONES, lineasDe, hayCondiciones, repartoDePago } from '../utils/condicionesCotizacion';
-import { hayTallas, resumenDeTallas } from '../utils/tallas';
+import { hayTallas, resumenDeTallas, subtotalDeItem } from '../utils/tallas';
 
 type DocType = 'quote' | 'invoice' | 'receipt' | 'collection_account' | 'expense_receipt';
 
@@ -55,7 +55,7 @@ const tablaItems = (items: any[]): string => `
         }${fotos(i.images)}</td>
         <td class="num">${i.quantity}</td>
         <td class="num">${formatCurrency(i.price || 0)}</td>
-        <td class="num">${formatCurrency((i.price || 0) * (i.quantity || 0))}</td>
+        <td class="num">${formatCurrency(subtotalDeItem(i))}</td>
       </tr>`).join('')}
     </tbody>
   </table>`;

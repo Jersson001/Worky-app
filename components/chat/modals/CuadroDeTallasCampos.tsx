@@ -1,38 +1,40 @@
 /**
  * El cuadro de tallas de una línea de cotización.
  *
- * Nace apagado: la mayoría de las líneas no son prendas, y una rejilla de
- * once casillas encima de cada ítem estorbaría más de lo que ayuda. Al
- * encenderlo, la cantidad deja de escribirse y sale de sumar las tallas, que
- * es como se cuenta un pedido de confección.
+ * Nace apagado: la mayoría de las líneas no son prendas. Al encenderlo, la
+ * cantidad deja de escribirse y sale de sumar las tallas, que es como se cuenta
+ * un pedido de confección.
+ *
+ * Cada talla lleva su propio costo, y no una rejilla con un precio único: una
+ * XL lleva más tela que una S y un 40 más que un 30. El costo arranca con el de
+ * la línea —así no hay que escribirlo en cada fila— y solo se toca donde se
+ * sale de lo normal; esa fila queda marcada para que se vea de un vistazo.
+ *
+ * Y solo se enseñan las tallas que van en el pedido. La rejilla de calzado son
+ * once casillas y normalmente se usan cuatro.
  */
 import React from 'react';
-import { CuadroDeTallas, TipoDeTalla } from '../../../types';
-import { REJILLAS, TIPOS_DE_TALLA, cuadroEnBlanco, totalDeTallas } from '../../../utils/tallas';
+import { CuadroDeTallas, LineaDeTalla, TipoDeTalla } from '../../../types';
+import { formatCurrency } from '../../../utils/currency';
+import { CurrencyInput } from './CurrencyInput';
+import {
+  REJILLAS, TIPOS_DE_TALLA, cuadroEnBlanco, lineasDe, totalDeTallas,
+  subtotalDeTallas, costoDeLinea, tieneCostoPropio, tallasLibres,
+} from '../../../utils/tallas';
 
 interface Props {
   tallas?: CuadroDeTallas;
+  /** El costo de la línea. Es el que usan las tallas que no traen el suyo. */
+  costoBase: number;
   onChange: (tallas: CuadroDeTallas | undefined) => void;
+  /** Los botones de prenda se pintan fuera cuando ya están arriba en la fila. */
+  ocultarTipos?: boolean;
 }
 
-export const CuadroDeTallasCampos: React.FC<Props> = ({ tallas, onChange }) => {
+export const CuadroDeTallasCampos: React.FC<Props> = ({
+  tallas, costoBase, onChange, ocultarTipos = false,
+}) => {
   const activo = !!tallas?.activo;
-  const total = totalDeTallas(tallas);
-
-  const cambiarTipo = (tipo: TipoDeTalla) => {
-    // Las cantidades no se arrastran: una M de camisa no es una 32 de
-    // pantalón, y conservarlas dejaría números en tallas que ya no existen.
-    onChange({ activo: true, tipo, cantidades: {} });
-  };
-
-  const ponerCantidad = (talla: string, valor: string) => {
-    if (!tallas) return;
-    const n = Math.max(0, Math.floor(Number(valor) || 0));
-    const cantidades = { ...tallas.cantidades };
-    if (n > 0) cantidades[talla] = n;
-    else delete cantidades[talla];
-    onChange({ ...tallas, cantidades });
-  };
 
   if (!activo) {
     return (
@@ -46,73 +48,134 @@ export const CuadroDeTallasCampos: React.FC<Props> = ({ tallas, onChange }) => {
     );
   }
 
-  const rejilla = REJILLAS[tallas!.tipo];
+  const cuadro = tallas!;
+  const lineas = lineasDe(cuadro);
+  const total = totalDeTallas(cuadro);
+  const subtotal = subtotalDeTallas(cuadro, costoBase);
+  const libres = tallasLibres(cuadro);
+
+  const guardar = (nuevas: LineaDeTalla[]) => onChange({ ...cuadro, lineas: nuevas });
+
+  const cambiarTipo = (tipo: TipoDeTalla) => {
+    // Las tallas no se arrastran: una M de camisa no es una 32 de pantalón.
+    onChange(cuadroEnBlanco(tipo));
+  };
 
   return (
     <div className="mt-2 bg-indigo-50/60 border border-indigo-200 rounded-xl p-2.5">
-      <div className="flex items-center gap-2 mb-2">
-        <span className="text-[10px] font-bold text-indigo-700 uppercase tracking-wider flex-1">
-          Tallas
+      {!ocultarTipos && (
+        <div className="flex gap-1 mb-2.5">
+          {TIPOS_DE_TALLA.map(t => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => cambiarTipo(t)}
+              className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold transition flex items-center justify-center gap-1 ${
+                cuadro.tipo === t
+                  ? 'bg-indigo-600 text-white shadow-sm'
+                  : 'bg-white text-slate-600 border border-slate-200 hover:border-indigo-300'
+              }`}
+            >
+              <i className={`${REJILLAS[t].icono} text-[9px]`}></i>
+              {REJILLAS[t].label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div className="flex items-baseline gap-2 mb-2">
+        <span className="text-[9px] font-bold text-indigo-700 uppercase tracking-wider flex-1">
+          Talla · cantidad · costo
         </span>
-        <span className="text-[11px] font-bold text-indigo-700">
-          {total} {total === 1 ? 'unidad' : 'unidades'}
+        <span className="text-[10px] font-bold text-indigo-700">
+          {total} {total === 1 ? 'und' : 'und'}
         </span>
         <button
           type="button"
           onClick={() => onChange(undefined)}
-          className="text-indigo-400 hover:text-red-500 transition p-0.5"
-          aria-label="Quitar el cuadro de tallas"
+          className="text-indigo-400 hover:text-red-500 transition"
+          aria-label="Quitar las tallas"
         >
-          <i className="fa-solid fa-xmark text-xs"></i>
+          <i className="fa-solid fa-xmark text-[11px]"></i>
         </button>
       </div>
 
-      {/* Qué se está cotizando: camisa, pantalón o calzado. */}
-      <div className="flex gap-1 mb-2.5">
-        {TIPOS_DE_TALLA.map(t => (
-          <button
-            key={t}
-            type="button"
-            onClick={() => cambiarTipo(t)}
-            className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold transition flex items-center justify-center gap-1 ${
-              tallas!.tipo === t
-                ? 'bg-indigo-600 text-white shadow-sm'
-                : 'bg-white text-slate-600 border border-slate-200 hover:border-indigo-300'
-            }`}
-          >
-            <i className={`${REJILLAS[t].icono} text-[9px]`}></i>
-            {REJILLAS[t].label}
-          </button>
-        ))}
-      </div>
+      <div className="space-y-1.5">
+        {lineas.map((l, i) => {
+          const propio = tieneCostoPropio(l, costoBase);
+          const set = (campo: keyof LineaDeTalla, valor: unknown) =>
+            guardar(lineas.map((x, j) => (j === i ? { ...x, [campo]: valor } : x)));
 
-      {/* La rejilla. Se deja vacío lo que no lleva nada: un cero en cada casilla
-          obliga a distinguir de un vistazo el cero escrito del no pedido. */}
-      <div className="grid grid-cols-6 gap-1.5">
-        {rejilla.tallas.map(talla => {
-          const n = tallas!.cantidades[talla];
           return (
-            <div key={talla}>
-              <label className="block text-[9px] font-bold text-slate-500 text-center mb-0.5">
-                {talla}
-              </label>
+            <div key={`${l.talla}-${i}`} className="flex items-center gap-1.5">
+              <select
+                value={l.talla}
+                onChange={e => set('talla', e.target.value)}
+                className="w-16 bg-white border border-indigo-200 rounded-lg p-1.5 text-[11px] font-bold text-slate-900 outline-none focus:border-indigo-500"
+              >
+                {/* La suya y las que quedan libres: dos filas con la misma
+                    talla sumarían dos veces lo mismo. */}
+                {[l.talla, ...libres].map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+
               <input
                 type="number"
                 min={0}
                 inputMode="numeric"
-                value={n ?? ''}
-                onChange={e => ponerCantidad(talla, e.target.value)}
-                placeholder="—"
-                className={`w-full p-1.5 rounded-lg border text-xs font-bold text-center outline-none transition ${
-                  n
-                    ? 'bg-white border-indigo-300 text-slate-900'
-                    : 'bg-white/60 border-slate-200 text-slate-400 placeholder-slate-300'
-                } focus:border-indigo-500`}
+                value={l.cantidad || ''}
+                onChange={e => set('cantidad', Math.max(0, Math.floor(Number(e.target.value) || 0)))}
+                placeholder="0"
+                className="w-11 bg-white border border-indigo-200 rounded-lg p-1.5 text-[11px] font-bold text-center text-slate-900 outline-none focus:border-indigo-500"
               />
+
+              <span className="text-[10px] text-slate-400">×</span>
+
+              <div className="flex-1 min-w-0">
+                <CurrencyInput
+                  symbol
+                  value={costoDeLinea(l, costoBase)}
+                  onCommit={raw => set('costo', raw === '' ? undefined : Number(raw))}
+                  className={`w-full rounded-lg p-1.5 text-[11px] font-semibold outline-none border transition ${
+                    propio
+                      ? 'bg-indigo-100 border-indigo-400 text-indigo-900'
+                      : 'bg-white border-indigo-200 text-slate-700'
+                  }`}
+                />
+              </div>
+
+              <span className="w-16 text-right text-[11px] font-bold text-slate-800">
+                {formatCurrency(l.cantidad * costoDeLinea(l, costoBase))}
+              </span>
+
+              <button
+                type="button"
+                onClick={() => guardar(lineas.filter((_, j) => j !== i))}
+                className="text-slate-300 hover:text-red-500 transition px-0.5"
+                aria-label={`Quitar la talla ${l.talla}`}
+              >
+                <i className="fa-solid fa-xmark text-[10px]"></i>
+              </button>
             </div>
           );
         })}
       </div>
+
+      {libres.length > 0 && (
+        <button
+          type="button"
+          onClick={() => guardar([...lineas, { talla: libres[0], cantidad: 1 }])}
+          className="mt-2 w-full py-1.5 rounded-lg text-[10px] font-bold border border-dashed border-indigo-300 text-indigo-700 hover:bg-white transition"
+        >
+          <i className="fa-solid fa-plus text-[9px] mr-1"></i> Añadir talla
+        </button>
+      )}
+
+      {subtotal > 0 && (
+        <div className="flex justify-between items-baseline mt-2 pt-2 border-t border-indigo-200">
+          <span className="text-[10px] font-semibold text-slate-500">Subtotal</span>
+          <span className="text-xs font-bold text-slate-900">{formatCurrency(subtotal)}</span>
+        </div>
+      )}
     </div>
   );
 };

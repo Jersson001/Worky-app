@@ -151,11 +151,31 @@ export interface QuoteItem {
 /** Qué rejilla de tallas usa una prenda. */
 export type TipoDeTalla = 'letra' | 'pantalon' | 'calzado';
 
+/** Una talla del pedido: cuántas y a cuánto. */
+export interface LineaDeTalla {
+  talla: string;
+  cantidad: number;
+  /**
+   * Lo que cuesta esta talla, si se sale del costo de la línea.
+   *
+   * Vacío significa que usa el de arriba. Existe porque una XL lleva más tela que
+   * una S: con un solo precio había que elegir entre perder la diferencia o
+   * cobrársela a todas.
+   */
+  costo?: number;
+}
+
 export interface CuadroDeTallas {
   activo: boolean;
   tipo: TipoDeTalla;
-  /** Cuántas de cada talla, por su nombre: { S: 3, M: 8 }. */
-  cantidades: Record<string, number>;
+  /** Solo las tallas que van en el pedido, en el orden en que se añadieron. */
+  lineas?: LineaDeTalla[];
+  /**
+   * Formato viejo, de antes de que cada talla tuviera su costo. No se escribe:
+   * se lee para que las cotizaciones ya enviadas se sigan viendo igual.
+   * @deprecated
+   */
+  cantidades?: Record<string, number>;
 }
 
 export interface QuoteData {
