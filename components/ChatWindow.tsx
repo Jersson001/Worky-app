@@ -9,7 +9,7 @@ import { Contact, Message, ProjectStage, Product, ProductCategory, PaymentAccoun
 import { DocumentViewer } from './QuoteDocument';
 import { formatCurrency } from '../utils/currency';
 import { calculateTax } from '../utils/taxCalculations';
-import { flattenSectionsToQuoteItems, computeGrandTotal } from '../utils/carpentryCalculations';
+import { flattenSectionsToQuoteItems, computeGrandTotal, gremiosVisibles } from '../utils/carpentryCalculations';
 import { useChatFormState } from '../hooks/useChatFormState';
 import { useFileUpload } from '../hooks/useFileUpload';
 import { uploadQuotePhotos } from '../services/storageService';
@@ -116,6 +116,7 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
     {
       condiciones: userProfile?.condicionesCotizacion,
       anticipoPorcentaje: userProfile?.anticipoPorcentaje,
+      gremios: gremiosVisibles(userProfile?.businessType),
     },
   );
 

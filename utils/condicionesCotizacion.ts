@@ -19,7 +19,16 @@ const bloque = (titulo: string, lineas: string[], activo = true): BloqueCondicio
 });
 
 /**
- * Lo que trae la plantilla cuando nadie la ha tocado.
+ * Las condiciones que le tocan a un oficio.
+ *
+ * Un taller de uniformes no tiene nada que ver con una obra: enseñarle «el
+ * sitio debe estar en obra blanca» le dice que la aplicación no es para él.
+ */
+export const condicionesDeFabrica = (gremios: GremioKey[]): CondicionesCotizacion =>
+  gremios.includes('confeccion') ? CONDICIONES_CONFECCION() : CONDICIONES_POR_DEFECTO();
+
+/**
+ * Lo que trae la plantilla de obra cuando nadie la ha tocado.
  *
  * Se escribe en primera persona del negocio y en condicional donde toca: es
  * texto que el cliente lee, no notas internas. Quien tenga otras condiciones
@@ -51,9 +60,51 @@ export const CONDICIONES_POR_DEFECTO = (): CondicionesCotizacion => ({
   ]),
 });
 
+/**
+ * Lo que trae la plantilla de confección.
+ *
+ * El pleito de un taller de uniformes no es el de una obra. Aquí lo que se
+ * discute son las tallas —quién las dio y hasta cuándo se cambian—, el color
+ * entre lotes de tela y cuándo arranca de verdad la producción. De ahí que
+ * tenga un apartado propio de cambios, que en obra no hace falta.
+ */
+export const CONDICIONES_CONFECCION = (): CondicionesCotizacion => ({
+  entrega: bloque('Tiempo de entrega', [
+    'La producción arranca con el anticipo y la muestra aprobada, no antes.',
+    'El tiempo de entrega es de 15 días hábiles desde esa aprobación.',
+    'Los cambios pedidos después del corte reinician el plazo.',
+  ]),
+  suministros: bloque('Lo que pone el cliente', [
+    'El logo en alta resolución o en vectores, para poder bordarlo o estamparlo.',
+    'El listado de tallas por persona, confirmado por escrito.',
+    'La aprobación de la muestra antes de producir.',
+  ]),
+  cambios: bloque('Cambios y tallas', [
+    'Los cambios de talla se reciben hasta 8 días después de la entrega.',
+    'La prenda debe estar sin usar, sin lavar y con sus etiquetas.',
+    'Si el listado de tallas lo entregó el cliente, el cambio se cobra aparte.',
+    'Las prendas personalizadas con un nombre no se cambian ni se devuelven.',
+  ]),
+  garantia: bloque('Garantía', [
+    'Seis meses por defectos de confección: costuras, cierres y botones.',
+    'No cubre el desgaste normal por el uso ni la decoloración por el lavado.',
+    'Se pierde por lavado en agua caliente, cloro, secadora o plancha directa '
+      + 'sobre el bordado, y por arreglos hechos fuera del taller.',
+  ]),
+  noIncluye: bloque('Nuestra oferta no incluye', [
+    'Bordados, estampados ni reflectivos que no estén en esta cotización.',
+    'Toma de medidas en sitio, salvo que se acuerde aparte.',
+    'Transporte fuera de la ciudad.',
+  ]),
+  notas: bloque('Notas', [
+    'El color puede variar levemente entre lotes de tela.',
+    'Los precios se sostienen mientras dure la validez de esta cotización.',
+  ]),
+});
+
 /** El orden en que se muestran y se imprimen. */
 export const ORDEN_CONDICIONES: (keyof CondicionesCotizacion)[] =
-  ['entrega', 'noIncluye', 'suministros', 'garantia', 'notas'];
+  ['entrega', 'noIncluye', 'suministros', 'cambios', 'garantia', 'notas'];
 
 /**
  * Quién ve las condiciones.

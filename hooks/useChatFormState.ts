@@ -3,9 +3,9 @@
  * Extracts 30+ useState calls from the monolithic component.
  */
 import { useState, useCallback } from 'react';
-import { InvoiceItem, QuoteItem, Product, QuoteMode, CarpentrySection, CarpentryCategoryKey, CarpentryLineItem, CondicionesCotizacion, BloqueCondiciones, CuadroDeTallas } from '../types';
+import { InvoiceItem, QuoteItem, Product, QuoteMode, CarpentrySection, CarpentryCategoryKey, CarpentryLineItem, CondicionesCotizacion, BloqueCondiciones, CuadroDeTallas, GremioKey } from '../types';
 import { createCarpentrySection, createBlankCarpentryItem, computeM2FromDimensions } from '../utils/carpentryCalculations';
-import { CONDICIONES_POR_DEFECTO } from '../utils/condicionesCotizacion';
+import { condicionesDeFabrica } from '../utils/condicionesCotizacion';
 import { totalDeTallas } from '../utils/tallas';
 import { parseAmount } from '../utils/currency';
 
@@ -16,6 +16,8 @@ import { parseAmount } from '../utils/currency';
 export interface PlantillaDelNegocio {
   condiciones?: CondicionesCotizacion;
   anticipoPorcentaje?: number;
+  /** El oficio, para saber qué condiciones de fábrica le tocan. */
+  gremios?: GremioKey[];
 }
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -178,7 +180,7 @@ const quoteEnBlanco = (plantilla?: PlantillaDelNegocio): Omit<QuoteFormState, 'c
   sections: [],
   anticipoPorcentaje: String(plantilla?.anticipoPorcentaje ?? 50),
   cuentaCobroId: '',
-  condiciones: structuredClone(plantilla?.condiciones ?? CONDICIONES_POR_DEFECTO()),
+  condiciones: structuredClone(plantilla?.condiciones ?? condicionesDeFabrica(plantilla?.gremios ?? [])),
 });
 const DEFAULT_RECEIPT: ReceiptFormState = { amount: '', concept: '', selectedAccount: '', selectedProject: '' };
 const DEFAULT_MODALS: ModalVisibility = {

@@ -239,6 +239,12 @@ export interface CondicionesCotizacion {
   suministros: BloqueCondiciones;
   garantia: BloqueCondiciones;
   notas: BloqueCondiciones;
+  /**
+   * Cambios y devoluciones. Solo en confección, donde es el apartado que más
+   * discusiones evita: hasta cuándo se cambia una talla y quién paga el cambio
+   * cuando el listado lo dio el cliente.
+   */
+  cambios?: BloqueCondiciones;
 }
 
 // ─── Cotización personalizada (carpintería) ─────────────────────────────────
