@@ -142,6 +142,42 @@ mandar foto por el chat     PERMITIDO   <- lo que sí debe poder
 
 ---
 
+## Lo añadido después de la auditoría
+
+### `datos_de_contacto(uuid)` — 7 de septiembre de 2026
+
+Devuelve el correo y el celular de un contacto para enseñarlos en su ficha. Es
+`security definer`, así que conviene saber por qué y con qué límites.
+
+**Por qué no se abrió la tabla.** Los dos datos viven en `user_profiles`, cuya
+política de lectura es `auth.uid() = id` —solo uno mismo—. Ahí dentro están
+también el NIT, la dirección, `is_admin` y las fechas de suscripción: relajar
+esa política para enseñar un correo habría publicado todo lo demás. `public_info`
+sí es de lectura libre, pero solo guarda `phone_or_email`, uno de los dos.
+
+**Qué la contiene:**
+
+- Devuelve **dos columnas**, no la fila: `email` y `phone`. Nada más sale.
+- Solo responde si quien pregunta **ya tiene a esa persona en sus contactos**
+  (`contacts.user_id = auth.uid()`). No es «el correo de cualquiera».
+- `revoke` a `public` y `anon`; `grant execute` solo a `authenticated`.
+- `set search_path = public`, sin lo cual quien la llama podría anteponer un
+  esquema propio y hacer que `user_profiles` significara una tabla suya —que se
+  leería con permisos de dueño—.
+
+Comprobada contra la base con tres identidades: sin sesión, cero filas; el dueño
+del contacto, las dos columnas; un tercero que no lo tiene agregado, cero filas.
+Definición en [supabase_datos_de_contacto.sql](supabase_datos_de_contacto.sql).
+
+### Un tercero que ya no recibe nombres
+
+Hasta el 7 de septiembre de 2026 el avatar por defecto se le pedía a
+`ui-avatars.com` **con el nombre del contacto dentro de la URL**. Se dibuja ya en
+el dispositivo. Se limpiaron el trigger de registro y las 47 filas que lo tenían
+guardado (`public_info.avatar_url` y `contacts.avatar`).
+
+---
+
 ## Restos conocidos
 
 - **`shared_docs/<id>` no lleva el dueño en la ruta**, así que ahí solo se puede

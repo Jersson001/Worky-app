@@ -38,6 +38,31 @@ por la aplicación —Ferry App S.A.S., con su NIT y su correo—, el aviso de
 derechos y la solicitud de eliminación de cuenta, que Play exige a toda
 aplicación con cuentas.
 
+### Si pierde la contraseña
+
+Hay «¿Olvidaste tu contraseña?» debajo del campo, que es donde se busca: en el
+momento en que la contraseña no entra, mirando ese campo. Llega un correo, y al
+volver del enlace sale una pantalla para escribir la nueva.
+
+Hasta el 7 de septiembre de 2026 **no existía**: `resetPasswordForEmail` no se
+llamaba desde ninguna parte, así que perder la contraseña era perder la cuenta,
+con los contactos, los proyectos y los documentos dentro.
+
+Lo que obliga a que la segunda pantalla exista, y a que vaya **por delante de
+todo lo demás en el render**, es que el enlace de Supabase trae la sesión
+puesta: sin interceptarlo, la persona entraba directa a la aplicación con la
+contraseña vieja sin cambiar —justo la que no recordaba— y no volvía a ver la
+pantalla. Se reconoce por el evento `PASSWORD_RECOVERY` y, para el primer
+pintado, por la URL.
+
+El destino del enlace es la app publicada y no el origen actual: desde el APK el
+origen es el propio teléfono y el enlace no llevaría a ninguna parte.
+
+**Falta configurar un SMTP propio en Supabase.** Con el servicio interno los
+correos van limitados a unos pocos por hora, se retrasan o caen en no deseado, y
+Supabase mismo dice que no es para producción. Sin eso, esto funciona en el
+código y no en la práctica.
+
 ### El cliente que escanea un QR — sin correo ni celular
 
 Escribe su nombre, el servidor le ofrece **tres aliases libres**, elige uno y
@@ -103,6 +128,53 @@ Quién es cliente se decide con `esAnonimo || (llegó de un catálogo && no tien
 oficio)`. Mirar solo el oficio vacío **sería un error**: hay vendedores antiguos
 sin oficio declarado —los mismos que ven todos los capítulos de cotización por
 eso— y les quitaría sus herramientas. Ante la duda se le trata como vendedor.
+
+---
+
+### La ficha del contacto
+
+Bajo el nombre salen **el correo y el celular con los que se registró**, que es
+lo que se busca al abrir la ficha para escribirle por fuera de Worky.
+
+No viajan con el contacto. La fila de `contacts` los tiene vacíos cuando se
+agregó a alguien que ya tenía cuenta: sus datos son suyos y viven en su perfil,
+no en la copia que guarda quien lo agrega. Pero `user_profiles` solo se lee de
+uno mismo, y con razón —ahí están también el NIT, la dirección, si es
+administrador y la suscripción—, así que abrirla para enseñar un correo
+publicaría todo lo demás.
+
+Van por `datos_de_contacto`, una función que lee por dentro con permisos de
+dueño y devuelve **exactamente esos dos campos**, y solo si quien pregunta ya
+tiene a esa persona agregada. No es «el correo de cualquiera»: es «el correo de
+alguien con quien ya estoy hablando». Está en
+[supabase_datos_de_contacto.sql](supabase_datos_de_contacto.sql), aplicada en
+producción el 7/09/2026 y comprobada con las tres identidades: sin sesión no
+devuelve nada, el dueño ve los dos datos, y un tercero que no lo tiene agregado
+no ve nada.
+
+Quien no está registrado no enseña nada, que es lo correcto: un contacto manual
+no tiene cuenta y sus huecos no son datos.
+
+### El avatar de quien no tiene foto
+
+Sus iniciales sobre un color, dibujadas en el propio teléfono
+([utils/avatar.ts](utils/avatar.ts)). El color sale del nombre, así que la misma
+persona se ve igual en todas las pantallas sin guardar nada.
+
+Antes se le pedían a `ui-avatars.com`, **con el nombre de la persona dentro de
+la dirección**: el nombre de cada contacto viajando a un servicio ajeno cada vez
+que se pintaba una lista, a cambio de una imagen que son cuatro líneas. En el
+formulario de Seguridad de los datos de Play eso obligaba a declarar que Worky
+comparte nombres con terceros.
+
+Se quitó el 7 de septiembre de 2026, y no bastaba con el código: el trigger de
+registro escribía esa dirección en `public_info`, y 47 filas ya la llevaban
+guardada. Las dos cosas, limpiadas en la base. `fotoOIniciales` descarta además
+las que queden, porque un documento compartido guarda su copia de los datos y
+vive treinta días.
+
+De propina, las iniciales salen al instante y **funcionan sin cobertura**, que
+es donde antes quedaban huecos grises.
 
 ---
 
@@ -190,6 +262,26 @@ origen es `localhost` y un QR con esa dirección no llevaría a ninguna parte.
 
 Cotizaciones, facturas, recibos de caja, cuentas de cobro y comprobantes de
 gasto. Se comparten por WhatsApp como HTML maquetado, con QR del catálogo al pie.
+
+**El cliente ve el mismo documento que se imprime.** Hubo dos maquetas del mismo
+documento —la que ve e imprime quien lo manda, y otra distinta para la página
+del enlace—, y eso significa hacer cada mejora dos veces. Cuando se olvidaba
+una, se notaba: las fotos llevaban meses en el documento de verdad y en el
+enlace no salían, así que el cliente aprobaba un precio **sin ver lo que estaba
+comprando**. Y en la cotización básica, que es la que usa casi todo el mundo, no
+salían nunca; en la de capítulos sí.
+
+Desde el 7 de septiembre de 2026 `SharedDocumentViewer` no maqueta nada: carga
+el JSON guardado y se lo pasa a `DocumentViewer`. El JSON que ya se subía trae
+exactamente lo que ese componente pide —tipo, datos, logo, firma y perfil—, así
+que no hubo nada que adaptar.
+
+Al componente se le añadió lo justo para distinguir a un cliente de su dueño:
+`soloLectura` le quita mover la firma ajena y volver a compartir por WhatsApp,
+`onClose` pasa a ser opcional porque ahí el documento **es** la página,
+`acciones` y `pie` colocan lo de responder y el catálogo alrededor, y
+`catalogoUrl` hace que el QR lleve al catálogo del vendedor y no al genérico
+—sin sesión no había de dónde deducirlo, y llevaba a la app a secas—.
 
 **Impresión.** La hoja se maqueta a 850 px y al imprimir se reduce entera con
 zoom al 80 %, conservando la proporción. Ese `zoom` **necesita `!important`**:
@@ -402,6 +494,24 @@ todas invisibles hasta que se miraron los datos de verdad:
   hubiera saltado el guardado, Postgres lo habría rechazado con 22P02 — el mismo
   error que ya documenta [utils/id.ts](utils/id.ts).
 
+### El balance y la utilidad
+
+Por proyecto: cuánto vale, cuánto se ha cobrado y cuánto falta. Y debajo, cuando
+hay gastos apuntados, cuánto se ha gastado y la **utilidad estimada**.
+
+Los gastos **no se le enseñan al cliente**: son cuentas de la casa —lo que
+cuesta hacer la obra— y de ellas sale lo que se le está ganando. El recibo de
+caja sí los ve, porque es un avance suyo. Lo separa el `esCliente` del panel.
+
+**Los gastos se guardaban y no se volvían a leer.** `fetchProjectsForContact`
+devolvía `expenses: []` fijo y nunca consultaba la tabla, así que un gasto vivía
+en pantalla lo que durase la sesión y al recargar el balance decía «sin gastos
+registrados» con el recibo ahí al lado, en Documentos. Con ello caía también la
+utilidad: el desglose ya estaba escrito, pero solo se pinta si hay gastos, y
+siempre llegaban en cero. Corregido el 7 de septiembre de 2026, con una sola
+consulta para todos los proyectos del contacto — uno con diez proyectos hacía
+diez viajes.
+
 ---
 
 ## Lo que NO hay
@@ -418,21 +528,22 @@ todas invisibles hasta que se miraron los datos de verdad:
 - **Convertir una cuenta anónima en permanente de verdad.** El aviso lleva al
   editor de perfil, que guarda el correo en el perfil pero no en la cuenta de
   autenticación. Falta llamar a `updateUser` con correo y contraseña.
-- **Capítulos para oficios que no son de obra.** Un abogado o un sastre usan la
-  cotización básica, que con el cuadro de tallas ya les cunde. Si algún día se
-  quieren capítulos propios —«Honorarios», «Uniformes empresariales»— el
-  mecanismo ya está: basta con darle gremios a su entrada en
-  `utils/tiposDeNegocio.ts` y añadir los capítulos.
+- **Capítulos para oficios que no son de obra ni confección.** Un abogado o un
+  peluquero usan la cotización básica. Confección ya tiene los suyos —uniformes
+  empresariales y escolares, dotación y EPP, prendas a medida, personalización—.
+  Para añadir otros el mecanismo está: darle gremios a su entrada en
+  `utils/tiposDeNegocio.ts` y escribir los capítulos.
 - **Lo que cobra la confección aparte de la prenda.** El **ponchado**
   —digitalizar el logo, pago único que se olvida cobrar—, la personalización
   por unidad (bordado, estampado) y la muestra de aprobación. Por ahora el
   ponchado se pone como línea suelta sin tallas y funciona.
 - **Presupuesto de materiales aparte.** Los materiales salen dentro de la
   cotización, no como lista de compra independiente para la ferretería.
-- **Condiciones de negociación para comercio.** Solo las ven carpintería y
-  obra. Un taller de uniformes querría las suyas —cambios de talla, variación
-  de color por lote, la producción arranca con la muestra aprobada—, pero los
-  textos de fábrica son de obra y no le servirían.
+- **Condiciones de negociación para los oficios sin gremio.** Belleza,
+  artículos varios y «Otro» no las ven: no tienen capítulos, y los textos de
+  fábrica son de obra o de confección, así que no les servirían. Carpintería,
+  obra y confección sí tienen las suyas —esta última con su apartado propio de
+  cambios y tallas, que en obra no hace falta—.
 
 ---
 
@@ -448,6 +559,20 @@ cerraron tres agujeros. Está todo en [SEGURIDAD.md](SEGURIDAD.md).
 Worky lo publica **Ferry App S.A.S.**, NIT 902.028.115-2, con domicilio en
 Bogotá. Sus datos están en `utils/legal.ts`, que es de donde los leen el
 registro, el apartado Legal del perfil y los documentos.
+
+**Las tres páginas públicas**, en `public/` y por tanto empaquetadas con la app:
+la política, los términos y `eliminar-cuenta.html`. Esa última la exige Play a
+toda aplicación con cuentas, y **tiene que ser una URL `https:`** a la que se
+llegue sin tener la app instalada: el `mailto:` del perfil no vale para ese
+campo del formulario, y además no le sirve a quien ya no puede entrar. Dice qué
+se borra, qué se conserva y por qué —los documentos ya compartidos siguen en
+poder de quien los recibió hasta que caducan— y en cuánto tiempo.
+
+**El formulario «Seguridad de los datos»** se resolvió campo por campo el 7 de
+septiembre de 2026, sacando cada respuesta del código y de la base: once tipos
+de dato recopilados, ninguno compartido, y nada de ubicación, analítica, fallos
+ni identificadores —comprobado en las dependencias y en el manifiesto, cuyos
+permisos son solo cuatro: internet, estado de la red, cámara y vibración—.
 
 **Historia de los `versionCode`.** No se reutilizan aunque la versión nunca
 llegue a publicarse, así que cada intento fallido quema un número:
