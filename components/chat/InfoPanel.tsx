@@ -1,9 +1,10 @@
 /**
  * InfoPanel — contact info side panel with 3 tabs: Resumen, Balance, Documentos.
  */
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Contact, Message, Project } from '../../types';
 import { formatCurrency } from '../../utils/currency';
+import { datosDeContacto } from '../../services/messagingService';
 
 interface InfoPanelProps {
   show: boolean;
@@ -49,6 +50,34 @@ export const InfoPanel: React.FC<InfoPanelProps> = React.memo(({
   const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
   const [tempProjectValue, setTempProjectValue] = useState('');
   const [tempProjectName, setTempProjectName] = useState('');
+
+  /**
+   * Con qué correo y qué celular se registró el contacto.
+   *
+   * No viaja con el contacto: la fila de `contacts` los tiene vacíos cuando se
+   * agregó a alguien que ya tenía cuenta —los datos son suyos, no de la copia
+   * que guarda quien lo agrega—. Se piden al abrir la ficha.
+   *
+   * Vacío significa que no está registrado, y entonces no se enseña nada: es un
+   * contacto manual, del que solo se sabe lo que se escribió a mano.
+   */
+  const [datosDeRegistro, setDatosDeRegistro] = useState<{ email: string | null; phone: string | null } | null>(null);
+
+  useEffect(() => {
+    if (!show) return;
+    let vigente = true;
+    setDatosDeRegistro(null);
+    void datosDeContacto(contact.id).then(datos => {
+      // Si cambió de contacto mientras se pedía, lo que llega es del anterior.
+      if (vigente) setDatosDeRegistro(datos);
+    });
+    return () => { vigente = false; };
+  }, [show, contact.id]);
+
+  // Lo de la cuenta manda sobre lo escrito a mano: si tiene cuenta, ese es el
+  // celular por el que se le encuentra, no el que alguien copió al agregarlo.
+  const correoVisible = datosDeRegistro?.email || contact.email || '';
+  const celularVisible = datosDeRegistro?.phone || contact.phone || '';
 
   const uniqueApprovedProjects = useMemo(() => getUniqueApprovedProjects(contact), [contact]);
   const approvedProjectsCount = uniqueApprovedProjects.length;
@@ -102,7 +131,26 @@ export const InfoPanel: React.FC<InfoPanelProps> = React.memo(({
       <div className="p-8 flex flex-col items-center bg-slate-50 border-b border-slate-100 mb-2">
         <img src={contact.avatar} className="w-24 h-24 rounded-full object-cover mb-4 shadow-md border-4 border-white" />
         <h2 className="text-slate-800 text-xl font-bold">{contact.clientName}</h2>
-        <p className="text-slate-500 text-sm mt-1">{contact.phone}</p>
+        {/* Con qué se registró. Es lo que se busca al abrir esta ficha para
+            escribirle por fuera de Worky, y hasta ahora había que salir a
+            buscarlo a otro sitio. Cada línea sale solo si hay dato: un contacto
+            manual no tiene cuenta y no debe enseñar huecos. */}
+        {(correoVisible || celularVisible) && (
+          <div className="mt-2 space-y-1 text-center">
+            {correoVisible && (
+              <p className="text-slate-500 text-sm flex items-center justify-center gap-2 break-all">
+                <i className="fa-solid fa-envelope text-[11px] text-slate-400"></i>
+                {correoVisible}
+              </p>
+            )}
+            {celularVisible && (
+              <p className="text-slate-500 text-sm flex items-center justify-center gap-2">
+                <i className="fa-solid fa-phone text-[11px] text-slate-400"></i>
+                {celularVisible}
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Tab Navigation */}

@@ -500,6 +500,36 @@ const rowToContact = (row: any): Contact => ({
   notes: row.notes ?? undefined,
 });
 
+/**
+ * El correo y el celular con los que se registró un contacto.
+ *
+ * Los dos viven en `user_profiles`, que solo se lee de uno mismo —ahí están
+ * también el NIT, la dirección y la suscripción—, así que se piden por una
+ * función del servidor que devuelve solo esos dos campos, y solo si quien
+ * pregunta ya tiene a esa persona agregada. Ver supabase_datos_de_contacto.sql.
+ *
+ * Devuelve null para quien no está registrado: un contacto manual no tiene
+ * cuenta, y su id ni siquiera es un uuid.
+ */
+export const datosDeContacto = async (
+  contactUserId: string
+): Promise<{ email: string | null; phone: string | null } | null> => {
+  const esUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(contactUserId);
+  if (!esUuid) return null;
+
+  const { data, error } = await supabase.rpc('datos_de_contacto', { p_contact_user: contactUserId });
+
+  if (error) {
+    // No es motivo para romper la ficha: sin esto se enseña el nombre y ya.
+    console.warn('No se pudieron cargar los datos del contacto:', error.message);
+    return null;
+  }
+
+  const fila = Array.isArray(data) ? data[0] : data;
+  if (!fila) return null;
+  return { email: fila.email ?? null, phone: fila.phone ?? null };
+};
+
 export const addContact = async (contact: Contact): Promise<Contact> => {
   const userId = getCurrentUserId();
   const isManualLead = contact.id.startsWith('lead_');
