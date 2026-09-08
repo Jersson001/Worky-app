@@ -26,6 +26,7 @@ import { GroupChatWindow } from './components/GroupChatWindow';
 // import { FirebaseConnectionTest } from './components/FirebaseConnectionTest';
 import { Contact, Message, UserStatus, ProjectStage, Product, Expense, Story, PaymentAccount, ThirdPartyAccount, ContactRole, Project, ProductCategory, UserProfileData, ChatGroup, GroupMessage } from './types';
 import { LoginScreen } from './components/LoginScreen';
+import { NuevaContrasena } from './components/NuevaContrasena';
 import { WelcomeOnboarding } from './components/WelcomeOnboarding';
 import { sendMessage as sendMessageToFirebase, listenToMessages, listenToContacts, addContact, deleteContact, saveUserProfile, getUserProfile, initializeUserId, setCurrentUserId, getCurrentUserId, searchUserByPhoneOrEmail, addContactFromSearch, deleteMessage, updateMessage, listenToGlobalIncomingMessages, markChatAsRead, markMessagesAsDelivered, markMessagesAsRead, getPublicInfoById } from './services/messagingService';
 import { saveProduct, deleteProduct, listenToProducts, saveCategory, deleteCategory, listenToCategories, saveProject, deleteProject, updateProject, addExpenseToProject, updateContactWithProjects, listenToPaymentAccounts, savePaymentAccount, deletePaymentAccount, PaymentAccountData, listenToThirdPartyAccounts, saveThirdPartyAccount, deleteThirdPartyAccount, fetchProjectsForContact, listenToProjects } from './services/dataService';
@@ -209,6 +210,25 @@ const App: React.FC = () => {
     text: string;
     avatar?: string;
   } | null>(null);
+
+  /**
+   * Se está recuperando la contraseña: viene de pulsar el enlace del correo.
+   *
+   * Se lee de la URL en el primer pintado, no en un efecto, porque Supabase
+   * procesa el token del enlace y avisa con `PASSWORD_RECOVERY` en cuanto
+   * arranca: si esperásemos, la sesión que trae el enlace ya habría metido a la
+   * persona en la aplicación —con la contraseña vieja, la que no recuerda— y la
+   * pantalla para cambiarla no llegaría a verse.
+   */
+  const [recuperandoContrasena, setRecuperandoContrasena] = useState(() => {
+    try {
+      const { search, hash } = window.location;
+      return new URLSearchParams(search).get('recuperar') === '1'
+        || hash.includes('type=recovery');
+    } catch {
+      return false;
+    }
+  });
 
   // Verificar si hay un documento compartido en la URL
   useEffect(() => {
@@ -418,6 +438,10 @@ const App: React.FC = () => {
     let subscribedUserId: string | null = null;
 
     const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      // El enlace del correo trae sesión: sin esto entraría directo a la
+      // aplicación y la contraseña se quedaría sin cambiar.
+      if (_event === 'PASSWORD_RECOVERY') setRecuperandoContrasena(true);
+
       const user = session?.user;
       if (user) {
         if (subscribedUserId === user.id) return; // misma sesión, nada que hacer
@@ -2319,6 +2343,35 @@ ${describeError(error)}
           setSharedDocumentId(null);
           // Limpiar la URL
           window.history.replaceState({}, document.title, window.location.pathname);
+        }}
+      />
+    );
+  }
+
+  /**
+   * Poner la contraseña nueva, al volver del enlace del correo.
+   *
+   * Va por delante del resto —incluido el «si no está autenticado»— porque el
+   * enlace SÍ trae sesión: sin esto la persona entraría a la aplicación con la
+   * contraseña vieja sin cambiar y no volvería a ver esta pantalla.
+   */
+  if (recuperandoContrasena) {
+    const limpiarLaUrl = () =>
+      window.history.replaceState({}, document.title, window.location.pathname);
+
+    return (
+      <NuevaContrasena
+        correo={userProfile?.email ?? null}
+        onListo={() => {
+          limpiarLaUrl();
+          setRecuperandoContrasena(false);
+        }}
+        onCancelar={async () => {
+          // Se cierra la sesión que trajo el enlace. Dejarla abierta metería en
+          // la cuenta a quien pulsó «Cancelar» justamente por no ser su cuenta.
+          limpiarLaUrl();
+          setRecuperandoContrasena(false);
+          await supabase.auth.signOut();
         }}
       />
     );

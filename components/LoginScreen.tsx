@@ -3,6 +3,7 @@ import { supabase } from '../services/supabaseConfig';
 import { setCurrentUserId } from '../services/messagingService';
 import { llegoInvitado, vendedorPendiente } from '../services/catalogShareService';
 import { URL_PRIVACIDAD, URL_TERMINOS, constanciaDeAceptacion } from '../utils/legal';
+import { WORKY_APP_URL } from '../services/catalogShareService';
 
 interface LoginScreenProps {
   onLogin: () => void;
@@ -115,6 +116,52 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister, i
   // dar sesión (signUp devuelve session: null). No se puede hacer nada más
   // hasta que haga clic en el enlace del email.
   const [pendingEmailConfirmation, setPendingEmailConfirmation] = useState<string | null>(null);
+
+  // ── Recuperar la contraseña ────────────────────────────────────────────────
+  //
+  // No existía: quien perdía la contraseña perdía la cuenta, con todos sus
+  // contactos y documentos dentro. Se pide el enlace aquí y la contraseña nueva
+  // se pone al volver del correo, en NuevaContrasena.
+  const [pidiendoEnlace, setPidiendoEnlace] = useState(false);
+  const [enlaceEnviadoA, setEnlaceEnviadoA] = useState<string | null>(null);
+
+  const pedirEnlaceDeRecuperacion = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const correo = email.trim().toLowerCase();
+    if (!correo) {
+      setError('Escribe el correo con el que te registraste.');
+      return;
+    }
+
+    setError('');
+    setLoading(true);
+    try {
+      // El destino es la app publicada y no el origen actual: desde el APK el
+      // origen es el propio teléfono, y un enlace así no lleva a ninguna parte.
+      // WORKY_APP_URL ya resuelve eso. El `?recuperar=1` es para reconocer la
+      // vuelta en el primer pintado, antes de que Supabase lea el token.
+      const { error: err } = await supabase.auth.resetPasswordForEmail(correo, {
+        redirectTo: `${WORKY_APP_URL}/?recuperar=1`,
+      });
+      if (err) throw err;
+
+      // Se confirma el envío haya cuenta o no. Decir «ese correo no existe»
+      // convierte esta pantalla en una forma de averiguar quién está
+      // registrado, y Supabase tampoco lo distingue en la respuesta.
+      setEnlaceEnviadoA(correo);
+    } catch (err: any) {
+      console.error('Error pidiendo el enlace de recuperación:', err);
+      setError(getAuthErrorMessage(err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const volverAlAcceso = () => {
+    setPidiendoEnlace(false);
+    setEnlaceEnviadoA(null);
+    setError('');
+  };
 
   // ── Entrar solo con un alias ───────────────────────────────────────────────
   //
@@ -454,6 +501,80 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister, i
 
           {/* Card de formulario */}
           <div className="bg-white rounded-3xl p-7 sm:p-8 border border-slate-200/90 shadow-2xl shadow-slate-200/60">
+            {/* Recuperar la contraseña. Ocupa la tarjeta entera: quien llega
+                aquí tiene un solo problema, y las pestañas de acceso y
+                registro no le sirven para nada ahora mismo. */}
+            {pidiendoEnlace ? (
+              enlaceEnviadoA ? (
+                <div className="space-y-4 text-center">
+                  <div className="w-14 h-14 rounded-full bg-emerald-50 border border-emerald-200 flex items-center justify-center mx-auto">
+                    <i className="fa-solid fa-envelope-circle-check text-emerald-600 text-xl"></i>
+                  </div>
+                  <div>
+                    <h2 className="text-slate-900 text-lg font-extrabold">Revisa tu correo</h2>
+                    <p className="text-slate-500 text-sm mt-1">
+                      Si <span className="font-bold text-slate-700">{enlaceEnviadoA}</span> tiene una
+                      cuenta en Worky, le acaba de llegar un enlace para poner una contraseña nueva.
+                    </p>
+                  </div>
+                  {/* Lo que más pasa, y por eso se dice antes de que llame a
+                      soporte: el correo cae en «no deseado». */}
+                  <p className="text-[11px] text-slate-500 bg-slate-50 border border-slate-200 rounded-xl p-3 leading-snug">
+                    Si no lo ves en unos minutos, míralo en <span className="font-bold">correo no deseado</span>.
+                    El enlace caduca en una hora.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={volverAlAcceso}
+                    className="w-full bg-slate-100 text-slate-700 py-3 rounded-xl font-bold text-sm hover:bg-slate-200 transition"
+                  >
+                    Volver a iniciar sesión
+                  </button>
+                </div>
+              ) : (
+                <form onSubmit={pedirEnlaceDeRecuperacion} className="space-y-4">
+                  <div>
+                    <h2 className="text-slate-900 text-lg font-extrabold">¿Olvidaste tu contraseña?</h2>
+                    <p className="text-slate-500 text-sm mt-1">
+                      Escribe tu correo y te mandamos un enlace para poner una nueva.
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-xs text-slate-700 font-bold uppercase mb-1.5 block tracking-wide">Correo electrónico</label>
+                    <input
+                      type="email"
+                      className="w-full p-3.5 bg-slate-50 border border-slate-200 text-slate-900 font-semibold rounded-xl outline-none focus:border-blue-600 focus:bg-white transition placeholder-slate-400 text-sm"
+                      placeholder="tu@email.com"
+                      value={email}
+                      onChange={e => setEmail(e.target.value)}
+                      autoFocus
+                      required
+                    />
+                  </div>
+                  {error && (
+                    <div className="text-red-600 text-xs font-semibold bg-red-50 p-3 rounded-xl border border-red-200 flex items-center gap-2">
+                      <i className="fa-solid fa-circle-exclamation text-sm"></i>
+                      <span>{error}</span>
+                    </div>
+                  )}
+                  <button
+                    type="submit"
+                    className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3.5 rounded-xl font-bold text-base hover:shadow-xl transition-all shadow-lg shadow-blue-500/25 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.99]"
+                    disabled={loading}
+                  >
+                    {loading ? 'Enviando...' : 'Enviarme el enlace'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={volverAlAcceso}
+                    className="w-full text-slate-500 hover:text-slate-700 text-xs font-bold transition"
+                  >
+                    Volver
+                  </button>
+                </form>
+              )
+            ) : (
+            <>
             <div className="mb-6 flex bg-slate-100 p-1 rounded-2xl">
               <button
                 className={`flex-1 py-2.5 rounded-xl font-bold text-sm transition-all ${authMode === 'login'
@@ -688,6 +809,15 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister, i
                       onChange={e => setPassword(e.target.value)}
                       required
                     />
+                    {/* Va aquí debajo y no en el pie: se busca en el momento en
+                        que la contraseña no entra, mirando este campo. */}
+                    <button
+                      type="button"
+                      onClick={() => { setPidiendoEnlace(true); setError(''); }}
+                      className="mt-2 text-blue-600 hover:text-blue-700 text-xs font-bold transition"
+                    >
+                      ¿Olvidaste tu contraseña?
+                    </button>
                   </div>
                 </>
               )}
@@ -775,6 +905,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister, i
                 </button>
               )}
             </div>
+            )}
+            </>
             )}
           </div>
         </div>
