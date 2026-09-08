@@ -45,14 +45,17 @@ android {
         // responder desde el documento, y la cotización de confección: capítulos
         // propios, tallas con su precio y condiciones del sector.
         //
-        // El 19 se recompiló el 07/09/2026 con lo que destapó el uso real, sin
-        // gastar número porque nunca llegó a subirse: recuperar la contraseña
+        // El 19 (2.4) se subió, así que su número está gastado.
+        //
+        // El 20 (2.5) lleva lo que destapó el uso real: recuperar la contraseña
         // —que no existía, y perderla era perder la cuenta—, los gastos del
         // proyecto, que se guardaban y no se volvían a leer, el correo y el
-        // celular en la ficha del contacto, y el enlace compartido enseñando el
-        // mismo documento que se imprime, con sus fotos.
-        versionCode 19
-        versionName "2.4"
+        // celular en la ficha del contacto, el enlace compartido enseñando el
+        // mismo documento que se imprime —con sus fotos, que en la cotización
+        // básica no salían—, y las iniciales de los contactos dibujadas en el
+        // teléfono en vez de pedidas a un tercero con el nombre dentro.
+        versionCode 20
+        versionName "2.5"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'

@@ -6,24 +6,29 @@ Esta guía te llevará paso a paso para publicar tu aplicación Worky en Google 
 
 ## 📌 Dónde va esto — al 7 de septiembre de 2026
 
-**El `versionCode` 19 (versión 2.4)** está compilado y firmado en
-`android/app/build/outputs/bundle/release/app-release.aab`, y **probado en un
-teléfono, en modo avión**. La política ya está viva en
-`worky-app-khaki.vercel.app/privacidad.html`.
+**El `versionCode` 20 (versión 2.5)** está compilado y firmado en
+`android/app/build/outputs/bundle/release/app-release.aab`. El 19 ya se envió a
+Play, así que su número quedó gastado. La política está viva en
+`worky-app-khaki.vercel.app/privacidad.html`, y la página de eliminación de
+cuenta que Play exige, en `worky-app-khaki.vercel.app/eliminar-cuenta.html`.
 
-**Pero no se va a subir todavía.** Se reparte como `.apk` a mano para pruebas y
-feedback: el ciclo es más corto y no quema un `versionCode` por intento. Cómo se
-compila y se pasa al teléfono está en
+Para probar en el teléfono se compila aparte un `.apk` —el `.aab` no se
+instala—; cómo, en
 [GENERAR-APK-ANDROID-STUDIO.md](GENERAR-APK-ANDROID-STUDIO.md).
 
-**Lo que quedará por hacer el día que se suba:**
+**Lo que queda antes de subirlo:**
 
 1. **Llenar «Seguridad de los datos»**, que es un formulario aparte de la
-   política y tiene que coincidir con ella (ver el Paso 5).
+   política y tiene que coincidir con ella (ver el Paso 5). Está resuelto campo
+   por campo, y de dónde salió cada respuesta, en la ficha que se preparó el
+   7/09/2026.
 2. **Rotar la clave de subida**, expuesta en el historial público de git.
-3. Mirar si la cuenta es personal o de organización. Si es personal piden el
+3. **Configurar un SMTP propio en Supabase**, o los correos de recuperación de
+   contraseña no llegan: el servicio interno está limitado a unos pocos por hora
+   y ellos mismos dicen que no es para producción.
+4. Mirar si la cuenta es personal o de organización. Si es personal piden el
    **D-U-N-S**, que tarda semanas y conviene empezar antes.
-4. Que un abogado lea una vez la política y los términos.
+5. Que un abogado lea una vez la política y los términos.
 
 ### Los `versionCode` quemados
 
@@ -37,7 +42,8 @@ intento fallido gasta un número:
 | 16 | Rechazado por apuntar a API 35, y aun así se quedó con el número |
 | 17 (2.2) | Catálogo en la cotización, «Cotizar» sobre una foto, datos de pago con QR |
 | 18 (2.3) | Políticas y apartado legal, forma de pago y condiciones, tallas, oficios de comercio, impresión en A4 |
-| **19 (2.4)** | Estilos empaquetados —hasta el 18 se pedían a un CDN y sin cobertura la app salía en crudo—, los cuatro fallos de la prueba con un cliente real, el botón de responder en el documento, cotización de confección |
+| 19 (2.4) | **Enviado a Play.** Estilos empaquetados —hasta el 18 se pedían a un CDN y sin cobertura la app salía en crudo—, los cuatro fallos de la prueba con un cliente real, el botón de responder en el documento, cotización de confección |
+| **20 (2.5)** | Recuperar la contraseña —no existía—, los gastos del proyecto en el balance, el correo y el celular del contacto, el enlace compartido enseñando el documento de imprimir con sus fotos, y las iniciales sin pedirlas a un tercero |
 
 **Play exige API 36** desde el 1 de septiembre de 2026. Está en
 `android/variables.gradle`.
@@ -86,9 +92,10 @@ fue por el contenido de la app:
   originales están en `assets/`; para regenerarlo todo:
   `npx @capacitor/assets generate --android`
 - ✅ **Política de privacidad y términos** escritos, en `public/`, empaquetados con la app
-- ✅ VersionCode 19 (2.4) compilado y **probado en teléfono, en modo avión**
-- ⏳ **Sin enviar, y a propósito**: se reparte como `.apk` mientras dure la fase
-  de pruebas. Ver arriba.
+- ✅ **Página de eliminación de cuenta** en `public/eliminar-cuenta.html`, que es
+  la URL que pide el formulario de Seguridad de los datos
+- ✅ VersionCode 20 (2.5) compilado y firmado. El 19 ya se envió, su número está gastado
+- ⏳ **Pendiente de subir el 20.** Ver arriba lo que falta.
 
 ---
 
@@ -374,8 +381,8 @@ Para futuras actualizaciones:
 
 1. **Incrementa el versionCode** en `android/app/build.gradle`:
    ```gradle
-   versionCode 20       // El siguiente libre: el 19 es la 2.4
-   versionName "2.5"    // La versión que ve el usuario
+   versionCode 21       // El siguiente libre: el 20 es la 2.5
+   versionName "2.6"    // La versión que ve el usuario
    ```
 
 2. **Genera nuevo AAB**:

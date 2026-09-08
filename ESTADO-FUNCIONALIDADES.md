@@ -459,11 +459,13 @@ llegue a publicarse, así que cada intento fallido quema un número:
 | 16 | Rechazado por apuntar a API 35, y aun así se quedó con el número |
 | 17 (2.2) | Catálogo en la cotización, «Cotizar» sobre una foto, datos de pago con QR, API 36 |
 | 18 (2.3) | Políticas y apartado legal, forma de pago y condiciones, cotizar por tallas, oficios de comercio, impresión en A4 |
-| **19 (2.4)** | Los estilos empaquetados en vez de pedidos a un CDN, los cuatro fallos de la primera prueba con un cliente real, el botón de responder en el documento, y la cotización de confección |
+| 19 (2.4) | Los estilos empaquetados en vez de pedidos a un CDN, los cuatro fallos de la primera prueba con un cliente real, el botón de responder en el documento, y la cotización de confección |
+| **20 (2.5)** | Recuperar la contraseña, los gastos del proyecto en el balance, el correo y el celular en la ficha del contacto, el enlace compartido con el mismo documento que se imprime, y las iniciales dibujadas en el teléfono |
 
 Play exige **API 36** desde el 1 de septiembre de 2026.
 
-**El 19 está probado en un teléfono**, un Motorola G13, y **en modo avión**: se
+**El 20 está compilado y firmado.** El 19 ya se subió a Play, así que su número
+quedó gastado. La 2.4 se probó en un teléfono, un Motorola G13, y **en modo avión**: se
 ve con sus estilos, sus iconos y su tipografía. Hasta el 18 la aplicación se los
 pedía a un CDN al arrancar y sin cobertura salía en crudo. Cómo se compila y se
 prueba está en
@@ -471,9 +473,7 @@ prueba está en
 distinción entre el `.aab`, que solo se sube a Play, y el `.apk`, que es el que
 se instala.
 
-**No hay prisa por publicar.** Al 7 de septiembre de 2026 la 2.4 se reparte como
-`.apk` a mano, para pruebas y feedback: el ciclo es más corto y no quema un
-`versionCode` por intento. Lo que quedaría pendiente el día que se suba:
+**Lo que queda antes de subir el 20:**
 
 1. **Llenar «Seguridad de los datos»** en Play Console. Es un formulario aparte
    de la política y **tiene que coincidir con ella**: declarar de menos es
