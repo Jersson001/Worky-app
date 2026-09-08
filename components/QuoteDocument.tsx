@@ -14,17 +14,38 @@ import { hayTallas, resumenDeTallas, subtotalDeItem } from '../utils/tallas';
 interface DocumentViewerProps {
   type: 'quote' | 'invoice' | 'receipt' | 'collection_account' | 'expense_receipt';
   data: any;
-  onClose: () => void;
+  /** Volver. No lo hay cuando el documento ES la página, al abrir un enlace. */
+  onClose?: () => void;
   businessLogo?: string;
   digitalSignature?: string;
   userProfile?: UserProfileData | null;
   contactPhone?: string; // Teléfono del contacto para compartir por WhatsApp
+  /**
+   * Lo abre el cliente desde el enlace compartido, no su dueño.
+   *
+   * Se le quitan los mandos que son del vendedor: mover y ocultar la firma
+   * —que es la de otro— y volver a compartir por WhatsApp. Imprimir se queda,
+   * que para eso viene.
+   */
+  soloLectura?: boolean;
+  /** Botones propios de quien lo abre, en la barra de arriba. */
+  acciones?: React.ReactNode;
+  /** Lo que va debajo de la hoja. No se imprime. */
+  pie?: React.ReactNode;
+  /**
+   * A dónde lleva el QR. Se pasa cuando no hay sesión de la que deducirlo,
+   * que es el caso del enlace compartido: el catálogo es el del vendedor.
+   */
+  catalogoUrl?: string;
 }
 
 /** Ancho real de la hoja. Es el que supone la maquetación del documento. */
 const ANCHO_HOJA = 850;
 
-export const DocumentViewer: React.FC<DocumentViewerProps> = ({ type, data, onClose, businessLogo, digitalSignature, userProfile, contactPhone }) => {
+export const DocumentViewer: React.FC<DocumentViewerProps> = ({
+  type, data, onClose, businessLogo, digitalSignature, userProfile, contactPhone,
+  soloLectura = false, acciones, pie, catalogoUrl,
+}) => {
   /**
    * La hoja se reduce entera para caber en ventanas estrechas.
    *
@@ -182,7 +203,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({ type, data, onCl
 
     switch (type) {
       case 'invoice': return <InvoiceTemplate data={data as InvoiceData} businessLogo={businessLogo} userProfile={userProfile} {...signatureProps} />;
-      case 'quote': return <QuoteTemplate data={data as QuoteData} businessLogo={businessLogo} userProfile={userProfile} {...signatureProps} />;
+      case 'quote': return <QuoteTemplate data={data as QuoteData} businessLogo={businessLogo} userProfile={userProfile} catalogoUrl={catalogoUrl} {...signatureProps} />;
       case 'collection_account': return <CollectionTemplate data={data as CollectionAccountData} businessLogo={businessLogo} userProfile={userProfile} {...signatureProps} />;
       case 'receipt': return <ReceiptTemplate data={data as ReceiptData} businessLogo={businessLogo} userProfile={userProfile} {...signatureProps} />;
       case 'expense_receipt': return <ExpenseReceiptTemplate data={data as ReceiptData} businessLogo={businessLogo} userProfile={userProfile} {...signatureProps} />;
@@ -209,16 +230,30 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({ type, data, onCl
           empujaba fuera de la pantalla los botones de compartir e imprimir,
           que son justo a lo que se viene. Ahora bajan a la línea siguiente. */}
       <div className="sticky top-0 w-full bg-[#202c33] p-3 sm:p-4 flex flex-wrap justify-between items-center gap-2 shadow-lg z-50 no-print border-b border-gray-700">
-        <button 
-            onClick={onClose} 
+        {onClose ? (
+          <button
+            onClick={onClose}
             className="text-[#e9edef] hover:text-[#00a884] transition flex items-center gap-2 font-medium text-lg"
-        >
-          <i className="fa-solid fa-arrow-left bg-[#37404a] p-2 rounded-full w-10 h-10 flex items-center justify-center"></i>
-          <span className="hidden sm:inline">Volver al Chat</span>
-        </button>
+          >
+            <i className="fa-solid fa-arrow-left bg-[#37404a] p-2 rounded-full w-10 h-10 flex items-center justify-center"></i>
+            <span className="hidden sm:inline">Volver al Chat</span>
+          </button>
+        ) : (
+          // Sin sitio al que volver, la barra enseña de quién es el documento:
+          // el cliente abrió un enlace y lo primero es saber quién se lo manda.
+          <div className="flex items-center gap-3 min-w-0">
+            {businessLogo && (
+              <img src={businessLogo} alt="" className="w-10 h-10 rounded-xl object-contain bg-white p-0.5 flex-shrink-0" />
+            )}
+            <span className="text-[#e9edef] font-bold truncate">
+              {userProfile?.businessName || userProfile?.ownerName || 'Worky'}
+            </span>
+          </div>
+        )}
 
         <div className="flex flex-wrap gap-2 items-center justify-end">
-            {digitalSignature && (
+            {acciones}
+            {digitalSignature && !soloLectura && (
               <>
                 <div className="flex items-center gap-2 bg-[#37404a] px-4 py-2 rounded-full">
                   <span className="text-white text-sm">Tamaño Firma:</span>
@@ -239,9 +274,9 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({ type, data, onCl
                 </button>
               </>
             )}
-            {contactPhone && (
-              <button 
-                onClick={handleShareViaWhatsApp} 
+            {contactPhone && !soloLectura && (
+              <button
+                onClick={handleShareViaWhatsApp}
                 className="bg-[#25D366] text-white px-6 py-2 rounded-full font-bold shadow-lg hover:bg-[#20BA5A] transition flex items-center gap-2"
               >
                 <i className="fa-brands fa-whatsapp"></i> Compartir por WhatsApp
@@ -262,13 +297,19 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({ type, data, onCl
             sin este hueco tapaba la última línea del documento. */}
         <div id="printable-area" style={{ zoom: escala }} className="bg-white text-black w-[850px] max-w-full min-h-[1100px] pb-14 shadow-2xl relative rounded-sm animate-slide-in-top overflow-hidden">
             {renderContent()}
-            
+
             {/* Global Footer (Optional) */}
             <div className="absolute bottom-0 w-full text-center p-4 text-[10px] text-gray-300 bg-gray-900 print:bg-transparent print:text-gray-400">
                 Generado con Worky
             </div>
         </div>
       </div>
+
+      {/* Lo de después de la hoja: responder, el catálogo. No es el documento,
+          así que no se imprime con él. */}
+      {pie && (
+        <div className="w-full max-w-[850px] px-4 pb-12 no-print">{pie}</div>
+      )}
     </div>
   ), document.body);
 };
@@ -285,7 +326,7 @@ interface SignatureProps {
   onDragEnd: () => void;
 }
 
-const QuoteTemplate = ({ data, businessLogo, userProfile, signature, scale, position, showSignature, onDragStart, onDrag, onDragEnd }: { data: QuoteData, businessLogo?: string, userProfile?: UserProfileData | null } & Partial<SignatureProps>) => {
+const QuoteTemplate = ({ data, businessLogo, userProfile, catalogoUrl, signature, scale, position, showSignature, onDragStart, onDrag, onDragEnd }: { data: QuoteData, businessLogo?: string, userProfile?: UserProfileData | null, catalogoUrl?: string } & Partial<SignatureProps>) => {
     // El QR lleva al catálogo, que es lo que promete el texto de debajo.
     // Antes codificaba una vCard con los datos del negocio: al escanearlo se
     // guardaba un contacto y no se llegaba a ninguna parte. Es el mismo enlace
@@ -293,6 +334,9 @@ const QuoteTemplate = ({ data, businessLogo, userProfile, signature, scale, posi
     // getCurrentUserId lanza si no hay sesión, y esto corre al pintar: sin el
     // resguardo, un documento abierto sin sesión tumbaría la pantalla entera.
     const enlaceCatalogo = (() => {
+      // Al abrir un enlace compartido no hay sesión de la que deducir el
+      // catálogo, pero el documento trae guardado el de su vendedor.
+      if (catalogoUrl) return catalogoUrl;
       try {
         return catalogPageUrl(getCurrentUserId());
       } catch {
