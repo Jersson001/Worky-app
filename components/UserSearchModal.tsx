@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { fotoOIniciales } from '../utils/avatar';
 
 interface UserSearchResult {
   userId: string;
@@ -162,7 +163,7 @@ export const UserSearchModal: React.FC<UserSearchModalProps> = ({
             <div className="mb-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
               <div className="flex items-center gap-4 mb-4">
                 <img
-                  src={searchResult.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(searchResult.name || 'Usuario')}&background=6366f1&color=fff`}
+                  src={fotoOIniciales(searchResult.avatar, searchResult.name)}
                   alt={searchResult.name}
                   className="w-16 h-16 rounded-full border-2 border-indigo-200"
                 />

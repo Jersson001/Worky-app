@@ -54,13 +54,12 @@ BEGIN
         owner_name = COALESCE(NULLIF(public.user_profiles.owner_name, ''), EXCLUDED.owner_name);
 
   IF v_ident <> '' THEN
+    -- Sin avatar: la aplicación dibuja las iniciales en el propio teléfono.
+    -- Antes se guardaba aquí una dirección de ui-avatars.com con el nombre de la
+    -- persona dentro, o sea el nombre de cada usuario viajando a un tercero cada
+    -- vez que se pintaba su foto. Ver utils/avatar.ts.
     INSERT INTO public.public_info (user_id, phone_or_email, display_name, avatar_url)
-    VALUES (
-      NEW.id,
-      v_ident,
-      v_name,
-      'https://ui-avatars.com/api/?name=' || replace(v_name, ' ', '+') || '&background=random'
-    )
+    VALUES (NEW.id, v_ident, v_name, NULL)
     ON CONFLICT (user_id) DO UPDATE
       SET phone_or_email = EXCLUDED.phone_or_email,
           display_name   = COALESCE(NULLIF(public.public_info.display_name, ''), EXCLUDED.display_name),
@@ -102,9 +101,7 @@ INSERT INTO public.public_info (user_id, phone_or_email, display_name, avatar_ur
 SELECT u.id,
        LOWER(TRIM(COALESCE(u.email, u.phone))),
        COALESCE(NULLIF(TRIM(u.raw_user_meta_data->>'full_name'), ''), split_part(u.email, '@', 1), 'Usuario'),
-       'https://ui-avatars.com/api/?name=' ||
-         replace(COALESCE(NULLIF(TRIM(u.raw_user_meta_data->>'full_name'), ''), split_part(u.email, '@', 1), 'Usuario'), ' ', '+') ||
-         '&background=random'
+       NULL
 FROM auth.users u
 WHERE COALESCE(u.email, u.phone) IS NOT NULL
 ON CONFLICT (user_id) DO UPDATE

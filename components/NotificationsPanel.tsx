@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Contact, Message, UserProfileData } from '../types';
 import { DocumentViewer } from './QuoteDocument';
+import { fotoOIniciales } from '../utils/avatar';
 
 interface NotificationsPanelProps {
   contacts: Contact[];
@@ -178,7 +179,7 @@ export const NotificationsPanel: React.FC<NotificationsPanelProps> = ({ contacts
                   >
                     <div className="flex items-start gap-3 flex-1 min-w-0">
                       <img
-                        src={contact.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(contact.clientName)}&background=6366f1&color=fff`}
+                        src={fotoOIniciales(contact.avatar, contact.clientName)}
                         alt={contact.clientName}
                         className="w-12 h-12 rounded-full object-cover border-2 border-slate-100 flex-shrink-0"
                       />
@@ -249,7 +250,7 @@ export const NotificationsPanel: React.FC<NotificationsPanelProps> = ({ contacts
                   >
                     <div className="flex items-start gap-3 flex-1 min-w-0">
                       <img
-                        src={contact.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(contact.clientName)}&background=10b981&color=fff`}
+                        src={fotoOIniciales(contact.avatar, contact.clientName)}
                         alt={contact.clientName}
                         className="w-12 h-12 rounded-full object-cover border-2 border-slate-100 flex-shrink-0"
                       />

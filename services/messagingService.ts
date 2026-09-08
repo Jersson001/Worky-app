@@ -1,5 +1,6 @@
 import { supabase, uniqueTopic } from './supabaseConfig';
 import { Message, Contact, UserStatus } from '../types';
+import { avatarDeIniciales, fotoOIniciales } from '../utils/avatar';
 
 // ============ IDENTIDAD ============
 
@@ -488,7 +489,7 @@ const rowToContact = (row: any): Contact => ({
   id: row.contact_user_id || row.id,
   clientName: row.client_name || row.alias || 'Contacto',
   alias: row.alias ?? undefined,
-  avatar: row.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(row.client_name || 'Contacto')}&background=random`,
+  avatar: fotoOIniciales(row.avatar, row.client_name || row.alias),
   phone: row.phone || '',
   email: row.email ?? undefined,
   status: row.status || UserStatus.Lead,
@@ -879,7 +880,7 @@ export const searchUserByPhoneOrEmail = async (
       name,
       avatar:
         row.avatar_url ||
-        `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random`,
+        avatarDeIniciales(name),
       phone: row.phone_or_email || term,
     };
   };
@@ -986,7 +987,7 @@ export const addContactFromSearch = async (foundUser: {
     clientName: name,
     avatar:
       foundUser.avatar ||
-      `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random`,
+      avatarDeIniciales(name),
     phone: foundUser.phone || '',
     status: 'Lead' as any,
     role: 'client',

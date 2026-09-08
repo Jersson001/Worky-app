@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Contact, Story } from '../types';
+import { avatarDeIniciales } from '../utils/avatar';
 
 interface StatusViewProps {
   contacts: Contact[];
@@ -140,7 +141,7 @@ export const StatusView: React.FC<StatusViewProps> = ({ contacts, myStories, con
 
   const getContactAvatar = (id: string) => {
       const c = contacts.find(contact => contact.id === id);
-      return c ? c.avatar : 'https://ui-avatars.com/api/?name=User';
+      return c ? c.avatar : avatarDeIniciales('Usuario');
   };
 
   // --- RENDERERS ---
@@ -162,7 +163,7 @@ export const StatusView: React.FC<StatusViewProps> = ({ contacts, myStories, con
               <div className="flex items-center gap-4 py-4 cursor-pointer hover:bg-[#202c33] rounded px-2 relative">
                  <div className="relative">
                      <img 
-                        src="https://ui-avatars.com/api/?name=Admin&background=00a884&color=fff" 
+                        src={avatarDeIniciales('Admin')}
                         className={`w-12 h-12 rounded-full object-cover border-2 ${myStories.length > 0 ? 'border-[#00a884]' : 'border-gray-500'}`}
                         onClick={() => {
                             if (myStories.length > 0) {

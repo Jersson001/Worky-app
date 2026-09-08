@@ -26,6 +26,7 @@ import { GroupChatWindow } from './components/GroupChatWindow';
 // import { FirebaseConnectionTest } from './components/FirebaseConnectionTest';
 import { Contact, Message, UserStatus, ProjectStage, Product, Expense, Story, PaymentAccount, ThirdPartyAccount, ContactRole, Project, ProductCategory, UserProfileData, ChatGroup, GroupMessage } from './types';
 import { LoginScreen } from './components/LoginScreen';
+import { avatarDeIniciales, fotoOIniciales } from './utils/avatar';
 import { NuevaContrasena } from './components/NuevaContrasena';
 import { WelcomeOnboarding } from './components/WelcomeOnboarding';
 import { sendMessage as sendMessageToFirebase, listenToMessages, listenToContacts, addContact, deleteContact, saveUserProfile, getUserProfile, initializeUserId, setCurrentUserId, getCurrentUserId, searchUserByPhoneOrEmail, addContactFromSearch, deleteMessage, updateMessage, listenToGlobalIncomingMessages, markChatAsRead, markMessagesAsDelivered, markMessagesAsRead, getPublicInfoById } from './services/messagingService';
@@ -87,7 +88,7 @@ const MOCK_CONTACTS: Contact[] = [
   {
     id: '4',
     clientName: 'Maderas El Roble',
-    avatar: 'https://ui-avatars.com/api/?name=Maderas+El+Roble&background=6366f1&color=fff',
+    avatar: avatarDeIniciales('Maderas El Roble'),
     phone: '+57 311 000 1111',
     status: UserStatus.Client,
     role: 'supplier',
@@ -387,7 +388,7 @@ const App: React.FC = () => {
         const contacto: Contact = {
           id: vendedor,
           clientName: nombre,
-          avatar: info?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(nombre)}&background=random`,
+          avatar: fotoOIniciales(info?.avatar, nombre),
           phone: '',
           status: UserStatus.Lead,
           // Desde el lado del cliente, quien le vende es un proveedor.
@@ -2212,7 +2213,7 @@ ${describeError(error)}
       const contact: Contact = {
         id: user.userId,
         clientName: user.name || 'Usuario',
-        avatar: user.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || 'Usuario')}&background=random`,
+        avatar: fotoOIniciales(user.avatar, user.name),
         phone: user.phone || '',
         status: UserStatus.Lead,
         role: 'client',
@@ -2291,7 +2292,7 @@ ${describeError(error)}
       // Si ya tiene cuenta, su foto real; el nombre se respeta el que escribió
       // quien lo agrega, que es como lo tiene guardado.
       avatar: registrado?.avatar
-        || `https://ui-avatars.com/api/?name=${encodeURIComponent(newContactName.trim())}&background=random`,
+        || avatarDeIniciales(newContactName.trim()),
       phone: newContactPhone.trim(),
       email,
       status: UserStatus.Lead,

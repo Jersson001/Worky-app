@@ -4,6 +4,7 @@ import { setCurrentUserId } from '../services/messagingService';
 import { llegoInvitado, vendedorPendiente } from '../services/catalogShareService';
 import { URL_PRIVACIDAD, URL_TERMINOS, constanciaDeAceptacion } from '../utils/legal';
 import { WORKY_APP_URL } from '../services/catalogShareService';
+import { avatarDeIniciales } from '../utils/avatar';
 
 interface LoginScreenProps {
   onLogin: () => void;
@@ -357,7 +358,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister, i
               user_id: user.id,
               phone_or_email: normalizedEmail,
               display_name: fullName,
-              avatar_url: `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&background=random`,
+              avatar_url: avatarDeIniciales(fullName),
             },
             { onConflict: 'user_id' }
           );
