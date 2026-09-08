@@ -17,7 +17,7 @@ import { formatCurrency } from '../../../utils/currency';
 import { totalDeTallas, subtotalDeItem } from '../../../utils/tallas';
 import { leerImagenReducida } from '../../../utils/imagen';
 import { calculateTax } from '../../../utils/taxCalculations';
-import { CARPENTRY_CATEGORIES, GREMIOS, CarpentryCategoryConfig, computeGrandTotal, computeSectionSubtotal, computeGroupSubtotal, computeLineSubtotal, computeMaterialSubtotal, materialSugerido, cantidadSugerida, usaMedida, gremiosVisibles } from '../../../utils/carpentryCalculations';
+import { CARPENTRY_CATEGORIES, GREMIOS, CarpentryCategoryConfig, computeGrandTotal, computeSectionSubtotal, computeGroupSubtotal, computeLineSubtotal, computeMaterialSubtotal, materialSugerido, cantidadSugerida, usaMedida, gremiosVisibles, cotizaPorTallas } from '../../../utils/carpentryCalculations';
 
 interface QuoteModalProps {
   show: boolean;
@@ -1040,11 +1040,16 @@ export const QuoteModal: React.FC<QuoteModalProps> = React.memo(({
                         ))}
                       </div>
                     )}
-                    <CuadroDeTallasCampos
-                      tallas={item.tallas}
-                      costoBase={item.price || 0}
-                      onChange={t => onUpdateItem(idx, 'tallas', t)}
-                    />
+                    {/* Las tallas son de confección. A un carpintero ofrecerle
+                        «Cotizar por tallas» debajo de una puerta no le dice
+                        nada, y le hace dudar de si la aplicación es para él. */}
+                    {cotizaPorTallas(businessType) && (
+                      <CuadroDeTallasCampos
+                        tallas={item.tallas}
+                        costoBase={item.price || 0}
+                        onChange={t => onUpdateItem(idx, 'tallas', t)}
+                      />
+                    )}
                     {(!item.images || item.images.length === 0) && item.image && (
                       <div className="relative inline-block mt-2 rounded-lg overflow-hidden border border-slate-200">
                         <img src={item.image} className="w-full h-20 object-cover" />

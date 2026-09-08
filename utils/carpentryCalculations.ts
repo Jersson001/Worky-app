@@ -277,6 +277,20 @@ export const gremiosVisibles = (businessType?: string | null): GremioKey[] => {
   return gremios ?? GREMIOS.map(g => g.key);
 };
 
+/**
+ * Si a alguien se le ofrece cotizar por tallas en la cotización básica.
+ *
+ * No se resuelve con `gremiosVisibles` a propósito. Esa función, sin oficio
+ * declarado, enseña todo para no quitarle capítulos a quien ya los usaba; pero
+ * las tallas son posteriores y nadie las tenía, así que ahí el «por si acaso»
+ * solo sirve para ponerle un botón de camisas a un carpintero. Aquí hace falta
+ * que el oficio lo diga.
+ */
+export const cotizaPorTallas = (businessType?: string | null): boolean => {
+  const oficio = (businessType || '').trim().toLowerCase();
+  return !!oficio && (GREMIOS_POR_OFICIO[oficio] ?? []).includes('confeccion');
+};
+
 export const CARPENTRY_CATEGORIES: CarpentryCategoryConfig[] = [
   // ── Carpintería ──
   { key: 'cocinas_integrales', gremio: 'carpinteria', label: 'Cocinas Integrales', icon: 'fa-solid fa-kitchen-set', colorFrom: 'from-blue-500', colorTo: 'to-blue-600', shadowColor: 'shadow-blue-500/30', defaultUnit: 'ML', fixedGroups: true },

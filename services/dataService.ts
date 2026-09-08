@@ -353,7 +353,7 @@ export const fetchProjectsForContact = async (
       return [];
     }
 
-    return (data || []).map((row: any) => ({
+    const proyectos: Project[] = (data || []).map((row: any) => ({
       id: row.id,
       name: row.name,
       value: Number(row.value) || 0,
@@ -365,10 +365,56 @@ export const fetchProjectsForContact = async (
       expenses: [],
       metadata: row.quote_code ? { quoteCode: row.quote_code } : undefined
     }));
+
+    return await conGastos(proyectos);
   } catch (err) {
     console.error('Error en fetchProjectsForContact:', err);
     return [];
   }
+};
+
+/**
+ * Les cuelga a los proyectos sus gastos.
+ *
+ * Salía `expenses: []` fijo: el gasto se guardaba en su tabla, se pintaba en la
+ * pantalla mientras durase la sesión, y al recargar el balance decía «sin
+ * gastos registrados» con el recibo ahí al lado, en Documentos. Es el número
+ * del que sale la utilidad, así que sin esto el balance miente.
+ *
+ * Una consulta para todos los proyectos, no una por proyecto: un contacto con
+ * diez proyectos hacía diez viajes.
+ */
+const conGastos = async (proyectos: Project[]): Promise<Project[]> => {
+  if (!proyectos.length) return proyectos;
+
+  const { data, error } = await supabase
+    .from('expenses')
+    .select('*')
+    .in('project_id', proyectos.map(p => p.id));
+
+  // Sin gastos se sigue: el proyecto sin su gasto es un balance incompleto,
+  // pero el proyecto sin nada es una pantalla vacía.
+  if (error) {
+    console.error('Error cargando gastos de los proyectos:', error);
+    return proyectos;
+  }
+
+  const porProyecto = new Map<string, Expense[]>();
+  for (const row of data || []) {
+    const gasto: Expense = {
+      id: row.id,
+      amount: Number(row.amount) || 0,
+      description: row.description || '',
+      date: row.date ? new Date(row.date) : new Date(),
+      category: row.category || 'other',
+      projectId: row.project_id,
+    };
+    const previos = porProyecto.get(row.project_id);
+    if (previos) previos.push(gasto);
+    else porProyecto.set(row.project_id, [gasto]);
+  }
+
+  return proyectos.map(p => ({ ...p, expenses: porProyecto.get(p.id) || [] }));
 };
 
 export const listenToProjects = (
