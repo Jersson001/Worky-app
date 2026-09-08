@@ -2,6 +2,16 @@ import React, { useEffect, useState } from 'react';
 import { getSharedDocument, WORKY_PLAY_STORE_URL } from '../services/whatsappService';
 import { chatInviteUrl } from '../services/catalogShareService';
 import { esLineaUsada, usaMedida, computeMaterialSubtotal, computeManoDeObraTotal, computeMaterialesTotal, describeMaterial } from '../utils/carpentryCalculations';
+import { hayTallas, resumenDeTallas, subtotalDeItem } from '../utils/tallas';
+
+/**
+ * Las fotos de una línea, vengan como vengan.
+ *
+ * `images` es lo de ahora y `image` lo de antes. Los documentos compartidos
+ * viven treinta días, así que mientras tanto siguen llegando de las dos formas.
+ */
+const fotosDe = (item: { images?: string[]; image?: string }): string[] =>
+  item.images?.length ? item.images : (item.image ? [item.image] : []);
 
 interface SharedDocumentViewerProps {
   documentId: string;
@@ -302,14 +312,41 @@ export const SharedDocumentViewer: React.FC<SharedDocumentViewerProps> = ({ docu
                     </tr>
                   </thead>
                   <tbody>
-                    {data.items.map((item: any, index: number) => (
-                      <tr key={index} className="border-b border-slate-100 hover:bg-slate-50/60 transition">
-                        <td className="py-3 px-2 font-medium text-slate-800">{item.description}</td>
+                    {data.items.map((item: any, index: number) => {
+                      // Las fotos son medio argumento de venta: el cliente
+                      // aprueba lo que ve. Se pintaban en la cotización con
+                      // capítulos y aquí no, así que en la básica —que es la
+                      // que usa casi todo el mundo— nunca aparecían.
+                      const fotos = fotosDe(item);
+                      return (
+                      <tr key={index} className="border-b border-slate-100 hover:bg-slate-50/60 transition align-top">
+                        <td className="py-3 px-2 font-medium text-slate-800">
+                          {item.description}
+                          {/* El desglose por tallas, cuando la línea es una
+                              prenda: es lo que el cliente revisa antes de
+                              aprobar, y sin él solo ve un número suelto. */}
+                          {hayTallas(item.tallas) && (
+                            <div className="text-[11px] text-slate-500 mt-1">{resumenDeTallas(item.tallas)}</div>
+                          )}
+                          {fotos.length > 0 && (
+                            <div className="flex flex-wrap gap-1.5 mt-2">
+                              {fotos.map((img: string, i: number) => (
+                                <img
+                                  key={i}
+                                  src={img}
+                                  loading="lazy"
+                                  className="w-20 h-20 rounded-lg object-cover border border-slate-200"
+                                />
+                              ))}
+                            </div>
+                          )}
+                        </td>
                         <td className="py-3 px-2 text-center text-slate-600 font-semibold">{item.quantity}</td>
                         <td className="py-3 px-2 text-right text-slate-600">{formatCurrency(item.price)}</td>
-                        <td className="py-3 px-2 text-right font-bold text-slate-900">{formatCurrency((item.quantity || 1) * (item.price || 0))}</td>
+                        <td className="py-3 px-2 text-right font-bold text-slate-900">{formatCurrency(subtotalDeItem(item))}</td>
                       </tr>
-                    ))}
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
