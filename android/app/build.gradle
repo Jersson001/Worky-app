@@ -44,6 +44,13 @@ android {
         // proyecto no se creaba al aprobar la cotización—, el botón para
         // responder desde el documento, y la cotización de confección: capítulos
         // propios, tallas con su precio y condiciones del sector.
+        //
+        // El 19 se recompiló el 07/09/2026 con lo que destapó el uso real, sin
+        // gastar número porque nunca llegó a subirse: recuperar la contraseña
+        // —que no existía, y perderla era perder la cuenta—, los gastos del
+        // proyecto, que se guardaban y no se volvían a leer, el correo y el
+        // celular en la ficha del contacto, y el enlace compartido enseñando el
+        // mismo documento que se imprime, con sus fotos.
         versionCode 19
         versionName "2.4"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
