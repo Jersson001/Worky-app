@@ -1,6 +1,6 @@
 # Estado de funcionalidades — Worky
 
-Última revisión: 7 de septiembre de 2026.
+Última revisión: 9 de septiembre de 2026.
 
 > Este documento describía el proyecto cuando corría sobre Firebase y decía que
 > los clientes no podían tener cuenta, que Storage no estaba implementado y que
@@ -128,6 +128,24 @@ Quién es cliente se decide con `esAnonimo || (llegó de un catálogo && no tien
 oficio)`. Mirar solo el oficio vacío **sería un error**: hay vendedores antiguos
 sin oficio declarado —los mismos que ven todos los capítulos de cotización por
 eso— y les quitaría sus herramientas. Ante la duda se le trata como vendedor.
+
+**Mandar algo del catálogo.** El «+ → Catálogo» abre «Catálogo de Productos»:
+carpetas, se entra en una, se toca el producto y **se elige qué foto enviar**.
+Va una sola. Antes iba el producto entero y uno de doce fotos propias —los hay—
+volcaba una grande, tres miniaturas y un «+8» en la conversación, que se lee
+como si se hubiera mandado la carpeta entera. En el chat se manda una imagen
+para enseñar algo, no un catálogo. Con una sola foto no hay nada que escoger y
+va directa, sin el paso de en medio.
+
+En la cotización es al revés y por eso el mismo selector lleva un interruptor
+(`porFoto`): allí la línea sí quiere todas las fotos del producto.
+
+Ese mensaje **no se veía**. El tipo `product` estaba excluido de la rama que
+pinta el texto, junto a los demás que tienen tarjeta propia, pero la suya no
+existía: salía una burbuja vacía con solo la hora. Se mandaba y no llegaba.
+Corregido el 9/09/2026 con `ProductBubble`, que además pone el nombre del
+producto como texto del mensaje —la burbuja no lo pinta, tiene el suyo— porque
+es lo que se lee en la lista de chats, que con el texto vacío quedaba en blanco.
 
 ---
 
@@ -361,16 +379,60 @@ revisa y lo que se manda a producción, y antes acababa escrito a mano en el
 campo de comentarios.
 
 La línea lleva su cuadro de tallas, igual que las de obra llevan su material.
-Tres rejillas en `utils/tallas.ts`: camisa por letra (XS–XXL), pantalón por
-cintura (28–40) y calzado por número (34–44). Al encenderlo **la cantidad deja
-de escribirse** y sale de sumarlas; dejarla editable permitía que la cantidad y
-el desglose dijeran cosas distintas en el mismo documento.
+Las rejillas están en `utils/tallas.ts`: camisa por letra (XS–XXL), pantalón por
+cintura (28–40), calzado por número (34–44) e infantil por edad (4–16). Al
+encenderlo **la cantidad deja de escribirse** y sale de sumarlas; dejarla
+editable permitía que la cantidad y el desglose dijeran cosas distintas en el
+mismo documento.
 
 Nace apagado —la mayoría de las líneas no son prendas— y cambiar de rejilla no
 arrastra las cantidades: una M de camisa no es una 32 de pantalón.
 
-Los rangos están sin validar con un taller de verdad. Si hace falta talla por
-edad para uniformes escolares, o la 46 en calzado, es un renglón en `REJILLAS`.
+**La cuenta sale de sumar las tallas, no de `quantity`.** Ese campo no se
+escribe en una línea con tallas y se queda en el 1 de la plantilla, así que el
+documento llegó a decir «1 und» encima de un desglose de cinco prendas.
+Corregido el 9/09/2026 en `describeCantidad`, que es de donde lo lee el
+documento.
+
+Los rangos están sin validar con un taller de verdad. Si hace falta la 46 en
+calzado, es un renglón en `REJILLAS`.
+
+### Ropa deportiva
+
+Tiene capítulo propio, y es el único de confección que nace con los grupos
+puestos. Un uniforme deportivo no es una prenda suelta: son cinco prendas, más
+el escudo del club y el del patrocinador, más la numeración y el nombre de cada
+jugador. Lo que se olvida cobrar en un pedido de equipo no es la camiseta, es el
+escudo del patrocinador y los veinte números, así que cada renglón visible es un
+renglón que se cobra.
+
+**Se pregunta por prenda, no por rejilla de medida.** Los botones son Camiseta,
+Pantaloneta, Medias y Uniforme completo, porque un equipo compra una de esas
+cuatro cosas; enseñarle «Calzado» no le dice nada. Las tallas van todas juntas,
+que es como llega la lista de un equipo: 4 a 16, las de niño por letra, y XS a
+XXL. La línea se renombra sola con la prenda elegida mientras el nombre siga
+siendo uno de los automáticos —«Camiseta» se sustituye, «Camiseta local con
+patrocinador» se respeta—, para que el documento no diga «Uniforme» encima de un
+desglose de camisetas.
+
+**Cada talla puede llevar su número y su nombre**, en dos campos separados y no
+en un texto de corrido: así en la cotización salen alineados en columnas y el
+cliente repasa su lista jugador por jugador antes de aprobar. Un nombre mal
+impreso es una prenda perdida. Al añadirlos la cantidad de esa fila pasa a 1
+—la fila es de una persona—, pero queda editable, que hay quien pide dos
+camisetas iguales para el mismo jugador. Sin numeración el documento se queda
+con el resumen de una línea, que ocupa mucho menos.
+
+Pantaloneta, medias, sudaderas y chaquetas son grupos con interruptor: un pedido
+de camisetas no lleva sudaderas, y tenerlas siempre a la vista obligaba a
+borrarlas en cada cotización.
+
+El **ponchado** va en GLOBAL y con su propia línea: digitalizar el logo para la
+máquina se paga una vez por logo, no por prenda. Dentro del precio unitario se
+multiplicaría por todo el pedido o se olvidaría cobrar.
+
+Las tallas de niño y los rangos **están sin validar con un proveedor de
+uniformes deportivos**. Es lo primero que hay que preguntar.
 
 ---
 
@@ -554,6 +616,31 @@ cerraron tres agujeros. Está todo en [SEGURIDAD.md](SEGURIDAD.md).
 
 ---
 
+## Las dos pantallas de arranque
+
+En el teléfono se ven dos antes que nada: la nativa que pinta Android, y la de
+carga que va dentro del HTML mientras arrancan el JavaScript y los estilos.
+
+Las dos llevaban restos de la plantilla hasta el 9/09/2026. **La nativa mostraba
+el aspa azul de Capacitor** —el logo de la herramienta con la que está hecha la
+app, no el de Worky—; se había quedado porque `@capacitor/assets` solo la genera
+si existe `assets/splash.png`, y ahí solo estaban los archivos del icono. **La
+de carga era azul marino con un emoji de teléfono** dentro de un cuadrado
+morado.
+
+Ahora las dos llevan el logo sobre blanco. Claras a propósito: la aplicación no
+tiene modo oscuro —es blanca de principio a fin—, así que una pantalla de
+arranque oscura solo produce un fogonazo al entrar, y sobre fondo oscuro al logo
+se le ve un halo porque trae los bordes fundidos contra blanco. Por eso la
+variante de modo oscuro de Android es igual de clara.
+
+La de carga va con estilos escritos dentro del HTML, y eso no es descuido: es lo
+único que se ve mientras la hoja de estilos todavía carga, así que no puede
+depender de Tailwind. El logo está en `public/`, o sea empaquetado: se ve sin
+conexión, que es cuando más importa que la app arranque bien.
+
+---
+
 ## Publicación
 
 Worky lo publica **Ferry App S.A.S.**, NIT 902.028.115-2, con domicilio en
@@ -585,7 +672,7 @@ llegue a publicarse, así que cada intento fallido quema un número:
 | 17 (2.2) | Catálogo en la cotización, «Cotizar» sobre una foto, datos de pago con QR, API 36 |
 | 18 (2.3) | Políticas y apartado legal, forma de pago y condiciones, cotizar por tallas, oficios de comercio, impresión en A4 |
 | 19 (2.4) | Los estilos empaquetados en vez de pedidos a un CDN, los cuatro fallos de la primera prueba con un cliente real, el botón de responder en el documento, y la cotización de confección |
-| **20 (2.5)** | Recuperar la contraseña, los gastos del proyecto en el balance, el correo y el celular en la ficha del contacto, el enlace compartido con el mismo documento que se imprime, y las iniciales dibujadas en el teléfono |
+| **20 (2.5)** | Recuperar la contraseña, los gastos del proyecto en el balance, el correo y el celular en la ficha del contacto, el enlace compartido con el mismo documento que se imprime, y las iniciales dibujadas en el teléfono. Y sin compilar todavía: capítulo de ropa deportiva, el producto del catálogo que se mandaba y no se veía, y las dos pantallas de arranque con el logo de Worky. |
 
 Play exige **API 36** desde el 1 de septiembre de 2026.
 

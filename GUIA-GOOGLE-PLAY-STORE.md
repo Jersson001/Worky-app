@@ -4,13 +4,20 @@ Esta guía te llevará paso a paso para publicar tu aplicación Worky en Google 
 
 ---
 
-## 📌 Dónde va esto — al 7 de septiembre de 2026
+## 📌 Dónde va esto — al 9 de septiembre de 2026
 
-**El `versionCode` 20 (versión 2.5)** está compilado y firmado en
-`android/app/build/outputs/bundle/release/app-release.aab`. El 19 ya se envió a
-Play, así que su número quedó gastado. La política está viva en
+El siguiente envío va con el **`versionCode` 20 (versión 2.5)**. El 19 ya se
+envió a Play, así que su número quedó gastado. La política está viva en
 `worky-app-khaki.vercel.app/privacidad.html`, y la página de eliminación de
 cuenta que Play exige, en `worky-app-khaki.vercel.app/eliminar-cuenta.html`.
+
+**El `.aab` que hay compilado es del 7/09 y se quedó atrás**: no lleva lo del
+9/09. Hay que recompilarlo antes de subir. Y **no se compila por iniciativa
+propia**: ni el `.apk` ni el `.aab` se generan hasta que él lo pida —cada bump
+quema un número que Play no deja reutilizar, y él prueba cuando le viene bien,
+juntando varios arreglos en una sola instalación. Mientras tanto, lo que se
+sube a `main` se publica solo en `worky-app-khaki.vercel.app`, y ahí lo puede
+probar sin instalar nada.
 
 Para probar en el teléfono se compila aparte un `.apk` —el `.aab` no se
 instala—; cómo, en
@@ -43,7 +50,7 @@ intento fallido gasta un número:
 | 17 (2.2) | Catálogo en la cotización, «Cotizar» sobre una foto, datos de pago con QR |
 | 18 (2.3) | Políticas y apartado legal, forma de pago y condiciones, tallas, oficios de comercio, impresión en A4 |
 | 19 (2.4) | **Enviado a Play.** Estilos empaquetados —hasta el 18 se pedían a un CDN y sin cobertura la app salía en crudo—, los cuatro fallos de la prueba con un cliente real, el botón de responder en el documento, cotización de confección |
-| **20 (2.5)** | Recuperar la contraseña —no existía—, los gastos del proyecto en el balance, el correo y el celular del contacto, el enlace compartido enseñando el documento de imprimir con sus fotos, y las iniciales sin pedirlas a un tercero |
+| **20 (2.5)** | Recuperar la contraseña —no existía—, los gastos del proyecto en el balance, el correo y el celular del contacto, el enlace compartido enseñando el documento de imprimir con sus fotos, y las iniciales sin pedirlas a un tercero. Y sin compilar todavía: capítulo de ropa deportiva, el producto del catálogo que se mandaba y no se veía, y las dos pantallas de arranque con el logo de Worky. |
 
 **Play exige API 36** desde el 1 de septiembre de 2026. Está en
 `android/variables.gradle`.
@@ -94,7 +101,9 @@ fue por el contenido de la app:
 - ✅ **Política de privacidad y términos** escritos, en `public/`, empaquetados con la app
 - ✅ **Página de eliminación de cuenta** en `public/eliminar-cuenta.html`, que es
   la URL que pide el formulario de Seguridad de los datos
-- ✅ VersionCode 20 (2.5) compilado y firmado. El 19 ya se envió, su número está gastado
+- ⚠️ VersionCode 20 (2.5) compilado el 7/09, pero **ese paquete se quedó atrás**:
+  lo del 9/09 —deportiva, el catálogo en el chat, las pantallas de arranque— no está
+  dentro. Hay que recompilar antes de subir. El 19 ya se envió, su número está gastado
 - ⏳ **Pendiente de subir el 20.** Ver arriba lo que falta.
 
 ---
