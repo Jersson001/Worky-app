@@ -175,6 +175,16 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister, i
   // cambia de teléfono o borra los datos, pierde la conversación. Por eso la app
   // le pide el correo más tarde, ya dentro y sin bloquearle nada.
   const [nombreParaAlias, setNombreParaAlias] = useState('');
+  /**
+   * Cómo encontrar al invitado, si quiere dejarlo.
+   *
+   * Opcionales a propósito: pedirlos para entrar convertiría el atajo en el
+   * formulario que se quiso evitar. Pero sin ellos el vendedor se queda con un
+   * nombre y una conversación y nada más —hay catorce fichas así, sin teléfono
+   * ni correo—, así que se piden aquí con la razón dicha.
+   */
+  const [correoInvitado, setCorreoInvitado] = useState('');
+  const [celularInvitado, setCelularInvitado] = useState('');
   const [sugerencias, setSugerencias] = useState<string[]>([]);
   const [aliasElegido, setAliasElegido] = useState('');
   const [buscandoAlias, setBuscandoAlias] = useState(false);
@@ -210,8 +220,21 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister, i
       // El vendedor viaja también en la cuenta: quien llega por QR puede acabar
       // entrando desde otro navegador, y ahí el localStorage no existe.
       const vendedor = vendedorPendiente();
+      const correo = correoInvitado.trim().toLowerCase();
+      const celular = celularInvitado.trim();
       const { data, error: e } = await supabase.auth.signInAnonymously({
-        options: { data: { alias: aliasElegido, ...(vendedor ? { vendedor } : {}) } },
+        options: {
+          data: {
+            alias: aliasElegido,
+            // Van en la metadata de la cuenta y no en `email`/`phone`: esos
+            // campos de auth exigen verificación y la cuenta dejaría de ser
+            // anónima a medias. Aquí son solo la forma de que el vendedor le
+            // encuentre, y viajan al alta para acabar en su ficha.
+            ...(correo ? { correo_contacto: correo } : {}),
+            ...(celular ? { celular_contacto: celular } : {}),
+            ...(vendedor ? { vendedor } : {}),
+          },
+        },
       });
       if (e) throw e;
       if (!data.user) throw new Error('No se pudo crear la sesión.');
@@ -226,8 +249,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister, i
       }
 
       setCurrentUserId(data.user.id, alias as string);
-      // Sin correo ni teléfono: el alias hace de nombre para el resto del alta.
-      onRegister('', '', alias as string);
+      // El correo y el celular, si los dejó, siguen el mismo camino que en el
+      // alta normal: acaban en su perfil y de ahí en la ficha que ve quien le
+      // vende. El alias hace de nombre.
+      onRegister(correo, celular, alias as string);
     } catch (err: any) {
       console.error('Entrada por alias:', err);
       const tomado = /ya está tomado/i.test(err?.message || '');
@@ -661,6 +686,39 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister, i
                       </button>
                     </div>
 
+                    {/* El correo y el celular, opcionales y con la razón dicha.
+                        No se piden para dejarle entrar —el alias basta— sino
+                        porque sin ellos la conversación no se recupera y quien
+                        vende se queda sin forma de buscarle: hoy hay catorce
+                        conversaciones así, sin un solo número. */}
+                    <div className="space-y-2.5 pt-1">
+                      <p className="text-[11px] text-slate-500 leading-snug bg-amber-50 border border-amber-200 rounded-xl p-2.5">
+                        <i className="fa-solid fa-circle-info text-amber-500 mr-1.5"></i>
+                        Déjanos cómo encontrarte. Si no,{' '}
+                        <span className="font-bold text-amber-900">
+                          al cambiar de teléfono pierdes esta conversación
+                        </span>{' '}
+                        y no hay forma de recuperarla.
+                      </p>
+                      <input
+                        type="email"
+                        value={correoInvitado}
+                        onChange={e => setCorreoInvitado(e.target.value)}
+                        placeholder="Correo (opcional)"
+                        autoComplete="email"
+                        className="w-full p-3 bg-slate-50 border border-slate-200 text-slate-900 font-medium rounded-xl outline-none focus:border-blue-600 focus:bg-white transition placeholder-slate-400 text-sm"
+                      />
+                      <input
+                        type="tel"
+                        value={celularInvitado}
+                        onChange={e => setCelularInvitado(e.target.value)}
+                        placeholder="Celular (opcional)"
+                        autoComplete="tel"
+                        inputMode="tel"
+                        className="w-full p-3 bg-slate-50 border border-slate-200 text-slate-900 font-medium rounded-xl outline-none focus:border-blue-600 focus:bg-white transition placeholder-slate-400 text-sm"
+                      />
+                    </div>
+
                     {error && (
                       <div className="text-red-600 text-xs font-semibold bg-red-50 p-3 rounded-xl border border-red-200 flex items-center gap-2">
                         <i className="fa-solid fa-circle-exclamation text-sm"></i>
@@ -686,11 +744,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister, i
                   </div>
                 )}
 
-                <p className="text-slate-400 text-[11px] leading-relaxed text-center">
-                  Podrás añadir tu correo más adelante para no perder la conversación
-                  si cambias de teléfono.
-                </p>
-
+                {/* La nota de «podrás añadir tu correo más adelante» vivía aquí.
+                    Sobra desde que el correo se pide arriba, y decir dos veces
+                    lo mismo en la misma pantalla lo vuelve ruido. */}
                 <div className="text-center pt-3 border-t border-slate-100">
                   <button
                     type="button"

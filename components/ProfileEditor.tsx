@@ -10,7 +10,7 @@ interface ProfileEditorProps {
   /** La cuenta entró solo con un alias y todavía no se puede recuperar. */
   esAnonimo?: boolean;
   /** Le pone correo y contraseña a la cuenta, que es lo que la vuelve permanente. */
-  onCompletarRegistro?: (email: string, password: string) => Promise<void>;
+  onCompletarRegistro?: (email: string, password: string, celular: string) => Promise<void>;
 }
 
 export const ProfileEditor: React.FC<ProfileEditorProps> = ({
@@ -19,6 +19,10 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({
   // Completar el registro de una cuenta de alias
   const [correoNuevo, setCorreoNuevo] = useState('');
   const [claveNueva, setClaveNueva] = useState('');
+  // Aquí el celular sí es obligatorio, al revés que al entrar con alias:
+  // esto es completar el registro, y sin una forma de encontrar a la persona
+  // el vendedor se queda con un nombre y una conversación y nada más.
+  const [celularNuevo, setCelularNuevo] = useState('');
   const [registrando, setRegistrando] = useState(false);
   const [errorRegistro, setErrorRegistro] = useState('');
   const [registroHecho, setRegistroHecho] = useState(false);
@@ -29,13 +33,17 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({
       setErrorRegistro('Escribe tu correo y una contraseña.');
       return;
     }
+    if (!celularNuevo.trim()) {
+      setErrorRegistro('Escribe tu celular: es por donde te buscan si se pierde el chat.');
+      return;
+    }
     if (claveNueva.length < 6) {
       setErrorRegistro('La contraseña necesita al menos 6 caracteres.');
       return;
     }
     setRegistrando(true);
     try {
-      await onCompletarRegistro!(correoNuevo, claveNueva);
+      await onCompletarRegistro!(correoNuevo, claveNueva, celularNuevo.trim());
       setRegistroHecho(true);
       setClaveNueva('');
     } catch (e: any) {
@@ -173,6 +181,15 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({
                       onChange={e => setCorreoNuevo(e.target.value)}
                       placeholder="tu@email.com"
                       autoComplete="email"
+                      className="w-full p-3 bg-white border border-amber-300 rounded-xl outline-none focus:border-amber-500 text-slate-900 font-medium placeholder-slate-400"
+                    />
+                    <input
+                      type="tel"
+                      value={celularNuevo}
+                      onChange={e => setCelularNuevo(e.target.value)}
+                      placeholder="Celular"
+                      autoComplete="tel"
+                      inputMode="tel"
                       className="w-full p-3 bg-white border border-amber-300 rounded-xl outline-none focus:border-amber-500 text-slate-900 font-medium placeholder-slate-400"
                     />
                     <input

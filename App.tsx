@@ -1270,7 +1270,7 @@ const App: React.FC = () => {
    * Lo que la vuelve permanente es esto, `updateUser` sobre la cuenta de
    * autenticación.
    */
-  const completarRegistro = async (email: string, password: string) => {
+  const completarRegistro = async (email: string, password: string, celular: string) => {
     const correo = email.trim().toLowerCase();
     const { data, error } = await supabase.auth.updateUser({ email: correo, password });
     if (error) throw error;
@@ -1298,7 +1298,9 @@ const App: React.FC = () => {
 
     setEsAnonimo(false);
     if (userProfile) {
-      await saveUserProfile({ ...userProfile, email: correo });
+      // El celular va al perfil, que es de donde lo lee la ficha del contacto
+      // por `datos_de_contacto`. Sin él, quien vende tiene un nombre y nada más.
+      await saveUserProfile({ ...userProfile, email: correo, phone: celular || userProfile.phone });
     }
   };
 
