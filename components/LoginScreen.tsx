@@ -80,9 +80,11 @@ const getAuthErrorMessage = (err: any): string => {
  * el proveedor apagado, el botón no da un error bonito: echa al cliente de la
  * aplicación. Comprobado el 10/09/2026.
  *
- * Se enciende poniéndolo en `true`, y nada más.
+ * Encendido el 10/09/2026, después de comprobar contra el servidor que
+ * `/auth/v1/authorize?provider=google` responde 302 hacia accounts.google.com
+ * y no el 400 de antes.
  */
-const GOOGLE_LISTO = false;
+const GOOGLE_LISTO = true;
 
 /**
  * La «G» de Google, dibujada aquí.
