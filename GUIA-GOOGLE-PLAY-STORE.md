@@ -4,20 +4,24 @@ Esta guía te llevará paso a paso para publicar tu aplicación Worky en Google 
 
 ---
 
-## 📌 Dónde va esto — al 9 de septiembre de 2026
+## 📌 Dónde va esto — al 10 de septiembre de 2026
 
-El siguiente envío va con el **`versionCode` 20 (versión 2.5)**. El 19 ya se
-envió a Play, así que su número quedó gastado. La política está viva en
+El siguiente envío va con el **`versionCode` 21 (versión 2.6)**, compilado y
+firmado. El 19 y el 20 ya se enviaron a Play, así que sus números están
+gastados. La política está viva en
 `worky-app-khaki.vercel.app/privacidad.html`, y la página de eliminación de
 cuenta que Play exige, en `worky-app-khaki.vercel.app/eliminar-cuenta.html`.
 
-**El `.aab` que hay compilado es del 7/09 y se quedó atrás**: no lleva lo del
-9/09. Hay que recompilarlo antes de subir. Y **no se compila por iniciativa
-propia**: ni el `.apk` ni el `.aab` se generan hasta que él lo pida —cada bump
-quema un número que Play no deja reutilizar, y él prueba cuando le viene bien,
-juntando varios arreglos en una sola instalación. Mientras tanto, lo que se
-sube a `main` se publica solo en `worky-app-khaki.vercel.app`, y ahí lo puede
-probar sin instalar nada.
+**Antes de bumpear, preguntar cuál es el último número subido.** No hay forma de
+verlo desde aquí —Play Console no se consulta desde el proyecto—, y el 20 se dio
+por libre cuando ya estaba enviado. Está en Play Console → Versiones → Panel de
+versiones, o en Prueba y lanzamiento → Producción → Historial de versiones.
+
+Y **los paquetes no se compilan por iniciativa propia**: ni el `.apk` ni el
+`.aab` se generan hasta que él lo pida —cada bump quema un número que Play no
+deja reutilizar, y él prueba cuando le viene bien, juntando varios arreglos en
+una sola instalación. Mientras tanto, lo que se sube a `main` se publica solo en
+`worky-app-khaki.vercel.app`, y ahí lo puede probar sin instalar nada.
 
 Para probar en el teléfono se compila aparte un `.apk` —el `.aab` no se
 instala—; cómo, en
@@ -50,7 +54,8 @@ intento fallido gasta un número:
 | 17 (2.2) | Catálogo en la cotización, «Cotizar» sobre una foto, datos de pago con QR |
 | 18 (2.3) | Políticas y apartado legal, forma de pago y condiciones, tallas, oficios de comercio, impresión en A4 |
 | 19 (2.4) | **Enviado a Play.** Estilos empaquetados —hasta el 18 se pedían a un CDN y sin cobertura la app salía en crudo—, los cuatro fallos de la prueba con un cliente real, el botón de responder en el documento, cotización de confección |
-| **20 (2.5)** | Recuperar la contraseña —no existía—, los gastos del proyecto en el balance, el correo y el celular del contacto, el enlace compartido enseñando el documento de imprimir con sus fotos, y las iniciales sin pedirlas a un tercero. Y sin compilar todavía: capítulo de ropa deportiva, el producto del catálogo que se mandaba y no se veía, y las dos pantallas de arranque con el logo de Worky. |
+| 20 (2.5) | **Enviado a Play.** Recuperar la contraseña —no existía—, los gastos del proyecto en el balance, el correo y el celular del contacto, el enlace compartido enseñando el documento de imprimir con sus fotos, y las iniciales sin pedirlas a un tercero |
+| **21 (2.6)** | Ropa deportiva con numeración y nombres, el producto del catálogo que no se veía en el chat, y las pantallas de arranque —la nativa llevaba el logo de Capacitor— |
 
 **Play exige API 36** desde el 1 de septiembre de 2026. Está en
 `android/variables.gradle`.
@@ -101,10 +106,9 @@ fue por el contenido de la app:
 - ✅ **Política de privacidad y términos** escritos, en `public/`, empaquetados con la app
 - ✅ **Página de eliminación de cuenta** en `public/eliminar-cuenta.html`, que es
   la URL que pide el formulario de Seguridad de los datos
-- ⚠️ VersionCode 20 (2.5) compilado el 7/09, pero **ese paquete se quedó atrás**:
-  lo del 9/09 —deportiva, el catálogo en el chat, las pantallas de arranque— no está
-  dentro. Hay que recompilar antes de subir. El 19 ya se envió, su número está gastado
-- ⏳ **Pendiente de subir el 20.** Ver arriba lo que falta.
+- ✅ VersionCode 21 (2.6) compilado y firmado el 10/09/2026, con todo lo del 9 y
+  el 10 dentro. El 19 y el 20 ya se enviaron, sus números están gastados
+- ⏳ **Pendiente de subir el 21.** Ver arriba lo que falta.
 
 ---
 
@@ -390,8 +394,8 @@ Para futuras actualizaciones:
 
 1. **Incrementa el versionCode** en `android/app/build.gradle`:
    ```gradle
-   versionCode 21       // El siguiente libre: el 20 es la 2.5
-   versionName "2.6"    // La versión que ve el usuario
+   versionCode 22       // El siguiente libre: el 21 es la 2.6
+   versionName "2.7"    // La versión que ve el usuario
    ```
 
 2. **Genera nuevo AAB**:

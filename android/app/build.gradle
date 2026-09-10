@@ -47,21 +47,22 @@ android {
         //
         // El 19 (2.4) se subió, así que su número está gastado.
         //
-        // El 20 (2.5) lleva lo que destapó el uso real: recuperar la contraseña
-        // —que no existía, y perderla era perder la cuenta—, los gastos del
-        // proyecto, que se guardaban y no se volvían a leer, el correo y el
-        // celular en la ficha del contacto, el enlace compartido enseñando el
-        // mismo documento que se imprime —con sus fotos, que en la cotización
-        // básica no salían—, y las iniciales de los contactos dibujadas en el
-        // teléfono en vez de pedidas a un tercero con el nombre dentro.
+        // El 20 (2.5) también se subió. Llevaba lo que destapó el uso real:
+        // recuperar la contraseña —que no existía, y perderla era perder la
+        // cuenta—, los gastos del proyecto, que se guardaban y no se volvían a
+        // leer, el correo y el celular en la ficha del contacto, el enlace
+        // compartido enseñando el mismo documento que se imprime —con sus
+        // fotos, que en la cotización básica no salían— y las iniciales de los
+        // contactos dibujadas en el teléfono en vez de pedidas a un tercero con
+        // el nombre dentro.
         //
-        // Recompilado el 10/09/2026, sin gastar número porque el 20 no llegó a
-        // subirse: capítulo de ropa deportiva —prendas, escudos, numeración y
-        // nombre de cada jugador—, el producto del catálogo que se mandaba al
-        // chat y no se veía, y las dos pantallas de arranque, que llevaban el
-        // logo de Capacitor y un emoji de teléfono.
-        versionCode 20
-        versionName "2.5"
+        // El 21 (2.6) lleva el capítulo de ropa deportiva —prendas, escudos,
+        // numeración y nombre de cada jugador, con sus tallas de niño—, el
+        // producto del catálogo que se mandaba al chat y no se veía, y las dos
+        // pantallas de arranque, que hasta ahora llevaban el logo de Capacitor
+        // y un emoji de teléfono en vez del de Worky.
+        versionCode 21
+        versionName "2.6"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'

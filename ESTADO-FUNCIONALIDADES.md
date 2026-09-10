@@ -1,6 +1,6 @@
 # Estado de funcionalidades — Worky
 
-Última revisión: 9 de septiembre de 2026.
+Última revisión: 10 de septiembre de 2026.
 
 > Este documento describía el proyecto cuando corría sobre Firebase y decía que
 > los clientes no podían tener cuenta, que Storage no estaba implementado y que
@@ -672,12 +672,13 @@ llegue a publicarse, así que cada intento fallido quema un número:
 | 17 (2.2) | Catálogo en la cotización, «Cotizar» sobre una foto, datos de pago con QR, API 36 |
 | 18 (2.3) | Políticas y apartado legal, forma de pago y condiciones, cotizar por tallas, oficios de comercio, impresión en A4 |
 | 19 (2.4) | Los estilos empaquetados en vez de pedidos a un CDN, los cuatro fallos de la primera prueba con un cliente real, el botón de responder en el documento, y la cotización de confección |
-| **20 (2.5)** | Recuperar la contraseña, los gastos del proyecto en el balance, el correo y el celular en la ficha del contacto, el enlace compartido con el mismo documento que se imprime, y las iniciales dibujadas en el teléfono. Y sin compilar todavía: capítulo de ropa deportiva, el producto del catálogo que se mandaba y no se veía, y las dos pantallas de arranque con el logo de Worky. |
+| 20 (2.5) | Recuperar la contraseña, los gastos del proyecto en el balance, el correo y el celular en la ficha del contacto, el enlace compartido con el mismo documento que se imprime, y las iniciales dibujadas en el teléfono. |
+| **21 (2.6)** | Capítulo de ropa deportiva —prendas, escudos, numeración y nombre de cada jugador—, el producto del catálogo que se mandaba al chat y no se veía, y las dos pantallas de arranque con el logo de Worky |
 
 Play exige **API 36** desde el 1 de septiembre de 2026.
 
-**El 20 está compilado y firmado.** El 19 ya se subió a Play, así que su número
-quedó gastado. La 2.4 se probó en un teléfono, un Motorola G13, y **en modo avión**: se
+**El 21 está compilado y firmado.** El 19 y el 20 ya se subieron a Play, así que
+sus números están gastados. La 2.4 se probó en un teléfono, un Motorola G13, y **en modo avión**: se
 ve con sus estilos, sus iconos y su tipografía. Hasta el 18 la aplicación se los
 pedía a un CDN al arrancar y sin cobertura salía en crudo. Cómo se compila y se
 prueba está en
@@ -685,7 +686,7 @@ prueba está en
 distinción entre el `.aab`, que solo se sube a Play, y el `.apk`, que es el que
 se instala.
 
-**Lo que queda antes de subir el 20:**
+**Lo que queda antes de subir el 21:**
 
 1. **Llenar «Seguridad de los datos»** en Play Console. Es un formulario aparte
    de la política y **tiene que coincidir con ella**: declarar de menos es
