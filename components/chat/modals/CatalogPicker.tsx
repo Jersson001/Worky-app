@@ -19,18 +19,36 @@ interface CatalogBrowserProps {
   categories: ProductCategory[];
   /** Se llama por cada producto elegido. El panel no se cierra. */
   onSelectProduct: (product: Product) => void;
+  /**
+   * Se elige una foto, no el producto entero.
+   *
+   * Es lo que hace falta en el chat: ahí se manda una imagen para enseñar algo,
+   * y un producto con doce fotos propias llenaba la conversación de miniaturas
+   * —parecía que se hubiera mandado la carpeta entera—. En la cotización es al
+   * revés: la línea quiere todas las fotos del producto, así que allí va
+   * apagado.
+   */
+  porFoto?: boolean;
 }
 
 /** Carpeta imaginaria para los productos que nadie clasificó. */
 const SIN_CARPETA = '__sin_carpeta__';
 
+/** Las fotos de un producto, en orden y sin repetir la principal. */
+const fotosDe = (p: Product): string[] => {
+  const todas = p.images?.length ? p.images : (p.image ? [p.image] : []);
+  return todas.filter(Boolean);
+};
+
 export const CatalogBrowser: React.FC<CatalogBrowserProps> = ({
-  products, categories, onSelectProduct,
+  products, categories, onSelectProduct, porFoto = false,
 }) => {
   const [carpetaAbierta, setCarpetaAbierta] = useState<string | null>(null);
   const [busqueda, setBusqueda] = useState('');
   /** Cuántas veces se agregó cada producto, para dar acuse en el propio botón. */
   const [agregados, setAgregados] = useState<Record<string, number>>({});
+  /** Qué producto tiene abiertas sus fotos, en el modo de elegir foto. */
+  const [fotosAbiertas, setFotosAbiertas] = useState<Product | null>(null);
 
   const termino = busqueda.trim().toLowerCase();
   const buscando = termino.length > 0;
@@ -61,6 +79,24 @@ export const CatalogBrowser: React.FC<CatalogBrowserProps> = ({
     setAgregados(prev => ({ ...prev, [p.id]: (prev[p.id] || 0) + 1 }));
   };
 
+  /**
+   * Tocar un producto. En el modo de foto abre sus fotos para escoger una; si
+   * solo tiene una, no hay nada que escoger y se manda directa.
+   */
+  const tocarProducto = (p: Product) => {
+    if (!porFoto) return elegir(p);
+    const fotos = fotosDe(p);
+    if (fotos.length > 1) return setFotosAbiertas(p);
+    elegir(p);
+  };
+
+  /** La foto escogida viaja sola: el producto va con esa y nada más. */
+  const elegirFoto = (p: Product, foto: string) => {
+    onSelectProduct({ ...p, image: foto, images: [foto] });
+    setAgregados(prev => ({ ...prev, [p.id]: (prev[p.id] || 0) + 1 }));
+    setFotosAbiertas(null);
+  };
+
   const enPortada = (categoria: ProductCategory) =>
     products.filter(p => p.categoryId === categoria.id).slice(0, 4).map(p => p.image);
 
@@ -73,7 +109,7 @@ export const CatalogBrowser: React.FC<CatalogBrowserProps> = ({
           <input
             type="text"
             value={busqueda}
-            onChange={e => setBusqueda(e.target.value)}
+            onChange={e => { setBusqueda(e.target.value); setFotosAbiertas(null); }}
             placeholder="Buscar producto por nombre…"
             className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-8 py-2.5 text-xs outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
           />
@@ -91,7 +127,7 @@ export const CatalogBrowser: React.FC<CatalogBrowserProps> = ({
         {!buscando && carpetaAbierta && (
           <button
             type="button"
-            onClick={() => setCarpetaAbierta(null)}
+            onClick={() => { setCarpetaAbierta(null); setFotosAbiertas(null); }}
             className="mt-2 text-[11px] font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1.5"
           >
             <i className="fa-solid fa-arrow-left text-[10px]"></i>
@@ -101,6 +137,34 @@ export const CatalogBrowser: React.FC<CatalogBrowserProps> = ({
       </div>
 
       <div className="flex-1 overflow-y-auto custom-scrollbar px-3 pb-3">
+        {/* Las fotos de un producto, para escoger cuál se manda. Tapa lo demás
+            porque es una decisión sola: qué imagen enseñar. */}
+        {fotosAbiertas ? (
+          <div>
+            <button
+              type="button"
+              onClick={() => setFotosAbiertas(null)}
+              className="mb-2 text-[11px] font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1.5"
+            >
+              <i className="fa-solid fa-arrow-left text-[10px]"></i>
+              {fotosAbiertas.name}
+            </button>
+            <p className="text-[11px] text-slate-500 mb-2.5">Toca la foto que quieres enviar.</p>
+            <div className="grid grid-cols-3 gap-2">
+              {fotosDe(fotosAbiertas).map((foto, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => elegirFoto(fotosAbiertas, foto)}
+                  className="aspect-square rounded-xl overflow-hidden border border-slate-200 hover:border-blue-500 hover:shadow-md transition"
+                >
+                  <img src={foto} alt="" loading="lazy" className="w-full h-full object-cover" />
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : (
+        <>
         {/* Vista de carpetas */}
         {!buscando && !carpetaAbierta && (
           categories.length === 0 && sinCarpeta.length === 0 ? (
@@ -182,7 +246,7 @@ export const CatalogBrowser: React.FC<CatalogBrowserProps> = ({
                   <button
                     key={p.id}
                     type="button"
-                    onClick={() => elegir(p)}
+                    onClick={() => tocarProducto(p)}
                     className="w-full flex items-center gap-2.5 p-2 bg-white border border-slate-200 rounded-xl hover:border-blue-400 hover:shadow-sm transition text-left"
                   >
                     <img src={p.image} alt="" className="w-12 h-12 rounded-lg object-cover bg-slate-100 flex-shrink-0" />
@@ -208,6 +272,8 @@ export const CatalogBrowser: React.FC<CatalogBrowserProps> = ({
               })}
             </div>
           )
+        )}
+        </>
         )}
       </div>
     </div>
