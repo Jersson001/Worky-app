@@ -65,8 +65,22 @@ android {
          * Son dos cosas distintas y solo una es libre.
          *
          * `versionCode` no es una versión: es un contador entero, lo único que
-         * Play mira para saber qué paquete es más nuevo. Sube de uno en uno en
-         * cada envío y no admite puntos. El usuario no lo ve nunca.
+         * Play mira para saber qué paquete es más nuevo. No admite puntos y el
+         * usuario no lo ve nunca.
+         *
+         * **Va por fecha desde el 10/09/2026: AAAAMMDDNN.** Antes se llevaba a
+         * mano, de uno en uno, y eso obliga a saber cuál fue el último envío —
+         * algo que no se puede consultar desde el proyecto—. Se falló dos veces
+         * seguidas: se compiló el 20 y luego el 21 dándolos por libres, y Play
+         * rechazó los dos con «version code has already been used». Cada
+         * rechazo era recompilar y volver a subir.
+         *
+         * Con la fecha el número siempre es mayor que cualquiera anterior, así
+         * que no puede repetirse ni hay nada que recordar. Los dos últimos
+         * dígitos son el envío del día: si hay que subir otro paquete hoy, 02.
+         *
+         * Es de ida sin vuelta —Play no acepta un número menor que el último—,
+         * pero da de sobra: el techo son 2.100.000.000 y esto llega al año 2100.
          *
          * `versionName` es texto y es lo que sale en la ficha de Play y en el
          * perfil. Desde la 2.6.0 va en tres partes, que dicen algo cada una:
@@ -80,7 +94,7 @@ android {
          * número de en medio —2.4, 2.5 y 2.6 en tres días— y a ese paso la 3.0
          * llegaba sin que hubiera cambiado nada grande.
          */
-        versionCode 21
+        versionCode 2026091001
         versionName "2.6.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
