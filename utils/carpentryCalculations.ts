@@ -7,7 +7,7 @@
  */
 import { CarpentryCategoryKey, CarpentryItemGroup, CarpentryLineItem, CarpentryMaterial, CarpentrySection, CarpentryUnit, CuadroDeTallas, GremioKey, MaterialUnit, QuoteItem } from '../types';
 import { GREMIOS_POR_OFICIO } from './tiposDeNegocio';
-import { resumenDeTallas, totalDeTallas, subtotalDeTallas } from './tallas';
+import { resumenDeTallas, totalDeTallas, subtotalDeTallas, hayTallas, hayNumeracion } from './tallas';
 
 // ─── Identificadores ─────────────────────────────────────────────────────────
 
@@ -72,8 +72,17 @@ export const describeCantidad = (
 
   // Con cuadro de tallas manda el desglose: «20 und · S 3 · M 8 · L 6 · XL 3».
   // Es lo que el cliente revisa y lo que se manda a producción.
-  const desglose = resumenDeTallas(item.tallas);
-  if (desglose) return `${cantidad} und · ${desglose}`;
+  //
+  // La cuenta sale de sumar las tallas y no de `quantity`, que en una línea con
+  // tallas no se escribe y se queda en el 1 de la plantilla: el documento decía
+  // «1 und» encima de un desglose de veinte prendas.
+  if (hayTallas(item.tallas)) {
+    const total = totalDeTallas(item.tallas);
+    // Numeradas, el desglose ya va jugador por jugador bajo el nombre de la
+    // prenda. Repetirlo aquí llena la celda de «M 1 · M 1 · L 1» sin decir nada.
+    if (hayNumeracion(item.tallas)) return `${total} und`;
+    return `${total} und · ${resumenDeTallas(item.tallas)}`;
+  }
 
   if (usaMedida(item.unit)) {
     if (!item.measure) return cantidad > 1 ? `${cantidad} und` : '';

@@ -167,32 +167,49 @@ export const CuadroDeTallasCampos: React.FC<Props> = ({
               </button>
             </div>
 
-            {/* Los nombres y los números de estas prendas. Nace escondido: la
-                mayoría de los pedidos no llevan nombre, y un campo de texto
-                vacío en cada talla llena la pantalla de nada. */}
-            {l.nombres === undefined ? (
+            {/* El número y el nombre estampados. Nace escondido: la mayoría de
+                los pedidos no llevan, y dos campos vacíos en cada talla llenan
+                la pantalla de nada. */}
+            {l.numero === undefined && l.nombre === undefined ? (
               <button
                 type="button"
-                onClick={() => set('nombres', '')}
+                onClick={() =>
+                  // Con nombre la fila es de una persona, así que la cantidad
+                  // pasa a 1. Queda editable: hay quien pide dos camisetas
+                  // iguales para el mismo jugador.
+                  guardar(lineas.map((x, j) =>
+                    j === i ? { ...x, numero: '', nombre: '', cantidad: x.cantidad > 1 ? 1 : x.cantidad } : x))
+                }
                 className="mt-1 ml-[4.5rem] text-[10px] font-bold text-indigo-600 hover:text-indigo-700 transition"
               >
                 + Añadir nombre y número
               </button>
             ) : (
               <div className="mt-1 ml-[4.5rem] flex items-start gap-1.5">
+                <div className="w-14">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={l.numero ?? ''}
+                    onChange={e => set('numero', e.target.value)}
+                    placeholder="Nº"
+                    autoFocus
+                    className="w-full bg-white border border-indigo-200 rounded-lg p-1.5 text-[11px] font-bold text-center text-slate-900 placeholder-slate-400 outline-none focus:border-indigo-500"
+                  />
+                </div>
                 <input
                   type="text"
-                  value={l.nombres}
-                  onChange={e => set('nombres', e.target.value)}
-                  placeholder="10 Pérez, 7 Gómez, 4 Ruiz…"
-                  autoFocus
+                  value={l.nombre ?? ''}
+                  onChange={e => set('nombre', e.target.value)}
+                  placeholder="Nombre"
                   className="flex-1 min-w-0 bg-white border border-indigo-200 rounded-lg p-1.5 text-[11px] text-slate-900 placeholder-slate-400 outline-none focus:border-indigo-500"
                 />
                 <button
                   type="button"
-                  onClick={() => set('nombres', undefined)}
+                  onClick={() => guardar(lineas.map((x, j) =>
+                    j === i ? { ...x, numero: undefined, nombre: undefined } : x))}
                   className="text-slate-300 hover:text-red-500 transition px-0.5 py-1.5"
-                  aria-label="Quitar los nombres de esta talla"
+                  aria-label="Quitar el número y el nombre de esta talla"
                 >
                   <i className="fa-solid fa-xmark text-[10px]"></i>
                 </button>

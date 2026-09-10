@@ -178,6 +178,29 @@ export const resumenDeTallas = (c?: CuadroDeTallas): string =>
 export const hayTallas = (c?: CuadroDeTallas): boolean =>
   lineasDe(c).some(l => l.cantidad > 0);
 
+/** Si alguna prenda lleva número o nombre estampado. */
+export const hayNumeracion = (c?: CuadroDeTallas): boolean =>
+  lineasDe(c).some(l => !!l.numero?.trim() || !!l.nombre?.trim());
+
+/**
+ * El listado de prendas para el documento, una por renglón.
+ *
+ * Cuando llevan número y nombre no vale el resumen de una línea: el cliente
+ * tiene que poder repasar su lista jugador por jugador y ver que están todos y
+ * bien escritos. Un nombre mal impreso es una prenda perdida.
+ */
+export const detalleDeTallas = (
+  c?: CuadroDeTallas,
+): { talla: string; cantidad: number; numero: string; nombre: string }[] =>
+  lineasDe(c)
+    .filter(l => l.cantidad > 0)
+    .map(l => ({
+      talla: l.talla,
+      cantidad: l.cantidad,
+      numero: l.numero?.trim() ?? '',
+      nombre: l.nombre?.trim() ?? '',
+    }));
+
 /**
  * Lo que cuesta una línea de la cotización básica.
  *

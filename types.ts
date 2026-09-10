@@ -170,13 +170,18 @@ export interface LineaDeTalla {
    */
   costo?: number;
   /**
-   * Los nombres y números que van en estas prendas.
+   * El número y el nombre que van estampados en esta prenda.
    *
-   * Texto libre —«10 Pérez, 7 Gómez»— y no un campo por jugador: se escribe de
-   * corrido, que es como llega la lista del entrenador. Lo que cuesta ponerlos
-   * se cobra en su propia línea; esto es la instrucción para producción.
+   * Campos separados y no un texto de corrido: así salen alineados en la
+   * cotización, y el cliente revisa de un vistazo que su lista está completa y
+   * bien escrita. Un nombre mal impreso es una prenda perdida.
+   *
+   * Con nombre o número la fila es de una persona, así que la cantidad se pone
+   * en 1. Se deja editable porque hay quien pide dos camisetas iguales para el
+   * mismo jugador.
    */
-  nombres?: string;
+  numero?: string;
+  nombre?: string;
 }
 
 export interface CuadroDeTallas {

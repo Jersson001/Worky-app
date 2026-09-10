@@ -9,7 +9,7 @@ import { publishCatalogForCurrentUser, catalogPageUrl, qrImageUrl, WORKY_APP_URL
 import { getCurrentUserId } from '../services/messagingService';
 import { computeLineSubtotal, computeMaterialSubtotal, computeManoDeObraTotal, computeMaterialesTotal, computeGroupSubtotal, computeSectionSubtotal, seccionesConContenido, describeCantidad, describeMaterial } from '../utils/carpentryCalculations';
 import { ORDEN_CONDICIONES, lineasDe, hayCondiciones, repartoDePago } from '../utils/condicionesCotizacion';
-import { hayTallas, resumenDeTallas, subtotalDeItem } from '../utils/tallas';
+import { hayTallas, hayNumeracion, detalleDeTallas, resumenDeTallas, subtotalDeItem } from '../utils/tallas';
 
 interface DocumentViewerProps {
   type: 'quote' | 'invoice' | 'receipt' | 'collection_account' | 'expense_receipt';
@@ -416,6 +416,31 @@ const QuoteTemplate = ({ data, businessLogo, userProfile, catalogoUrl, signature
                                                     <tr className="border-t border-gray-100">
                                                         <td className="py-2 px-3 text-sm text-gray-800">
                                                             {item.description && <div>{item.description}</div>}
+                                                            {/* La lista de jugadores, cuando la prenda va
+                                                                numerada. Va en tabla y no de corrido porque es
+                                                                lo que el cliente repasa uno por uno antes de
+                                                                aprobar: un nombre mal escrito es una prenda
+                                                                perdida. Sin números se queda el resumen de una
+                                                                línea, que ocupa mucho menos. */}
+                                                            {/* Solo cuando van numeradas. Sin números, el
+                                                                desglose ya sale en la celda de cantidad y
+                                                                repetirlo aquí es decir dos veces lo mismo. */}
+                                                            {hayNumeracion(item.tallas) && (
+                                                                <table className="mt-1 text-[13px] text-gray-700">
+                                                                    <tbody>
+                                                                        {detalleDeTallas(item.tallas).map((t, i) => (
+                                                                            <tr key={i}>
+                                                                                <td className="pr-3 py-px font-bold text-indigo-700 whitespace-nowrap">{t.numero || '—'}</td>
+                                                                                <td className="pr-3 py-px whitespace-nowrap">{t.nombre}</td>
+                                                                                <td className="pr-3 py-px text-gray-500 whitespace-nowrap">Talla {t.talla}</td>
+                                                                                <td className="py-px text-gray-500 whitespace-nowrap">
+                                                                                    {t.cantidad > 1 ? `${t.cantidad} und` : ''}
+                                                                                </td>
+                                                                            </tr>
+                                                                        ))}
+                                                                    </tbody>
+                                                                </table>
+                                                            )}
                                                             {/* La foto y el comentario van uno al lado del otro:
                                                                 la foto ocupa 80px y a su derecha quedaba media
                                                                 celda en blanco. El comentario lleva las
