@@ -63,6 +63,54 @@ correos van limitados a unos pocos por hora, se retrasan o caen en no deseado, y
 Supabase mismo dice que no es para producción. Sin eso, esto funciona en el
 código y no en la práctica.
 
+### Entrar con Google
+
+Hay «Continuar con Google» en la pantalla de acceso y en la del alias, con la
+«G» a cuatro colores dibujada en el código —sus normas de marca exigen esos
+colores exactos, y el `fa-google` empaquetado es de un solo tono—.
+
+Quien entra así queda con **cuenta recuperable y con su correo desde el primer
+momento**, sin escribir una contraseña. Para el invitado del QR es el mejor
+camino: resuelve de una vez lo que la cinta de «completa el registro» lleva
+meses sin conseguir.
+
+Vive detrás de `GOOGLE_LISTO` en `LoginScreen.tsx`. No es prudencia de más:
+`signInWithOAuth` no falla en el navegador, sino que se lleva a la persona a
+Supabase, y con el proveedor apagado revienta allí con un JSON crudo y sin
+forma de volver. O sea que el botón mal configurado no da un error feo: echa al
+cliente fuera de la aplicación.
+
+**En el APK todavía no funciona.** Capacitor carga la app desde el propio
+teléfono, así que el regreso de Google no tiene a dónde volver; hace falta
+configurar deep links en Android.
+
+Un usuario puede tener los dos accesos a la vez —`email` y `google` sobre la
+misma cuenta— y entra con cualquiera de los dos.
+
+#### Lo que costó ponerlo en marcha
+
+Tres fallos seguidos, y ninguno estaba en el código:
+
+1. **`Site URL` seguía en `http://localhost:3000`**, el valor por defecto de
+   Supabase. Google autenticaba bien y el regreso mandaba el teléfono a una
+   dirección que no existe: «Safari no puede conectarse al servidor». **Esto
+   rompía también el correo de recuperar contraseña**, que lleva al mismo
+   sitio: dos fallos con una sola causa.
+2. **`invalid_client`**: lo pegado en Supabase no coincidía con ningún secreto
+   de Google. Se ve en los registros de auth, no en el navegador.
+3. **La prueba era inválida**: se escaneó el QR propio con la cuenta propia, y
+   la app hace bien en no abrir un chat de alguien consigo mismo.
+
+De los tres, ninguno se puede diagnosticar desde el navegador. Los dos primeros
+salen preguntándole al servidor:
+
+```bash
+# ¿A dónde devuelve? Debe ser worky-app-khaki, no localhost
+curl -s -o /dev/null -w "%{redirect_url}" \n  "https://<ref>.supabase.co/auth/v1/callback?error=x&error_description=x"
+```
+
+Y los errores del intercambio, en los registros de `auth_logs` del proyecto.
+
 ### El cliente que escanea un QR — sin correo ni celular
 
 Escribe su nombre, el servidor le ofrece **tres aliases libres**, elige uno y
@@ -76,6 +124,23 @@ Debajo hay una **sesión anónima de Supabase**, que es una cuenta de verdad.
 Lo que no tiene es forma de recuperarse: si cambia de teléfono o borra los datos
 de la app, pierde la conversación. Por eso ve un aviso —que no bloquea nada—
 invitándole a completar el registro.
+
+**Se le piden el correo y el celular ahí mismo, opcionales**, con la razón
+dicha. No para dejarle entrar —eso convertiría el atajo en el formulario que se
+quiso evitar— sino porque sin ellos quien vende se queda con un nombre y una
+conversación y nada más. Al 9/09/2026 había **catorce conversaciones así**, doce
+de ellas con mensajes de verdad, y en las catorce el teléfono, el correo y el
+alias de la ficha estaban vacíos. Van en la metadata de la cuenta y no en
+`email`/`phone` de auth, que exigen verificación y dejarían la cuenta anónima a
+medias.
+
+En la cinta de completar el registro sí son **obligatorios** los dos: eso ya no
+es entrar, es dejar la cuenta recuperable, y sin forma de encontrar a la persona
+no sirve de nada.
+
+**Ninguna de esas catorce se ha registrado nunca**, lo que dice que la cinta
+sola no basta. De ahí que entrar con Google sea el mejor camino para el
+invitado: le deja cuenta recuperable y correo sin escribir una contraseña.
 
 Quien prefiera el registro clásico tiene el enlace a mano, y si se arrepiente
 puede volver al atajo sin recargar.
