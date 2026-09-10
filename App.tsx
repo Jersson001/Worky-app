@@ -1272,11 +1272,30 @@ const App: React.FC = () => {
    */
   const completarRegistro = async (email: string, password: string) => {
     const correo = email.trim().toLowerCase();
-    const { error } = await supabase.auth.updateUser({ email: correo, password });
+    const { data, error } = await supabase.auth.updateUser({ email: correo, password });
     if (error) throw error;
 
-    // El estado local se adelanta al evento de auth para que la cinta
-    // desaparezca en cuanto termina, que es lo que la persona espera ver.
+    /*
+     * Se comprueba que la cuenta dejó de ser anónima de verdad, y no se da por
+     * hecho porque no hubo error.
+     *
+     * `updateUser` devuelve éxito aunque el correo quede pendiente de confirmar:
+     * en ese caso viaja en `new_email` y la cuenta sigue siendo anónima. Sin
+     * mirarlo, la cinta desaparecía igual y la persona se quedaba creyendo que
+     * ya estaba registrada mientras su conversación seguía sin poder
+     * recuperarse. Y no se corrige solo: al convertirse, el id de usuario no
+     * cambia, así que el vigilante de sesión sale antes de volver a mirarlo.
+     */
+    const u = data?.user;
+    if (!u || u.is_anonymous === true || !u.email) {
+      if (u?.new_email) {
+        throw new Error(
+          `Te mandamos un correo a ${u.new_email}. Ábrelo y confirma para terminar el registro.`,
+        );
+      }
+      throw new Error('La cuenta no quedó registrada. Vuelve a intentarlo en un momento.');
+    }
+
     setEsAnonimo(false);
     if (userProfile) {
       await saveUserProfile({ ...userProfile, email: correo });
