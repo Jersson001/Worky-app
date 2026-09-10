@@ -68,7 +68,7 @@ android {
          * Play mira para saber qué paquete es más nuevo. No admite puntos y el
          * usuario no lo ve nunca.
          *
-         * **Va por fecha desde el 10/09/2026: AAAAMMDDNN.** Antes se llevaba a
+         * **Va por fecha desde el 10/09/2026: AAMMDDNN.** Antes se llevaba a
          * mano, de uno en uno, y eso obliga a saber cuál fue el último envío —
          * algo que no se puede consultar desde el proyecto—. Se falló dos veces
          * seguidas: se compiló el 20 y luego el 21 dándolos por libres, y Play
@@ -79,8 +79,12 @@ android {
          * que no puede repetirse ni hay nada que recordar. Los dos últimos
          * dígitos son el envío del día: si hay que subir otro paquete hoy, 02.
          *
-         * Es de ida sin vuelta —Play no acepta un número menor que el último—,
-         * pero da de sobra: el techo son 2.100.000.000 y esto llega al año 2100.
+         * El año va con dos dígitos y no con cuatro: `2026091001` son 2.026
+         * millones y el techo de Android son 2.100, así que dejaba un margen
+         * ridículo y Play lo avisa al subirlo. Con dos, `26091001` son 26
+         * millones y quedan 2.074 de sobra.
+         *
+         * Es de ida sin vuelta: Play no acepta un número menor que el último.
          *
          * `versionName` es texto y es lo que sale en la ficha de Play y en el
          * perfil. Desde la 2.6.0 va en tres partes, que dicen algo cada una:
@@ -94,7 +98,7 @@ android {
          * número de en medio —2.4, 2.5 y 2.6 en tres días— y a ese paso la 3.0
          * llegaba sin que hubiera cambiado nada grande.
          */
-        versionCode 2026091001
+        versionCode 26091001
         versionName "2.6.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
