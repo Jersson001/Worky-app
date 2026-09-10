@@ -61,8 +61,27 @@ android {
         // producto del catálogo que se mandaba al chat y no se veía, y las dos
         // pantallas de arranque, que hasta ahora llevaban el logo de Capacitor
         // y un emoji de teléfono en vez del de Worky.
+        /*
+         * Son dos cosas distintas y solo una es libre.
+         *
+         * `versionCode` no es una versión: es un contador entero, lo único que
+         * Play mira para saber qué paquete es más nuevo. Sube de uno en uno en
+         * cada envío y no admite puntos. El usuario no lo ve nunca.
+         *
+         * `versionName` es texto y es lo que sale en la ficha de Play y en el
+         * perfil. Desde la 2.6.0 va en tres partes, que dicen algo cada una:
+         *
+         *     mayor . menor . parche
+         *       │       │       └── se rompió algo y se arregló
+         *       │       └────────── novedades: un capítulo, una forma de entrar
+         *       └────────────────── la app se siente otra
+         *
+         * Antes iban dos, y se quedaba corto: cada arreglo pequeño gastaba el
+         * número de en medio —2.4, 2.5 y 2.6 en tres días— y a ese paso la 3.0
+         * llegaba sin que hubiera cambiado nada grande.
+         */
         versionCode 21
-        versionName "2.6"
+        versionName "2.6.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'

@@ -6,7 +6,7 @@ Esta guía te llevará paso a paso para publicar tu aplicación Worky en Google 
 
 ## 📌 Dónde va esto — al 10 de septiembre de 2026
 
-El siguiente envío va con el **`versionCode` 21 (versión 2.6)**, compilado y
+El siguiente envío va con el **`versionCode` 21 (versión 2.6.0)**, compilado y
 firmado. El 19 y el 20 ya se enviaron a Play, así que sus números están
 gastados. La política está viva en
 `worky-app-khaki.vercel.app/privacidad.html`, y la página de eliminación de
@@ -55,7 +55,7 @@ intento fallido gasta un número:
 | 18 (2.3) | Políticas y apartado legal, forma de pago y condiciones, tallas, oficios de comercio, impresión en A4 |
 | 19 (2.4) | **Enviado a Play.** Estilos empaquetados —hasta el 18 se pedían a un CDN y sin cobertura la app salía en crudo—, los cuatro fallos de la prueba con un cliente real, el botón de responder en el documento, cotización de confección |
 | 20 (2.5) | **Enviado a Play.** Recuperar la contraseña —no existía—, los gastos del proyecto en el balance, el correo y el celular del contacto, el enlace compartido enseñando el documento de imprimir con sus fotos, y las iniciales sin pedirlas a un tercero |
-| **21 (2.6)** | Ropa deportiva con numeración y nombres, el producto del catálogo que no se veía en el chat, y las pantallas de arranque —la nativa llevaba el logo de Capacitor— |
+| **21 (2.6.0)** | Ropa deportiva con numeración y nombres, el producto del catálogo que no se veía en el chat, y las pantallas de arranque —la nativa llevaba el logo de Capacitor— |
 
 **Play exige API 36** desde el 1 de septiembre de 2026. Está en
 `android/variables.gradle`.
@@ -106,7 +106,7 @@ fue por el contenido de la app:
 - ✅ **Política de privacidad y términos** escritos, en `public/`, empaquetados con la app
 - ✅ **Página de eliminación de cuenta** en `public/eliminar-cuenta.html`, que es
   la URL que pide el formulario de Seguridad de los datos
-- ✅ VersionCode 21 (2.6) compilado y firmado el 10/09/2026, con todo lo del 9 y
+- ✅ VersionCode 21 (2.6.0) compilado y firmado el 10/09/2026, con todo lo del 9 y
   el 10 dentro. El 19 y el 20 ya se enviaron, sus números están gastados
 - ⏳ **Pendiente de subir el 21.** Ver arriba lo que falta.
 
@@ -394,8 +394,8 @@ Para futuras actualizaciones:
 
 1. **Incrementa el versionCode** en `android/app/build.gradle`:
    ```gradle
-   versionCode 22       // El siguiente libre: el 21 es la 2.6
-   versionName "2.7"    // La versión que ve el usuario
+   versionCode 22       // El siguiente libre y entero: no admite puntos
+   versionName "2.6.1"  // La que ve el usuario: mayor.menor.parche
    ```
 
 2. **Genera nuevo AAB**:
