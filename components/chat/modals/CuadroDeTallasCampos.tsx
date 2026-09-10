@@ -32,10 +32,17 @@ interface Props {
   onChange: (tallas: CuadroDeTallas | undefined) => void;
   /** Los botones de prenda se pintan fuera cuando ya están arriba en la fila. */
   ocultarTipos?: boolean;
+  /**
+   * Qué prendas se ofrecen. En deportiva son camiseta, pantaloneta, medias y
+   * uniforme completo; en el resto de confección, las rejillas de siempre.
+   */
+  tipos?: TipoDeTalla[];
+  /** En qué prenda arranca al encenderlo. Por defecto, la primera de `tipos`. */
+  tipoInicial?: TipoDeTalla;
 }
 
 export const CuadroDeTallasCampos: React.FC<Props> = ({
-  tallas, costoBase, onChange, ocultarTipos = false,
+  tallas, costoBase, onChange, ocultarTipos = false, tipos = TIPOS_DE_TALLA, tipoInicial,
 }) => {
   const activo = !!tallas?.activo;
 
@@ -43,7 +50,7 @@ export const CuadroDeTallasCampos: React.FC<Props> = ({
     return (
       <button
         type="button"
-        onClick={() => onChange(cuadroEnBlanco())}
+        onClick={() => onChange(cuadroEnBlanco(tipoInicial ?? tipos[0]))}
         className="mt-2 w-full py-2 rounded-lg text-[11px] font-bold border border-dashed border-slate-300 text-slate-600 hover:bg-slate-50 transition flex items-center justify-center gap-1.5"
       >
         <i className="fa-solid fa-shirt text-[10px]"></i> Cotizar por tallas
@@ -66,13 +73,13 @@ export const CuadroDeTallasCampos: React.FC<Props> = ({
   return (
     <div className="mt-2 bg-indigo-50/60 border border-indigo-200 rounded-xl p-2.5">
       {!ocultarTipos && (
-        <div className="flex gap-1 mb-2.5">
-          {TIPOS_DE_TALLA.map(t => (
+        <div className="flex flex-wrap gap-1 mb-2.5">
+          {tipos.map(t => (
             <button
               key={t}
               type="button"
               onClick={() => cambiarTipo(t)}
-              className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold transition flex items-center justify-center gap-1 ${
+              className={`flex-1 min-w-[4.5rem] py-1.5 rounded-lg text-[10px] font-bold transition flex items-center justify-center gap-1 ${
                 cuadro.tipo === t
                   ? 'bg-indigo-600 text-white shadow-sm'
                   : 'bg-white text-slate-600 border border-slate-200 hover:border-indigo-300'
@@ -109,7 +116,8 @@ export const CuadroDeTallasCampos: React.FC<Props> = ({
             guardar(lineas.map((x, j) => (j === i ? { ...x, [campo]: valor } : x)));
 
           return (
-            <div key={`${l.talla}-${i}`} className="flex items-center gap-1.5">
+            <div key={`${l.talla}-${i}`}>
+            <div className="flex items-center gap-1.5">
               <select
                 value={l.talla}
                 onChange={e => set('talla', e.target.value)}
@@ -157,6 +165,39 @@ export const CuadroDeTallasCampos: React.FC<Props> = ({
               >
                 <i className="fa-solid fa-xmark text-[10px]"></i>
               </button>
+            </div>
+
+            {/* Los nombres y los números de estas prendas. Nace escondido: la
+                mayoría de los pedidos no llevan nombre, y un campo de texto
+                vacío en cada talla llena la pantalla de nada. */}
+            {l.nombres === undefined ? (
+              <button
+                type="button"
+                onClick={() => set('nombres', '')}
+                className="mt-1 ml-[4.5rem] text-[10px] font-bold text-indigo-600 hover:text-indigo-700 transition"
+              >
+                + Añadir nombre y número
+              </button>
+            ) : (
+              <div className="mt-1 ml-[4.5rem] flex items-start gap-1.5">
+                <input
+                  type="text"
+                  value={l.nombres}
+                  onChange={e => set('nombres', e.target.value)}
+                  placeholder="10 Pérez, 7 Gómez, 4 Ruiz…"
+                  autoFocus
+                  className="flex-1 min-w-0 bg-white border border-indigo-200 rounded-lg p-1.5 text-[11px] text-slate-900 placeholder-slate-400 outline-none focus:border-indigo-500"
+                />
+                <button
+                  type="button"
+                  onClick={() => set('nombres', undefined)}
+                  className="text-slate-300 hover:text-red-500 transition px-0.5 py-1.5"
+                  aria-label="Quitar los nombres de esta talla"
+                >
+                  <i className="fa-solid fa-xmark text-[10px]"></i>
+                </button>
+              </div>
+            )}
             </div>
           );
         })}

@@ -149,7 +149,13 @@ export interface QuoteItem {
 }
 
 /** Qué rejilla de tallas usa una prenda. */
-export type TipoDeTalla = 'letra' | 'pantalon' | 'calzado' | 'infantil';
+export type TipoDeTalla =
+  // Confección en general
+  | 'letra' | 'pantalon' | 'calzado' | 'infantil'
+  // Ropa deportiva. Son prendas, no rejillas de medida: un equipo compra o solo
+  // camisetas, o solo pantalonetas, o el uniforme completo, y esa es la
+  // pregunta que hay que hacerle. Las tallas son las mismas para todas.
+  | 'camiseta' | 'pantaloneta' | 'medias' | 'uniforme';
 
 /** Una talla del pedido: cuántas y a cuánto. */
 export interface LineaDeTalla {
@@ -163,6 +169,14 @@ export interface LineaDeTalla {
    * cobrársela a todas.
    */
   costo?: number;
+  /**
+   * Los nombres y números que van en estas prendas.
+   *
+   * Texto libre —«10 Pérez, 7 Gómez»— y no un campo por jugador: se escribe de
+   * corrido, que es como llega la lista del entrenador. Lo que cuesta ponerlos
+   * se cobra en su propia línea; esto es la instrucción para producción.
+   */
+  nombres?: string;
 }
 
 export interface CuadroDeTallas {

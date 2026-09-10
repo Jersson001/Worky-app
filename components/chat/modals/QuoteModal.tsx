@@ -11,7 +11,7 @@ import ProFeatureGuard from '../../ProFeatureGuard';
 import { CatalogPickerOverlay } from './CatalogPicker';
 import { FormaDePagoCampos, CondicionesEditor } from './CondicionesCotizacion';
 import { CuadroDeTallasCampos } from './CuadroDeTallasCampos';
-import { REJILLAS, TIPOS_DE_TALLA, cuadroEnBlanco } from '../../../utils/tallas';
+import { REJILLAS, TIPOS_DE_TALLA, TIPOS_DEPORTIVA, tipoPorNombre, esNombreDePrenda, cuadroEnBlanco } from '../../../utils/tallas';
 import { QuoteItem, Product, ProductCategory, ContactRole, QuoteMode, CarpentrySection, CarpentryCategoryKey, CarpentryLineItem, CarpentryMaterial, CarpentryUnit, MaterialUnit, PaymentAccount, CondicionesCotizacion, BloqueCondiciones } from '../../../types';
 import { formatCurrency } from '../../../utils/currency';
 import { totalDeTallas, subtotalDeItem } from '../../../utils/tallas';
@@ -754,7 +754,20 @@ export const QuoteModal: React.FC<QuoteModalProps> = React.memo(({
                                                 <CuadroDeTallasCampos
                                                   tallas={item.tallas}
                                                   costoBase={item.unitCost || 0}
+                                                  tipos={config.key === 'ropa_deportiva' ? TIPOS_DEPORTIVA : undefined}
+                                                  tipoInicial={config.key === 'ropa_deportiva' ? tipoPorNombre(item.description) : undefined}
                                                   onChange={t => {
+                                                    // La línea toma el nombre de la prenda elegida
+                                                    // mientras nadie la haya escrito a mano: si no,
+                                                    // el documento diría «Uniforme» encima de un
+                                                    // desglose de camisetas.
+                                                    //
+                                                    // No vale mirar `isTemplate`: encender las
+                                                    // tallas ya lo apaga, y entonces cambiar de
+                                                    // prenda después dejaba el nombre viejo.
+                                                    if (config.key === 'ropa_deportiva' && t?.tipo && esNombreDePrenda(item.description)) {
+                                                      onUpdateCarpentryItem(section.id, group.id, item.id, 'description', REJILLAS[t.tipo].label);
+                                                    }
                                                     onUpdateCarpentryItem(section.id, group.id, item.id, 'isTemplate', false);
                                                     onUpdateCarpentryItem(section.id, group.id, item.id, 'tallas', t);
                                                   }}

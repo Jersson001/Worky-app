@@ -600,15 +600,21 @@ const PERSONALIZACION: GrupoPlantilla[] = [
  */
 const ROPA_DEPORTIVA: GrupoPlantilla[] = [
   {
-    label: 'Prendas',
+    // Lo que se vende de entrada. La prenda se elige en la propia línea
+    // —camiseta, pantaloneta, medias o el uniforme completo—, porque un equipo
+    // compra una de esas cuatro cosas y no las cinco a la vez.
+    label: 'El pedido',
     items: [
-      { description: 'Camiseta', unit: 'UND', quantity: 1 },
-      { description: 'Pantaloneta', unit: 'UND', quantity: 1 },
-      { description: 'Medias', unit: 'UND', quantity: 1 },
-      { description: 'Sudadera (chaqueta y pantalón)', unit: 'UND', quantity: 1 },
-      { description: 'Chaqueta', unit: 'UND', quantity: 1 },
+      { description: 'Uniforme', unit: 'UND', quantity: 1 },
     ],
   },
+  // Lo que se añade encima, cada uno con su interruptor: un pedido de camisetas
+  // no lleva sudaderas, y tener sus renglones a la vista sin poder apagarlos
+  // obliga a borrarlos en cada cotización.
+  { label: 'Pantaloneta', items: [{ description: 'Pantaloneta', unit: 'UND', quantity: 1 }] },
+  { label: 'Medias',      items: [{ description: 'Medias', unit: 'UND', quantity: 1 }] },
+  { label: 'Sudaderas',   items: [{ description: 'Sudadera (chaqueta y pantalón)', unit: 'UND', quantity: 1 }] },
+  { label: 'Chaquetas',   items: [{ description: 'Chaqueta', unit: 'UND', quantity: 1 }] },
   {
     label: 'Logos y escudos',
     items: [

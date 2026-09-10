@@ -18,6 +18,17 @@ import { CuadroDeTallas, LineaDeTalla, TipoDeTalla } from '../types';
  * impares existen pero casi nadie las maneja en dotación. Calzado cubre de la
  * 34 a la 44, que es el rango de una dotación mixta.
  */
+/**
+ * Las tallas de un equipo, en el orden en que se piensan: primero los niños
+ * por edad, luego las de niño por letra que usan algunas marcas, y al final el
+ * adulto. Un pedido de escuela deportiva mezcla las tres.
+ */
+const TALLAS_DEPORTIVAS = [
+  '4', '6', '8', '10', '12', '14', '16',
+  'S-niño', 'M-niño', 'L-niño',
+  'XS', 'S', 'M', 'L', 'XL', 'XXL',
+];
+
 export const REJILLAS: Record<TipoDeTalla, { label: string; icono: string; tallas: string[] }> = {
   letra: {
     label: 'Camisa',
@@ -46,9 +57,58 @@ export const REJILLAS: Record<TipoDeTalla, { label: string; icono: string; talla
     icono: 'fa-solid fa-child',
     tallas: ['4', '6', '8', '10', '12', '14', '16'],
   },
+
+  // ── Ropa deportiva ────────────────────────────────────────────────────────
+  camiseta:    { label: 'Camiseta',         icono: 'fa-solid fa-shirt',      tallas: TALLAS_DEPORTIVAS },
+  pantaloneta: { label: 'Pantaloneta',      icono: 'fa-solid fa-person-running', tallas: TALLAS_DEPORTIVAS },
+  medias:      { label: 'Medias',           icono: 'fa-solid fa-socks',      tallas: TALLAS_DEPORTIVAS },
+  uniforme:    { label: 'Uniforme completo', icono: 'fa-solid fa-futbol',    tallas: TALLAS_DEPORTIVAS },
 };
 
-export const TIPOS_DE_TALLA = Object.keys(REJILLAS) as TipoDeTalla[];
+/**
+ * Las rejillas que se le ofrecen a cada oficio.
+ *
+ * En deportiva no se pregunta por una rejilla de medida sino por qué prenda es,
+ * porque un equipo compra o solo camisetas, o solo pantalonetas, o el uniforme
+ * completo. Enseñarle ahí «Calzado» no le sirve de nada.
+ */
+export const TIPOS_DEPORTIVA: TipoDeTalla[] = ['camiseta', 'pantaloneta', 'medias', 'uniforme'];
+
+/**
+ * Qué prenda es, deducido de cómo se llama la línea.
+ *
+ * Sirve para que el cuadro arranque en la prenda correcta: en el grupo de
+ * pantalonetas, encender las tallas tiene que dar pantaloneta y no camiseta,
+ * que es la primera de la lista.
+ */
+/**
+ * Si la línea todavía se llama como la puso la aplicación.
+ *
+ * Es lo que permite renombrarla al cambiar de prenda sin pisarle nunca un
+ * nombre escrito a mano: «Camiseta local con patrocinador» se respeta,
+ * «Camiseta» a secas se sustituye.
+ */
+export const esNombreDePrenda = (descripcion?: string): boolean => {
+  const d = (descripcion || '').trim();
+  if (!d || d === 'Uniforme') return true;
+  return TIPOS_DEPORTIVA.some(t => REJILLAS[t].label === d);
+};
+
+export const tipoPorNombre = (descripcion?: string): TipoDeTalla | undefined => {
+  const d = (descripcion || '').toLowerCase();
+  if (d.includes('pantaloneta')) return 'pantaloneta';
+  if (d.includes('media')) return 'medias';
+  if (d.includes('camiseta')) return 'camiseta';
+  if (d.includes('uniforme')) return 'uniforme';
+  return undefined;
+};
+
+/**
+ * Las de confección en general. No se derivan de `REJILLAS` porque ahí viven
+ * también las de deportiva, y a un taller de uniformes empresariales
+ * ofrecerle «Uniforme completo» no le dice nada.
+ */
+export const TIPOS_DE_TALLA: TipoDeTalla[] = ['letra', 'pantalon', 'calzado', 'infantil'];
 
 /** Un cuadro nuevo, con la primera talla puesta para no arrancar en blanco. */
 export const cuadroEnBlanco = (tipo: TipoDeTalla = 'letra'): CuadroDeTallas => ({
