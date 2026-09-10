@@ -149,7 +149,7 @@ export interface QuoteItem {
 }
 
 /** Qué rejilla de tallas usa una prenda. */
-export type TipoDeTalla = 'letra' | 'pantalon' | 'calzado';
+export type TipoDeTalla = 'letra' | 'pantalon' | 'calzado' | 'infantil';
 
 /** Una talla del pedido: cuántas y a cuánto. */
 export interface LineaDeTalla {
@@ -284,6 +284,7 @@ export type CarpentryCategoryKey =
   // el formulario es lo que hace dudar de si la aplicación es para uno.
   | 'uniformes_empresariales'
   | 'uniformes_escolares'
+  | 'ropa_deportiva'
   | 'dotacion_epp'
   | 'prendas_a_medida'
   | 'personalizacion';

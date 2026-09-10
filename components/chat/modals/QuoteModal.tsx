@@ -647,7 +647,11 @@ export const QuoteModal: React.FC<QuoteModalProps> = React.memo(({
                                                   />
                                                 </div>
                                               )}
-                                              <div className="w-14">
+                                              {/* Con tallas encendidas la cantidad se cuenta, no se
+                                                  escribe: dejarla editable permitía que el número y
+                                                  el desglose dijeran cosas distintas en el mismo
+                                                  documento. */}
+                                              <div className={`w-14 ${item.tallas?.activo ? 'hidden' : ''}`}>
                                                 <label className="text-[9px] text-slate-400 font-semibold uppercase block mb-0.5">Cant.</label>
                                                 <input
                                                   type="number"
@@ -742,6 +746,21 @@ export const QuoteModal: React.FC<QuoteModalProps> = React.memo(({
                                                   ))}
                                                 </div>
                                               )}
+                                              {/* El desglose por tallas. En un pedido de equipo es
+                                                  lo que se manda a producción: no son «20
+                                                  camisetas», son 3 S, 8 M, 6 L y 3 XL. Solo en
+                                                  confección; en obra una línea no tiene tallas. */}
+                                              {config.gremio === 'confeccion' && (
+                                                <CuadroDeTallasCampos
+                                                  tallas={item.tallas}
+                                                  costoBase={item.unitCost || 0}
+                                                  onChange={t => {
+                                                    onUpdateCarpentryItem(section.id, group.id, item.id, 'isTemplate', false);
+                                                    onUpdateCarpentryItem(section.id, group.id, item.id, 'tallas', t);
+                                                  }}
+                                                />
+                                              )}
+
                                               <div className="mt-2.5">
                                                 <label className="text-[9px] text-slate-400 font-semibold uppercase block mb-1">Comentarios</label>
                                                 <textarea

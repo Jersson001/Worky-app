@@ -34,6 +34,18 @@ export const REJILLAS: Record<TipoDeTalla, { label: string; icono: string; talla
     icono: 'fa-solid fa-shoe-prints',
     tallas: ['34', '35', '36', '37', '38', '39', '40', '41', '42', '43', '44'],
   },
+  /**
+   * Tallas de niño, por edad.
+   *
+   * Hacen falta en cuanto se cotiza para una escuela deportiva o un colegio:
+   * media plantilla es infantil y no cabe en XS–XXL. Se pide en una línea
+   * aparte de la de adulto, que es como se manda a producción.
+   */
+  infantil: {
+    label: 'Infantil',
+    icono: 'fa-solid fa-child',
+    tallas: ['4', '6', '8', '10', '12', '14', '16'],
+  },
 };
 
 export const TIPOS_DE_TALLA = Object.keys(REJILLAS) as TipoDeTalla[];

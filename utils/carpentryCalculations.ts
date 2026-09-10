@@ -315,6 +315,12 @@ export const CARPENTRY_CATEGORIES: CarpentryCategoryConfig[] = [
   // uniformes: no «20 camisas», sino 3 S, 8 M, 6 L y 3 XL.
   { key: 'uniformes_empresariales', gremio: 'confeccion', label: 'Uniformes Empresariales', icon: 'fa-solid fa-user-tie', colorFrom: 'from-sky-500', colorTo: 'to-sky-600', shadowColor: 'shadow-sky-500/30', defaultUnit: 'UND', fixedGroups: false },
   { key: 'uniformes_escolares', gremio: 'confeccion', label: 'Uniformes Escolares', icon: 'fa-solid fa-graduation-cap', colorFrom: 'from-indigo-500', colorTo: 'to-indigo-600', shadowColor: 'shadow-indigo-500/30', defaultUnit: 'UND', fixedGroups: false },
+  // Deportiva nace con grupos sembrados, al revés que los otros capítulos de
+  // confección. Un uniforme deportivo no es una prenda suelta: son cinco
+  // prendas, más los escudos y el patrocinador, más la numeración y el nombre
+  // de cada jugador. Escribir todo eso a mano en cada cotización es donde se
+  // olvida cobrar la mitad, que es justo lo que más se cobra aparte.
+  { key: 'ropa_deportiva', gremio: 'confeccion', label: 'Ropa Deportiva', icon: 'fa-solid fa-futbol', colorFrom: 'from-emerald-500', colorTo: 'to-emerald-600', shadowColor: 'shadow-emerald-500/30', defaultUnit: 'UND', fixedGroups: true },
   { key: 'dotacion_epp', gremio: 'confeccion', label: 'Dotación y EPP', icon: 'fa-solid fa-helmet-safety', colorFrom: 'from-amber-500', colorTo: 'to-amber-600', shadowColor: 'shadow-amber-500/30', defaultUnit: 'UND', fixedGroups: false },
   { key: 'prendas_a_medida', gremio: 'confeccion', label: 'Prendas a la Medida', icon: 'fa-solid fa-scissors', colorFrom: 'from-rose-500', colorTo: 'to-rose-600', shadowColor: 'shadow-rose-500/30', defaultUnit: 'UND', fixedGroups: false },
   // Lo que se cobra aparte de la prenda. El ponchado —pasar el logo a formato
@@ -581,9 +587,53 @@ const PERSONALIZACION: GrupoPlantilla[] = [
   },
 ];
 
+/**
+ * Ropa deportiva: la prenda, lo que lleva estampado y quién lo lleva puesto.
+ *
+ * Son tres cosas que se cobran por separado y se facturan juntas, y esa es la
+ * razón de sembrarlas: en un pedido de equipo lo que se olvida no es la
+ * camiseta, es el escudo del patrocinador y la numeración de los veinte
+ * jugadores. Cada renglón visible es un renglón que se cobra.
+ *
+ * Las prendas van sin precio para que se pongan los suyos; con las tallas
+ * encendidas la cantidad sale de contarlas, no de escribirla.
+ */
+const ROPA_DEPORTIVA: GrupoPlantilla[] = [
+  {
+    label: 'Prendas',
+    items: [
+      { description: 'Camiseta', unit: 'UND', quantity: 1 },
+      { description: 'Pantaloneta', unit: 'UND', quantity: 1 },
+      { description: 'Medias', unit: 'UND', quantity: 1 },
+      { description: 'Sudadera (chaqueta y pantalón)', unit: 'UND', quantity: 1 },
+      { description: 'Chaqueta', unit: 'UND', quantity: 1 },
+    ],
+  },
+  {
+    label: 'Logos y escudos',
+    items: [
+      { description: 'Escudo del club', unit: 'UND', quantity: 1 },
+      { description: 'Logo del patrocinador', unit: 'UND', quantity: 1 },
+      // Se paga UNA vez por logo, no por prenda: es preparar el archivo para
+      // la máquina. Va en GLOBAL para que no se multiplique por el pedido, y
+      // es de lo que más se olvida cobrar.
+      { description: 'Ponchado del logo (digitalización)', unit: 'GLOBAL', quantity: 1 },
+    ],
+  },
+  {
+    label: 'Números y nombres',
+    items: [
+      { description: 'Número en la espalda', unit: 'UND', quantity: 1 },
+      { description: 'Número en la pantaloneta', unit: 'UND', quantity: 1 },
+      { description: 'Nombre del jugador', unit: 'UND', quantity: 1 },
+    ],
+  },
+];
+
 /** Todas las categorías que nacen con grupos sembrados, en un solo sitio. */
 const PLANTILLAS_POR_CATEGORIA: Partial<Record<CarpentryCategoryKey, GrupoPlantilla[]>> = {
   personalizacion: PERSONALIZACION,
+  ropa_deportiva: ROPA_DEPORTIVA,
   cocinas_integrales: [
     { label: 'Muebles', items: COCINA_TEMPLATES.muebles },
     { label: 'Electrodomésticos', items: COCINA_TEMPLATES.electrodomesticos },
