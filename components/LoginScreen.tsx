@@ -68,6 +68,39 @@ const getAuthErrorMessage = (err: any): string => {
   return err?.message ? `Error de Supabase: ${err.message}` : 'Error de autenticación. Inténtalo de nuevo.';
 };
 
+/**
+ * Si se enseña «Continuar con Google».
+ *
+ * En `false` hasta que el proveedor esté activado en Supabase → Authentication
+ * → Providers → Google, con el ID y el secreto de Google Cloud pegados.
+ *
+ * No es prudencia de más: `signInWithOAuth` no falla en el navegador, sino que
+ * se lleva a la persona a Supabase, y es allí donde revienta con un
+ * «provider is not enabled» en JSON crudo y sin forma de volver. O sea que con
+ * el proveedor apagado, el botón no da un error bonito: echa al cliente de la
+ * aplicación. Comprobado el 10/09/2026.
+ *
+ * Se enciende poniéndolo en `true`, y nada más.
+ */
+const GOOGLE_LISTO = false;
+
+/**
+ * La «G» de Google, dibujada aquí.
+ *
+ * Va en el código y no como icono de una tipografía porque sus normas de marca
+ * exigen los cuatro colores exactos: el `fa-google` que ya está empaquetado es
+ * de un solo color y no sirve. Dibujada tampoco pide nada por internet, así que
+ * el botón se ve igual sin cobertura.
+ */
+const LogoGoogle = () => (
+  <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true" className="flex-shrink-0">
+    <path fill="#4285F4" d="M45.12 24.5c0-1.56-.14-3.06-.4-4.5H24v8.51h11.84c-.51 2.75-2.06 5.08-4.39 6.64v5.52h7.11c4.16-3.83 6.56-9.47 6.56-16.17z" />
+    <path fill="#34A853" d="M24 46c5.94 0 10.92-1.97 14.56-5.33l-7.11-5.52c-1.97 1.32-4.49 2.1-7.45 2.1-5.73 0-10.58-3.87-12.31-9.07H4.34v5.7C7.96 41.07 15.4 46 24 46z" />
+    <path fill="#FBBC05" d="M11.69 28.18C11.25 26.86 11 25.45 11 24s.25-2.86.69-4.18v-5.7H4.34C2.85 17.09 2 20.45 2 24s.85 6.91 2.34 9.88l7.35-5.7z" />
+    <path fill="#EA4335" d="M24 10.75c3.23 0 6.13 1.11 8.41 3.29l6.31-6.31C34.91 4.18 29.93 2 24 2 15.4 2 7.96 6.93 4.34 14.12l7.35 5.7c1.73-5.2 6.58-9.07 12.31-9.07z" />
+  </svg>
+);
+
 export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister, invitadoPor }) => {
   const [email, setEmail] = useState('');
   const [firstName, setFirstName] = useState('');
@@ -209,6 +242,47 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister, i
       setError(err?.message || 'No se pudieron buscar aliases. Revisa tu conexión.');
     } finally {
       setBuscandoAlias(false);
+    }
+  };
+
+  /**
+   * Entrar con Google.
+   *
+   * No hace falta ninguna clave aquí: el ID y el secreto viven en Supabase, que
+   * es quien habla con Google. Esto solo abre el camino.
+   *
+   * El destino es el origen actual y no la app publicada, al revés que en los
+   * enlaces que se comparten: aquí se vuelve al mismo navegador donde se
+   * empezó, así que mandarlo a otro sitio dejaría la sesión donde no está la
+   * persona —y en local, sin poder probarlo—. Cada origen tiene que estar en
+   * las Redirect URLs de Supabase.
+   *
+   * A quién le compró se conserva solo: `vendedorPendiente` vive en el
+   * localStorage del navegador, que sobrevive al viaje de ida y vuelta.
+   */
+  const entrarConGoogle = async () => {
+    setError('');
+    setLoading(true);
+    try {
+      const { protocol, origin } = window.location;
+      const destino = (protocol === 'http:' || protocol === 'https:') ? origin : WORKY_APP_URL;
+      const { error: e } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: destino },
+      });
+      if (e) throw e;
+      // Si no lanza, el navegador ya se está yendo a Google: no se apaga el
+      // «cargando», que apagarlo deja el botón como si no hubiera pasado nada.
+    } catch (err: any) {
+      console.error('Entrada con Google:', err);
+      // El caso que de verdad pasa: el proveedor no está configurado todavía.
+      const msg = String(err?.message ?? '').toLowerCase();
+      setError(
+        msg.includes('provider') || msg.includes('not enabled')
+          ? 'Entrar con Google todavía no está habilitado. Actívalo en Supabase → Authentication → Providers → Google.'
+          : getAuthErrorMessage(err),
+      );
+      setLoading(false);
     }
   };
 
@@ -744,6 +818,27 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister, i
                   </div>
                 )}
 
+                {/* Google, como atajo al registro de verdad. Aquí vale doble:
+                    quien entra así queda con cuenta recuperable y con su correo
+                    desde el primer momento, sin escribir una contraseña. */}
+                {GOOGLE_LISTO && (
+                <div className="pt-3 border-t border-slate-100 space-y-2.5">
+                  <p className="text-center text-[11px] text-slate-400 font-semibold">o</p>
+                  <button
+                    type="button"
+                    onClick={() => void entrarConGoogle()}
+                    disabled={loading}
+                    className="w-full bg-white border border-slate-300 text-slate-700 py-3 rounded-xl font-bold text-sm hover:bg-slate-50 transition flex items-center justify-center gap-2.5 disabled:opacity-50"
+                  >
+                    <LogoGoogle />
+                    Continuar con Google
+                  </button>
+                  <p className="text-[11px] text-slate-400 text-center leading-snug">
+                    Así no pierdes la conversación aunque cambies de teléfono.
+                  </p>
+                </div>
+                )}
+
                 {/* La nota de «podrás añadir tu correo más adelante» vivía aquí.
                     Sobra desde que el correo se pide arriba, y decir dos veces
                     lo mismo en la misma pantalla lo vuelve ruido. */}
@@ -936,6 +1031,26 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister, i
                 ) : authMode === 'login' ? 'Iniciar sesión' : 'Crear cuenta'}
               </button>
             </form>
+            )}
+
+            {/* Google, también en el formulario de siempre. Va fuera del <form>
+                para que no lo dispare un Enter: se entra con lo que se escribió
+                arriba, no con otra cuenta sin querer. */}
+            {GOOGLE_LISTO && !entradaPorAlias && !pendingEmailConfirmation && (
+              <div className="mt-5 pt-4 border-t border-slate-100 space-y-3">
+                <p className="text-center text-[11px] text-slate-400 font-semibold uppercase tracking-wide">
+                  o continúa con
+                </p>
+                <button
+                  type="button"
+                  onClick={() => void entrarConGoogle()}
+                  disabled={loading}
+                  className="w-full bg-white border border-slate-300 text-slate-700 py-3 rounded-xl font-bold text-sm hover:bg-slate-50 transition flex items-center justify-center gap-2.5 disabled:opacity-50"
+                >
+                  <LogoGoogle />
+                  Continuar con Google
+                </button>
+              </div>
             )}
 
             {/* Footer */}
