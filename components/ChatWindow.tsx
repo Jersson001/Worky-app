@@ -502,7 +502,11 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
   }, [onSendMessage]);
 
   const handleSelectProduct = useCallback((product: Product) => {
-    onSendMessage('', 'product', product);
+    // El nombre va como texto del mensaje, aunque la burbuja no lo pinte —tiene
+    // el suyo, más grande—: es lo que se guarda como «último mensaje» y lo que
+    // se lee en la lista de chats. Con el texto vacío, mandar un producto
+    // dejaba la conversación en blanco en la lista.
+    onSendMessage(product.name || 'Producto', 'product', product);
     forms.closeModal('productPicker');
   }, [onSendMessage]);
 

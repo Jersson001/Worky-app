@@ -10,6 +10,7 @@ import { QuoteBubble } from './bubbles/QuoteBubble';
 import { CollectionBubble } from './bubbles/CollectionBubble';
 import { ReceiptBubble } from './bubbles/ReceiptBubble';
 import { FileBubble } from './bubbles/FileBubble';
+import { ProductBubble } from './bubbles/ProductBubble';
 
 interface MessageBubbleProps {
   msg: Message;
@@ -459,6 +460,10 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
                   onShowQR={onShowQR}
                   onUpdateMessage={onUpdateMessage}
                 />
+              )}
+
+              {msg.type === 'product' && msg.metadata && (
+                <ProductBubble msg={msg} />
               )}
 
               {/* Image Content */}
