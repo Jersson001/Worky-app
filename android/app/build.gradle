@@ -54,6 +54,12 @@ android {
         // mismo documento que se imprime —con sus fotos, que en la cotización
         // básica no salían—, y las iniciales de los contactos dibujadas en el
         // teléfono en vez de pedidas a un tercero con el nombre dentro.
+        //
+        // Recompilado el 10/09/2026, sin gastar número porque el 20 no llegó a
+        // subirse: capítulo de ropa deportiva —prendas, escudos, numeración y
+        // nombre de cada jugador—, el producto del catálogo que se mandaba al
+        // chat y no se veía, y las dos pantallas de arranque, que llevaban el
+        // logo de Capacitor y un emoji de teléfono.
         versionCode 20
         versionName "2.5"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
