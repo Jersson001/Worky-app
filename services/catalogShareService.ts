@@ -14,8 +14,15 @@ import { reducirImagen } from '../utils/imagen';
 import { getCurrentUserId } from './messagingService';
 import { Product, ProductCategory, UserProfileData } from '../types';
 
-/** La app publicada. El destino por defecto de todo lo que se comparte. */
-const APP_PUBLICADA = 'https://worky-app-khaki.vercel.app';
+/**
+ * La app publicada. El destino por defecto de todo lo que se comparte.
+ *
+ * Desde el 11/09/2026 es el dominio propio. El anterior
+ * —`worky-app-khaki.vercel.app`— **sigue funcionando y no se debe retirar**:
+ * los QR impresos y los enlaces ya repartidos apuntan ahí, y un QR en papel no
+ * se puede corregir. Vercel mantiene los dos a la vez.
+ */
+const APP_PUBLICADA = 'https://worky.ferryapp.co';
 
 /**
  * El origen actual, si sirve para compartirlo con alguien.

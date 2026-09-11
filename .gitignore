@@ -45,3 +45,11 @@ ios/build/
 
 # Contraseñas de firma (la plantilla .example sí se versiona)
 android/keystore.properties
+
+# -- Secretos que se descargan a la raiz y no deben salir de aqui -------------
+# El 11/09/2026 una clave de cuenta de servicio de Firebase y unos codigos de
+# recuperacion acabaron en un commit por estar sueltos en la raiz. El push lo
+# bloqueo GitHub, pero el repositorio es publico y no puede depender de eso.
+*firebase-adminsdk*.json
+*-service-account*.json
+recovery-codes.txt
