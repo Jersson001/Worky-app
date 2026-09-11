@@ -16,6 +16,7 @@
     "@capacitor/android": "^8.5.0",
     "@capacitor/cli": "^8.0.0",
     "@capacitor/core": "^8.0.0",
+    "@capacitor/push-notifications": "^8.1.2",
     "@fontsource/inter": "^5.3.0",
     "@fortawesome/fontawesome-free": "^7.3.1",
     "@supabase/supabase-js": "^2.43.4",

@@ -28,6 +28,7 @@ import { Contact, Message, UserStatus, ProjectStage, Product, Expense, Story, Pa
 import { LoginScreen } from './components/LoginScreen';
 import { avatarDeIniciales, fotoOIniciales } from './utils/avatar';
 import { NuevaContrasena } from './components/NuevaContrasena';
+import { engancharNotificaciones } from './services/pushService';
 import { WelcomeOnboarding } from './components/WelcomeOnboarding';
 import { sendMessage as sendMessageToFirebase, listenToMessages, listenToContacts, addContact, deleteContact, saveUserProfile, getUserProfile, initializeUserId, setCurrentUserId, getCurrentUserId, searchUserByPhoneOrEmail, addContactFromSearch, deleteMessage, updateMessage, listenToGlobalIncomingMessages, markChatAsRead, markMessagesAsDelivered, markMessagesAsRead, getPublicInfoById } from './services/messagingService';
 import { saveProduct, deleteProduct, listenToProducts, saveCategory, deleteCategory, listenToCategories, saveProject, deleteProject, updateProject, addExpenseToProject, updateContactWithProjects, listenToPaymentAccounts, savePaymentAccount, deletePaymentAccount, PaymentAccountData, listenToThirdPartyAccounts, saveThirdPartyAccount, deleteThirdPartyAccount, fetchProjectsForContact, listenToProjects } from './services/dataService';
@@ -455,6 +456,11 @@ const App: React.FC = () => {
         setUidSesion(user.id);
         setEsAnonimo(user.is_anonymous === true);
         setLlegoDeUnCatalogo(!!user.user_metadata?.vendedor);
+
+        // El teléfono se engancha aquí y no al abrir la app: el token se cuelga
+        // de una cuenta, y sin sesión no hay de quién. En el navegador no hace
+        // nada. Si la persona niega el permiso, la app sigue igual, sin avisos.
+        void engancharNotificaciones();
 
         // Try to load profile from Supabase
         unsubProfileRef?.();
