@@ -1,6 +1,6 @@
 # Estado de funcionalidades — Worky
 
-Última revisión: 10 de septiembre de 2026.
+Última revisión: 11 de septiembre de 2026.
 
 > Este documento describía el proyecto cuando corría sobre Firebase y decía que
 > los clientes no podían tener cuenta, que Storage no estaba implementado y que
@@ -106,7 +106,8 @@ salen preguntándole al servidor:
 
 ```bash
 # ¿A dónde devuelve? Debe ser worky-app-khaki, no localhost
-curl -s -o /dev/null -w "%{redirect_url}" \n  "https://<ref>.supabase.co/auth/v1/callback?error=x&error_description=x"
+curl -s -o /dev/null -w "%{redirect_url}" \
+  "https://<ref>.supabase.co/auth/v1/callback?error=x&error_description=x"
 ```
 
 Y los errores del intercambio, en los registros de `auth_logs` del proyecto.
@@ -258,6 +259,87 @@ vive treinta días.
 
 De propina, las iniciales salen al instante y **funcionan sin cobertura**, que
 es donde antes quedaban huecos grises.
+
+---
+
+## Notificaciones
+
+Dos cosas distintas que se llaman igual:
+
+- **Con la app abierta**: el panel de notificaciones y los avisos que saltan
+  mientras se está mirando. Existía desde antes.
+- **Con la app cerrada**: que suene el teléfono cuando un cliente escribe.
+  Montado el 11/09/2026, y solo en la app instalada.
+
+**Solo en el teléfono.** En el navegador no se registra nada: las notificaciones
+web son otra cosa, con otro permiso y otro camino, y llamar al plugin fuera de
+la app instalada solo da un error de «no implementado».
+
+### Cómo está armado
+
+| pieza | qué hace |
+|---|---|
+| services/pushService.ts | pide el permiso, guarda el token, lo suelta al cerrar sesión |
+| push_tokens | una fila por aparato, cerrada: cada quien solo ve los suyos |
+| disparador on_message_created | llama a la función cuando entra un mensaje |
+| supabase/functions/notificar-mensaje | busca los aparatos y manda el aviso por FCM |
+
+**Una fila por aparato y no por persona**: quien usa Worky en el teléfono y en
+la tablet quiere que le suenen los dos. El token se reescribe en cada arranque
+porque FCM lo rota por su cuenta —al reinstalar, al limpiar los datos— y un
+token viejo no falla al enviar, simplemente no llega.
+
+**Se engancha al iniciar sesión, no al abrir la app.** Por dos razones: el token
+se cuelga de una cuenta, y pedir el permiso antes de que la persona sepa qué es
+Worky es la forma más segura de que lo niegue para siempre.
+
+**El aviso sale del servidor y no de la app del que escribe.** Quien manda puede
+cerrar Worky en el mismo segundo y el aviso no saldría nunca; y desde el cliente
+cualquiera podría mandarle notificaciones a quien quisiera.
+
+### Lo que protege al mensaje
+
+Un mensaje que no llega es lo único que no se puede perder, así que hay tres
+cosas puestas para que avisar no pueda costarlo:
+
+1. pg_net llama **sin esperar respuesta**, así que un fallo de red al avisar no
+   retrasa el guardado.
+2. El disparador captura cualquier error y devuelve NEW igual.
+3. La función responde 200 incluso cuando falla.
+
+Sin FIREBASE_SERVICE_ACCOUNT configurado no hace nada y lo dice. Los tokens
+que FCM da por muertos —app desinstalada, datos limpiados— se borran solos en
+vez de reintentarlos en cada mensaje para siempre.
+
+### Lo que cambia para Play
+
+**El token de FCM es un identificador de dispositivo.** En el formulario de
+Seguridad de los datos se declaró que Worky no recoge ninguno, y eso deja de ser
+cierto en cuanto esto se publique. Hay que actualizar esa declaración y
+mencionarlo en la política antes de subir una versión con notificaciones.
+
+---
+
+## El dominio
+
+Lo que se comparte va por **worky.ferryapp.co** desde el 11/09/2026. Es
+subdominio de erryapp.co, que ya era de Ferry App, así que no costó nada y
+además dice quién publica Worky.
+
+**El anterior, worky-app-khaki.vercel.app, sigue funcionando y no se debe
+retirar**: los QR impresos y los enlaces ya repartidos apuntan ahí, y un QR en
+papel no se puede corregir. Vercel mantiene los dos a la vez, y ambos están
+dados de alta en Supabase y en Google.
+
+En el código solo existe APP_PUBLICADA, que es el destino por defecto cuando
+no hay un origen real del que tirar —el caso del APK—. Desde la web,
+origenCompartible usa el origen actual, así que los enlaces salen con el
+dominio por el que se entró.
+
+Cambiar de dominio toca cinco sitios, y tres están fuera del código: el Site
+URL y las Redirect URLs de Supabase, los orígenes autorizados de Google, y
+las URLs de política y eliminación de cuenta en Play. Si se olvidan los de
+Supabase se rompen entrar con Google y recuperar la contraseña.
 
 ---
 

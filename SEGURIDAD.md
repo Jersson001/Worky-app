@@ -176,6 +176,38 @@ Hasta el 7 de septiembre de 2026 el avatar por defecto se le pedía a
 el dispositivo. Se limpiaron el trigger de registro y las 47 filas que lo tenían
 guardado (`public_info.avatar_url` y `contacts.avatar`).
 
+### `push_tokens` — 11 de septiembre de 2026
+
+Un token de FCM es la llave para escribirle a la pantalla de un teléfono, así
+que leerlo ajeno sería poder mandarle notificaciones a otro. La política es la
+más estricta que cabe: `auth.uid() = user_id` para todo, leer y escribir.
+
+La función que los usa corre en el servidor con la clave de servicio, que salta
+RLS: es la única forma de que pueda avisarle al destinatario de un mensaje, que
+por definición no es quien lo manda.
+
+### Dos secretos que casi se publican — 11 de septiembre de 2026
+
+Al hacer `git add -A` entraron en un commit la **clave de cuenta de servicio de
+Firebase** y un **`recovery-codes.txt`**, los dos sueltos en la raíz del
+proyecto. El push lo bloqueó la protección de GitHub y nunca llegaron al
+repositorio, que es público.
+
+Se comprobó que no estaban en el historial ni en el remoto, se deshizo el
+commit y se añadieron al `.gitignore`:
+
+```
+*firebase-adminsdk*.json
+*-service-account*.json
+recovery-codes.txt
+```
+
+**La lección no es el patrón añadido, es el hábito**: un archivo de claves
+descargado a la carpeta del proyecto acaba en un commit tarde o temprano. Salió
+bien porque GitHub lo paró, y un repositorio público no puede depender de eso
+—la contraseña del keystore, que sigue en el historial, es la prueba de que no
+siempre lo para—.
+
 ---
 
 ## Restos conocidos

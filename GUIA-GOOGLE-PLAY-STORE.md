@@ -4,7 +4,7 @@ Esta guía te llevará paso a paso para publicar tu aplicación Worky en Google 
 
 ---
 
-## 📌 Dónde va esto — al 10 de septiembre de 2026
+## 📌 Dónde va esto — al 11 de septiembre de 2026
 
 El siguiente envío va con el **`versionCode` 26091001 (versión 2.6.0)**,
 compilado y firmado. El 19, el 20 y el 21 ya se enviaron a Play. La política está viva en
@@ -32,6 +32,19 @@ una sola instalación. Mientras tanto, lo que se sube a `main` se publica solo e
 Para probar en el teléfono se compila aparte un `.apk` —el `.aab` no se
 instala—; cómo, en
 [GENERAR-APK-ANDROID-STUDIO.md](GENERAR-APK-ANDROID-STUDIO.md).
+
+**Al subir la siguiente versión hay que cambiar dos cosas de la ficha**, que
+siguen apuntando al dominio de Vercel:
+
+```
+https://worky.ferryapp.co/privacidad.html
+https://worky.ferryapp.co/eliminar-cuenta.html
+```
+
+**Y una declaración deja de ser cierta.** Con las notificaciones, Worky guarda
+el **token de FCM**, que es un **identificador de dispositivo**, y en Seguridad
+de los datos se declaró que no recoge ninguno. Hay que actualizarlo y
+mencionarlo en la política **antes** de publicar una versión con notificaciones.
 
 **Lo que queda antes de subirlo:**
 
@@ -102,10 +115,12 @@ fue por el contenido de la app:
   `android/keystore.properties` (fuera del repositorio)
 - ✅ Configuración de firma en `build.gradle`
 - ✅ App ID: `com.worky.app.v2`
-- ℹ️ **No hay `google-services.json` ni hace falta**: era de Firebase, que ya no
-  se usa. Gradle solo aplica ese plugin si el archivo existe, así que su
-  ausencia no rompe nada. Lo único que se pierde son las notificaciones push,
-  que tampoco están implementadas.
+- ✅ **`google-services.json` puesto** en `android/app/`, desde el 11/09/2026.
+  Está en el `.gitignore`: lleva las claves del proyecto de Firebase y el
+  repositorio es público. Sin él, Gradle no aplica el plugin y la app compila
+  igual, pero sin notificaciones.
+- ✅ **Notificaciones con la app cerrada**, montadas el 11/09/2026. Falta
+  probarlas en un teléfono de verdad.
 - ✅ **Icono de la app**: ya es el logo de Worky. Hasta agosto de 2026 el bundle
   llevaba el icono de plantilla de Capacitor, porque nunca se reemplazó. Los
   originales están en `assets/`; para regenerarlo todo:
