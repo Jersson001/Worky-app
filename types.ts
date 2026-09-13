@@ -140,6 +140,12 @@ export interface QuoteItem {
   image?: string; // Mantener para compatibilidad hacia atrás
   images?: string[]; // Nuevo: array de imágenes
   /**
+   * Notas de la línea: acabados, medidas, condiciones. La cotización
+   * personalizada ya los tenía y la básica no, así que todo eso acababa metido a
+   * la fuerza dentro del nombre del producto.
+   */
+  comments?: string;
+  /**
    * El desglose por tallas, cuando la línea es una prenda.
    *
    * Con él, `quantity` deja de escribirse y sale de sumar las tallas: en

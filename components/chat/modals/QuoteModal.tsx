@@ -1094,6 +1094,16 @@ export const QuoteModal: React.FC<QuoteModalProps> = React.memo(({
                         </button>
                       </div>
                     )}
+                    <div className="mt-2.5">
+                      <label className="text-[9px] text-slate-400 font-semibold uppercase block mb-1">Comentarios (Opcional)</label>
+                      <textarea
+                        value={item.comments || ''}
+                        onChange={e => onUpdateItem(idx, 'comments', e.target.value)}
+                        placeholder="Notas o especificaciones..."
+                        className="w-full bg-white p-2 rounded-lg text-xs text-slate-900 placeholder-slate-400 outline-none border border-slate-200 focus:border-blue-500 transition resize-none"
+                        rows={2}
+                      />
+                    </div>
                   </div>
                 </div>
               ))}

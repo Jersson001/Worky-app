@@ -538,6 +538,13 @@ const QuoteTemplate = ({ data, businessLogo, userProfile, catalogoUrl, signature
                                                 {resumenDeTallas(item.tallas)}
                                             </div>
                                         )}
+                                        {/* En negro y a buen tamaño, igual que en la personalizada:
+                                            es parte de lo que el cliente aprueba, no una nota al pie. */}
+                                        {item.comments?.trim() && (
+                                            <div className="text-[14px] leading-snug text-gray-900 mt-1 whitespace-pre-line break-words">
+                                                {item.comments.trim()}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </td>
