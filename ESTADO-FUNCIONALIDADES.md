@@ -1,6 +1,6 @@
 # Estado de funcionalidades — Worky
 
-Última revisión: 11 de septiembre de 2026.
+Última revisión: 13 de septiembre de 2026.
 
 > Este documento describía el proyecto cuando corría sobre Firebase y decía que
 > los clientes no podían tener cuenta, que Storage no estaba implementado y que
@@ -517,6 +517,14 @@ materiales» cada vez es trabajo que nadie hace dos veces. Viven en
 `user_profiles.condiciones_cotizacion` (jsonb) y `anticipo_porcentaje`
 (smallint, 0–100). Se retocan en una cotización concreta sin tocar la
 plantilla, y un botón las deja como las de siempre.
+
+### Comentarios por línea en la cotización básica
+
+Desde el 13/09/2026 cada línea de la básica lleva su campo de comentarios, como
+ya lo tenía la personalizada. Sin él, acabados, medidas y condiciones acababan
+metidos a la fuerza en el nombre del producto. El documento lo imprime bajo la
+descripción, en negro y a 14 px: es parte de lo que el cliente aprueba, no una
+nota al pie. Vive en `QuoteItem.comments`.
 
 ### Cotizar por tallas
 
