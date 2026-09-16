@@ -5,7 +5,7 @@
 import { useState, useCallback } from 'react';
 import { InvoiceItem, QuoteItem, Product, QuoteMode, CarpentrySection, CarpentryCategoryKey, CarpentryLineItem, CondicionesCotizacion, BloqueCondiciones, CuadroDeTallas, GremioKey } from '../types';
 import { createCarpentrySection, createBlankCarpentryItem, computeM2FromDimensions } from '../utils/carpentryCalculations';
-import { condicionesDeFabrica } from '../utils/condicionesCotizacion';
+import { condicionesDelNegocio } from '../utils/condicionesCotizacion';
 import { totalDeTallas } from '../utils/tallas';
 import { parseAmount } from '../utils/currency';
 
@@ -180,7 +180,7 @@ const quoteEnBlanco = (plantilla?: PlantillaDelNegocio): Omit<QuoteFormState, 'c
   sections: [],
   anticipoPorcentaje: String(plantilla?.anticipoPorcentaje ?? 50),
   cuentaCobroId: '',
-  condiciones: structuredClone(plantilla?.condiciones ?? condicionesDeFabrica(plantilla?.gremios ?? [])),
+  condiciones: structuredClone(condicionesDelNegocio(plantilla?.condiciones, plantilla?.gremios ?? [])),
 });
 const DEFAULT_RECEIPT: ReceiptFormState = { amount: '', concept: '', selectedAccount: '', selectedProject: '' };
 const DEFAULT_MODALS: ModalVisibility = {

@@ -25,7 +25,34 @@ const bloque = (titulo: string, lineas: string[], activo = true): BloqueCondicio
  * sitio debe estar en obra blanca» le dice que la aplicación no es para él.
  */
 export const condicionesDeFabrica = (gremios: GremioKey[]): CondicionesCotizacion =>
-  gremios.includes('confeccion') ? CONDICIONES_CONFECCION() : CONDICIONES_POR_DEFECTO();
+  esDeConfeccion(gremios) ? CONDICIONES_CONFECCION() : CONDICIONES_POR_DEFECTO();
+
+/**
+ * Si el oficio es de confección y de nada más.
+ *
+ * No basta con que la lista incluya confección: a quien no ha declarado oficio
+ * `gremiosVisibles` le da todos los gremios, y con `includes` una carpintería
+ * sin oficio puesto recibía «Cambios y tallas» en su cotización.
+ */
+const esDeConfeccion = (gremios: GremioKey[]): boolean =>
+  gremios.length > 0 && gremios.every(g => g === 'confeccion');
+
+/**
+ * Las condiciones con que arranca una cotización nueva: las guardadas si son
+ * de este oficio, y si no las de fábrica.
+ *
+ * La plantilla guardada no dice de qué oficio es, y el oficio se puede cambiar
+ * después. Quien guardó las de confección y luego eligió carpintería seguía
+ * viendo «Lo que pone el cliente» y «Cambios y tallas». El apartado de cambios
+ * solo existe en la plantilla de confección, así que es lo que la delata.
+ */
+export const condicionesDelNegocio = (
+  guardadas: CondicionesCotizacion | undefined,
+  gremios: GremioKey[],
+): CondicionesCotizacion =>
+  guardadas && !!guardadas.cambios === esDeConfeccion(gremios)
+    ? guardadas
+    : condicionesDeFabrica(gremios);
 
 /**
  * Lo que trae la plantilla de obra cuando nadie la ha tocado.
