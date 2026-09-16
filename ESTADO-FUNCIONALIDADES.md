@@ -1,6 +1,6 @@
 # Estado de funcionalidades — Worky
 
-Última revisión: 13 de septiembre de 2026.
+Última revisión: 16 de septiembre de 2026.
 
 > Este documento describía el proyecto cuando corría sobre Firebase y decía que
 > los clientes no podían tener cuenta, que Storage no estaba implementado y que
@@ -279,10 +279,10 @@ la app instalada solo da un error de «no implementado».
 
 | pieza | qué hace |
 |---|---|
-| services/pushService.ts | pide el permiso, guarda el token, lo suelta al cerrar sesión |
-| push_tokens | una fila por aparato, cerrada: cada quien solo ve los suyos |
-| disparador on_message_created | llama a la función cuando entra un mensaje |
-| supabase/functions/notificar-mensaje | busca los aparatos y manda el aviso por FCM |
+| `services/pushService.ts` | pide el permiso, guarda el token, lo suelta al cerrar sesión |
+| `push_tokens` | una fila por aparato, cerrada: cada quien solo ve los suyos |
+| disparador `on_message_created` | llama a la función cuando entra un mensaje |
+| `supabase/functions/notificar-mensaje` | busca los aparatos y manda el aviso por FCM |
 
 **Una fila por aparato y no por persona**: quien usa Worky en el teléfono y en
 la tablet quiere que le suenen los dos. El token se reescribe en cada arranque
@@ -302,12 +302,12 @@ cualquiera podría mandarle notificaciones a quien quisiera.
 Un mensaje que no llega es lo único que no se puede perder, así que hay tres
 cosas puestas para que avisar no pueda costarlo:
 
-1. pg_net llama **sin esperar respuesta**, así que un fallo de red al avisar no
+1. `pg_net` llama **sin esperar respuesta**, así que un fallo de red al avisar no
    retrasa el guardado.
-2. El disparador captura cualquier error y devuelve NEW igual.
+2. El disparador captura cualquier error y devuelve `NEW` igual.
 3. La función responde 200 incluso cuando falla.
 
-Sin FIREBASE_SERVICE_ACCOUNT configurado no hace nada y lo dice. Los tokens
+Sin `FIREBASE_SERVICE_ACCOUNT` configurado no hace nada y lo dice. Los tokens
 que FCM da por muertos —app desinstalada, datos limpiados— se borran solos en
 vez de reintentarlos en cada mensaje para siempre.
 
@@ -323,17 +323,17 @@ mencionarlo en la política antes de subir una versión con notificaciones.
 ## El dominio
 
 Lo que se comparte va por **worky.ferryapp.co** desde el 11/09/2026. Es
-subdominio de erryapp.co, que ya era de Ferry App, así que no costó nada y
+subdominio de `ferryapp.co`, que ya era de Ferry App, así que no costó nada y
 además dice quién publica Worky.
 
-**El anterior, worky-app-khaki.vercel.app, sigue funcionando y no se debe
+**El anterior, `worky-app-khaki.vercel.app`, sigue funcionando y no se debe
 retirar**: los QR impresos y los enlaces ya repartidos apuntan ahí, y un QR en
 papel no se puede corregir. Vercel mantiene los dos a la vez, y ambos están
 dados de alta en Supabase y en Google.
 
-En el código solo existe APP_PUBLICADA, que es el destino por defecto cuando
+En el código solo existe `APP_PUBLICADA`, que es el destino por defecto cuando
 no hay un origen real del que tirar —el caso del APK—. Desde la web,
-origenCompartible usa el origen actual, así que los enlaces salen con el
+`origenCompartible` usa el origen actual, así que los enlaces salen con el
 dominio por el que se entró.
 
 Cambiar de dominio toca cinco sitios, y tres están fuera del código: el Site
@@ -517,6 +517,15 @@ materiales» cada vez es trabajo que nadie hace dos veces. Viven en
 `user_profiles.condiciones_cotizacion` (jsonb) y `anticipo_porcentaje`
 (smallint, 0–100). Se retocan en una cotización concreta sin tocar la
 plantilla, y un botón las deja como las de siempre.
+
+**La plantilla guardada solo se usa si es del oficio.** No dice de cuál es, y
+el oficio se cambia después: el 16/09/2026 una carpintería cotizaba con «Lo que
+pone el cliente» y «Cambios y tallas» porque tenía guardadas las de confección.
+Como «Cambios y tallas» solo existe en la plantilla de confección, con eso se
+distingue. Si no cuadra, salen las de fábrica del oficio
+(`condicionesDelNegocio`). Y a quien no tiene oficio le tocan las de obra: antes
+recibía las de confección, porque sin oficio se ven todos los gremios y
+bastaba con que confección estuviera en la lista.
 
 ### Comentarios por línea en la cotización básica
 
@@ -731,9 +740,49 @@ diez viajes.
 
 ---
 
+## Estados Financieros
+
+Tres cifras que antes se confundían en una sola, «ingresos»:
+
+| | de dónde sale |
+|---|---|
+| **Vendido** | proyectos con valor, en la fecha en que nacen |
+| **Cobrado** | recibos de caja, y facturas y cuentas de cobro marcadas como pagadas |
+| **Gastos** | la tabla `expenses` de esos proyectos |
+
+**Caja** es cobrado menos gastos. Es el mismo criterio que el balance del
+proyecto en la ficha del contacto.
+
+**Hasta el 16/09/2026 salía en $0.** Por dos motivos distintos:
+
+1. **La pantalla no pedía nada.** Sumaba `contact.projects` de la lista en
+   memoria, que se carga vacía: los proyectos solo se piden al abrir un chat, y
+   al abrir el reporte se deselecciona el contacto. Ahora lee directo de la base
+   en `services/finanzasService.ts`, y las cuentas son funciones puras en
+   `utils/finanzas.ts`.
+2. **La base le negaba las ventas al vendedor.** Cuando el cliente aprueba, el
+   proyecto cuelga de la ficha del cliente, y las políticas solo dejan verlo al
+   dueño de la ficha. Leyendo como el vendedor de la cocina de $54.548.848, no
+   aparecía. Lo arregla
+   [supabase_finanzas_del_vendedor.sql](supabase_finanzas_del_vendedor.sql),
+   con sus pruebas. Aplicado el 16/09/2026 y comprobado leyendo como cada
+   uno: los dos vendedores ven sus proyectos aprobados, el cliente sigue viendo
+   el suyo y un tercero no ve nada.
+
+Además contaba como ingreso el valor entero del proyecto el día en que nacía,
+ordenaba los meses con `new Date('sept 2026 1')` —inválido en español—, leía las
+fechas del rango en UTC —se comía un día— y el «Resumen Anual» sumaba todo el
+histórico. Un recibo de caja a un **proveedor** no cuenta como cobro, y un cobro
+viejo sin `projectId` se ata por nombre solo si no hay dos proyectos
+llamados igual.
+
+---
+
 ## Lo que NO hay
 
-- **Notificaciones push.** Ni en la app ni por correo.
+- **Avisos por correo o en el navegador.** Las push existen desde el
+  11/09/2026, pero solo en la app instalada —ver [Notificaciones](#notificaciones)—
+  y todavía sin probar en un teléfono de verdad.
 - **Verificación del teléfono.** El número se guarda como texto y sirve para
   buscar, pero nadie comprueba que sea suyo. El código de SMS se retiró: no lo
   llamaba nadie y hacía creer que agregar contactos por celular costaba una
@@ -843,15 +892,22 @@ prueba está en
 distinción entre el `.aab`, que solo se sube a Play, y el `.apk`, que es el que
 se instala.
 
-**Lo que queda antes de subir el 21:**
+**Lo que queda antes de subir la próxima versión:**
 
-1. **Llenar «Seguridad de los datos»** en Play Console. Es un formulario aparte
-   de la política y **tiene que coincidir con ella**: declarar de menos es
-   motivo de rechazo.
-2. **Rotar la clave de subida**, que quedó expuesta en el historial público de
+1. **Rehacer «Seguridad de los datos»** en Play Console. Se resolvió el 7/09/2026
+   declarando que Worky no recoge identificadores de dispositivo, y con las
+   notificaciones el token de FCM lo es. El formulario **tiene que coincidir con
+   la política**, así que hay que tocar las dos: declarar de menos es motivo de
+   rechazo.
+2. **Cambiar las URLs de la ficha** —política y eliminación de cuenta— a
+   `worky.ferryapp.co`. Siguen apuntando a Vercel, que funciona, pero no dice
+   quién publica.
+3. **Rotar la clave de subida**, que quedó expuesta en el historial público de
    git.
-3. Mirar si la cuenta de Play es personal o de organización. Si es personal
+4. **Configurar un SMTP propio en Supabase**, o recuperar la contraseña funciona
+   en el código y no en la práctica.
+5. Mirar si la cuenta de Play es personal o de organización. Si es personal
    piden el **D-U-N-S**, que tarda semanas.
-4. Que un abogado lea una vez la política y los términos.
+6. Que un abogado lea una vez la política y los términos.
 
 Ver [GUIA-GOOGLE-PLAY-STORE.md](GUIA-GOOGLE-PLAY-STORE.md).
