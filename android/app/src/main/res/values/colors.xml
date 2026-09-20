@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      El color con que Android tiñe el icono de la notificación al desplegar el
+      panel. Es el azul del logo: la W es blanca en la barra de estado, y aquí
+      recupera el color de la marca.
+    -->
+    <color name="worky_notificacion">#0077CC</color>
+</resources>
