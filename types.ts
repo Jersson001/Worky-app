@@ -28,6 +28,15 @@ export interface UserProfileData {
   email?: string;
   nit?: string;
   address?: string;
+  /**
+   * Dónde está el punto de venta, para quien escanea el QR y quiere ir.
+   *
+   * `local` es «Local 203» o «Módulo 14», y `centroComercial` el sitio que lo
+   * contiene. Los dos opcionales y de texto libre: no hay forma canónica de
+   * escribir un local, y hay negocios de calle y gente que trabaja desde casa.
+   */
+  local?: string;
+  centroComercial?: string;
   city?: string;
   country?: string;
   isPro?: boolean;

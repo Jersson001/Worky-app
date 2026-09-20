@@ -32,6 +32,8 @@ interface CarpetaDelCatalogo {
 
 interface Catalogo {
   negocio: string;
+  /** Local, centro comercial y dirección, ya juntos. Para quien quiere ir. */
+  ubicacion?: string;
   ciudad?: string;
   logo?: string;
   carpetas: CarpetaDelCatalogo[];
@@ -56,6 +58,47 @@ const FUENTE = "system-ui,-apple-system,'Segoe UI',Roboto,sans-serif";
  * el pedido se guarda sin ellas.
  */
 const MAX_ELEGIDAS = 6;
+
+/**
+ * Las tiendas que el visitante guarda para volver.
+ *
+ * Viven en el navegador de su teléfono y no salen de ahí: quien escanea un QR
+ * no tiene cuenta, y pedirle una para poder guardar sería perderlo en la puerta.
+ * El precio es que se pierden si cambia de teléfono o limpia los datos, y por
+ * eso al guardar se le ofrece registrarse.
+ */
+const TIENDAS_KEY = 'worky:tiendas-guardadas';
+
+interface TiendaGuardada {
+  id: string;
+  negocio: string;
+  ubicacion?: string;
+  ciudad?: string;
+  logo?: string;
+  enlace: string;
+  guardadaEn: string;
+}
+
+/** Leer y escribir nunca tumban la página: en incógnito `localStorage` lanza. */
+const leerTiendas = (): TiendaGuardada[] => {
+  try {
+    const crudo = localStorage.getItem(TIENDAS_KEY);
+    const lista = crudo ? JSON.parse(crudo) : [];
+    return Array.isArray(lista) ? lista.filter(t => t && typeof t.id === 'string') : [];
+  } catch {
+    return [];
+  }
+};
+
+const escribirTiendas = (lista: TiendaGuardada[]): boolean => {
+  try {
+    localStorage.setItem(TIENDAS_KEY, JSON.stringify(lista));
+    return true;
+  } catch {
+    // Sin sitio o sin permiso. Se avisa en vez de fingir que quedó guardada.
+    return false;
+  }
+};
 
 const aviso = (texto: string) => {
   document.body.innerHTML =
@@ -108,9 +151,13 @@ const leerCatalogo = (html: string): Catalogo => {
     .map(leerProducto);
 
   const header = doc.querySelector('header');
+  // Los catálogos publicados antes de la ubicación traen un solo `<p>`, el de la
+  // ciudad, y sin clase: por eso el respaldo es el primero que haya.
+  const texto = (sel: string) => header?.querySelector(sel)?.textContent?.trim() || undefined;
   return {
     negocio: header?.querySelector('h1')?.textContent?.trim() || 'el vendedor',
-    ciudad: header?.querySelector('p')?.textContent?.trim() || undefined,
+    ubicacion: texto('p.ubicacion'),
+    ciudad: texto('p.ciudad') ?? texto('p:not(.ubicacion)'),
     logo: header?.querySelector('img')?.getAttribute('src') || undefined,
     carpetas,
     sueltos,
@@ -164,6 +211,9 @@ export const mostrarCatalogo = async (userId: string): Promise<void> => {
       ? `<img src="${cat.logo}" alt="" style="width:64px;height:64px;border-radius:16px;object-fit:cover;background:#fff;margin-bottom:10px">`
       : '') +
     `<h1 style="font-size:1.4rem;font-weight:700;margin:0">${cat.negocio}</h1>` +
+    (cat.ubicacion
+      ? `<p style="font-size:.9rem;font-weight:600;margin:6px 0 0">📍 ${cat.ubicacion}</p>`
+      : '') +
     (cat.ciudad ? `<p style="opacity:.85;font-size:.88rem;margin:4px 0 0">${cat.ciudad}</p>` : '');
 
   // ── Chatear, siempre a la vista ───────────────────────────────────────────
@@ -176,7 +226,22 @@ export const mostrarCatalogo = async (userId: string): Promise<void> => {
   });
   irAlChat.style.width = '100%';
   irAlChat.style.padding = '11px 16px';
-  barraChat.appendChild(irAlChat);
+
+  // Entrada a las tiendas guardadas. Solo aparece si hay alguna: en la primera
+  // visita no hay nada que abrir y sería un botón que no hace nada.
+  const chipTiendas = document.createElement('button');
+  chipTiendas.style.cssText =
+    'border:0;background:none;cursor:pointer;padding:6px 2px 0;width:100%;text-align:center;' +
+    `color:#475569;font-size:.78rem;font-weight:700;font-family:${FUENTE}`;
+  chipTiendas.onclick = () => abrirTiendasGuardadas();
+
+  const pintarChip = () => {
+    const n = leerTiendas().length;
+    chipTiendas.style.display = n ? 'block' : 'none';
+    chipTiendas.textContent = `🔖 Mis tiendas guardadas (${n})`;
+  };
+
+  barraChat.append(irAlChat, chipTiendas);
 
   const contenido = document.createElement('div');
   contenido.style.cssText = 'max-width:960px;margin:0 auto;padding:16px';
@@ -517,6 +582,39 @@ export const mostrarCatalogo = async (userId: string): Promise<void> => {
     'background:#fff;padding:8px;border-radius:999px;box-shadow:0 4px 16px rgba(15,23,42,.18);' +
     `font-family:${FUENTE}`;
 
+  const estaGuardada = () => leerTiendas().some(t => t.id === userId);
+
+  const guardar = boton('', '#f59e0b', () => {
+    const lista = leerTiendas();
+    const ya = lista.some(t => t.id === userId);
+    const nueva = ya
+      ? lista.filter(t => t.id !== userId)
+      : [{
+          id: userId,
+          negocio: cat.negocio,
+          ubicacion: cat.ubicacion,
+          ciudad: cat.ciudad,
+          logo: cat.logo,
+          enlace,
+          guardadaEn: new Date().toISOString(),
+        }, ...lista];
+
+    if (!escribirTiendas(nueva)) {
+      alert('Tu navegador no deja guardar en este teléfono. Prueba fuera del modo incógnito.');
+      return;
+    }
+    pintarGuardar();
+    pintarChip();
+    if (!ya) invitarARegistrarse();
+  });
+
+  const pintarGuardar = () => {
+    const g = estaGuardada();
+    guardar.textContent = g ? '🔖 Guardada' : '🔖 Guardar';
+    guardar.style.background = g ? '#0f766e' : '#f59e0b';
+    guardar.title = g ? 'Quitar de mis tiendas' : 'Guardar esta tienda para volver';
+  };
+
   const compartir = boton('Compartir', '#22c55e', async () => {
     const texto = `Mira este catálogo:\n${enlace}`;
     // El menú nativo es lo que permite mandarlo a donde sea; en escritorio no
@@ -542,7 +640,102 @@ export const mostrarCatalogo = async (userId: string): Promise<void> => {
     }
   });
 
-  barraInferior.append(compartir, copiar);
+  barraInferior.append(guardar, compartir, copiar);
+  pintarGuardar();
+  pintarChip();
+
+  /** Capa oscura con una tarjeta blanca, como el panel de «me gustan». */
+  function capaConPanel(): { fondo: HTMLDivElement; panel: HTMLDivElement } {
+    const fondo = document.createElement('div');
+    fondo.style.cssText =
+      'position:fixed;inset:0;z-index:40;background:rgba(2,6,23,.55);display:flex;' +
+      'align-items:flex-end;justify-content:center;padding:0';
+    const panel = document.createElement('div');
+    panel.style.cssText =
+      `background:#fff;width:100%;max-width:520px;border-radius:18px 18px 0 0;padding:20px 18px 24px;` +
+      `font-family:${FUENTE};max-height:80vh;overflow-y:auto`;
+    fondo.appendChild(panel);
+    fondo.onclick = e => { if (e.target === fondo) fondo.remove(); };
+    document.body.appendChild(fondo);
+    return { fondo, panel };
+  }
+
+  /**
+   * Al guardar por primera vez, ofrecerle cuenta.
+   *
+   * La tienda ya quedó guardada: esto no es un peaje, es avisarle de que se
+   * guardó solo en este teléfono y que con una cuenta no la pierde. Por eso
+   * «Ahora no» es una salida de verdad y no hay nada bloqueado detrás.
+   */
+  function invitarARegistrarse(): void {
+    const { fondo, panel } = capaConPanel();
+    panel.innerHTML =
+      `<p style="font-weight:800;font-size:1.05rem;margin:0 0 6px">Guardaste a ${cat.negocio}</p>` +
+      '<p style="color:#475569;font-size:.9rem;margin:0 0 4px">Quedó guardada <b>en este teléfono</b>.' +
+      ' Si lo cambias o borras los datos del navegador, la pierdes.</p>' +
+      '<p style="color:#475569;font-size:.9rem;margin:0 0 16px">Con una cuenta de Worky la tienes' +
+      ' siempre a mano y puedes escribirle por el chat.</p>';
+
+    const acciones = document.createElement('div');
+    acciones.style.cssText = 'display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap';
+    const ahoraNo = boton('Ahora no', '#94a3b8', () => fondo.remove());
+    const crearCuenta = boton('Crear mi cuenta', '#2563eb', () => {
+      window.location.href = `/?vendedor=${encodeURIComponent(userId)}`;
+    });
+    acciones.append(ahoraNo, crearCuenta);
+    panel.appendChild(acciones);
+  }
+
+  /** La lista de lo guardado: para volver a una tienda que se vio hace días. */
+  function abrirTiendasGuardadas(): void {
+    const { fondo, panel } = capaConPanel();
+    const cab = document.createElement('p');
+    cab.textContent = 'Mis tiendas guardadas';
+    cab.style.cssText = 'font-weight:800;font-size:1.05rem;margin:0 0 4px';
+    const nota = document.createElement('p');
+    nota.textContent = 'Guardadas en este teléfono.';
+    nota.style.cssText = 'color:#94a3b8;font-size:.78rem;margin:0 0 14px';
+    const lista = document.createElement('div');
+    lista.style.cssText = 'display:flex;flex-direction:column;gap:8px';
+
+    const pintar = () => {
+      const tiendas = leerTiendas();
+      lista.innerHTML = '';
+      if (!tiendas.length) {
+        lista.innerHTML = '<p style="color:#94a3b8;font-style:italic;text-align:center;padding:20px 0">' +
+          'Todavía no has guardado ninguna tienda.</p>';
+        return;
+      }
+      for (const t of tiendas) {
+        const fila = document.createElement('div');
+        fila.style.cssText =
+          'display:flex;align-items:center;gap:10px;border:1px solid #e2e8f0;border-radius:14px;padding:10px';
+        fila.innerHTML =
+          (t.logo
+            ? `<img src="${t.logo}" alt="" style="width:40px;height:40px;border-radius:10px;object-fit:cover;flex:0 0 auto">`
+            : '<div style="width:40px;height:40px;border-radius:10px;background:#e2e8f0;flex:0 0 auto"></div>') +
+          `<div style="flex:1;min-width:0">
+             <div style="font-weight:700;font-size:.9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.negocio}</div>
+             <div style="color:#64748b;font-size:.75rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${[t.ubicacion, t.ciudad].filter(Boolean).join(' · ')}</div>
+           </div>`;
+        const abrir = boton('Abrir', '#2563eb', () => { window.location.href = t.enlace; });
+        abrir.style.padding = '7px 14px';
+        const quitar = boton('Quitar', '#e2e8f0', () => {
+          escribirTiendas(leerTiendas().filter(x => x.id !== t.id));
+          pintar();
+          pintarGuardar();
+          pintarChip();
+        });
+        quitar.style.padding = '7px 12px';
+        quitar.style.color = '#475569';
+        fila.append(abrir, quitar);
+        lista.appendChild(fila);
+      }
+    };
+
+    pintar();
+    panel.append(cab, nota, lista);
+  }
 
   pintarContenido();
   pintarCinta();

@@ -61,6 +61,8 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({
   const [email, setEmail] = useState(userProfile.email || '');
   const [nit, setNit] = useState(userProfile.nit || '');
   const [address, setAddress] = useState(userProfile.address || '');
+  const [local, setLocal] = useState(userProfile.local || '');
+  const [centroComercial, setCentroComercial] = useState(userProfile.centroComercial || '');
   const [city, setCity] = useState(userProfile.city || '');
   const [country, setCountry] = useState(userProfile.country || 'Colombia');
   const [profilePhoto, setProfilePhoto] = useState(userProfile.profilePhoto || '');
@@ -111,6 +113,8 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({
       email,
       nit,
       address,
+      local,
+      centroComercial,
       city,
       country,
       profilePhoto
@@ -397,6 +401,31 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({
                 className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition text-slate-900 font-medium placeholder-slate-400 disabled:bg-slate-100 disabled:text-slate-600 read-only:bg-slate-100 read-only:text-slate-600"
                 placeholder="Calle 123 # 45-67"
               />
+            </div>
+
+            {/* El local y el centro comercial salen en el catálogo público,
+                debajo del nombre del negocio. */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Local</label>
+                <input
+                  type="text"
+                  value={local}
+                  onChange={(e) => setLocal(e.target.value)}
+                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition text-slate-900 font-medium placeholder-slate-400 disabled:bg-slate-100 disabled:text-slate-600 read-only:bg-slate-100 read-only:text-slate-600"
+                  placeholder="Local 203"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Centro comercial</label>
+                <input
+                  type="text"
+                  value={centroComercial}
+                  onChange={(e) => setCentroComercial(e.target.value)}
+                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition text-slate-900 font-medium placeholder-slate-400 disabled:bg-slate-100 disabled:text-slate-600 read-only:bg-slate-100 read-only:text-slate-600"
+                  placeholder="C.C. Titán Plaza"
+                />
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">

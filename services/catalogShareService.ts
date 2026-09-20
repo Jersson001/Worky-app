@@ -426,12 +426,21 @@ const porCarpeta = (
  * para que abra rápido y funcione aunque el visitante no tenga la app.
  */
 export const buildCatalogHtml = (
-  profile: Pick<UserProfileData, 'businessName' | 'ownerName' | 'phone' | 'city' | 'businessLogo'>,
+  profile: Pick<UserProfileData,
+    'businessName' | 'ownerName' | 'phone' | 'city' | 'businessLogo' | 'address' | 'local' | 'centroComercial'>,
   products: Product[],
   userId?: string,
   categories: ProductCategory[] = [],
 ): string => {
   const negocio = esc(profile.businessName || profile.ownerName || 'Catálogo');
+
+  // Dónde queda el negocio, para quien escanea el QR estando cerca. Va en su
+  // propio `<p class="ubicacion">` y la ciudad en el suyo: el visor los lee por
+  // esa clase, y los catálogos publicados antes —que solo tienen un `<p>` con
+  // la ciudad— se siguen leyendo igual.
+  const ubicacion = esc(
+    [profile.local, profile.centroComercial, profile.address].map(v => v?.trim()).filter(Boolean).join(' · '),
+  );
 
   // Con una sola carpeta no se pinta ninguna: una carpeta suelta que hay que
   // abrir solo esconde el catálogo y hace pensar que falta algo. Es el mismo
@@ -477,6 +486,7 @@ export const buildCatalogHtml = (
   header img{width:72px;height:72px;border-radius:16px;object-fit:cover;margin-bottom:12px;background:#fff}
   header h1{font-size:1.5rem;font-weight:700}
   header p{opacity:.85;font-size:.9rem;margin-top:4px}
+  header p.ubicacion{opacity:.95;font-weight:600}
   .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;margin:20px 0}
   .card{background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 1px 3px rgba(15,23,42,.1);display:flex;flex-direction:column}
   .card img{width:100%;height:180px;object-fit:cover;display:block}
@@ -551,7 +561,8 @@ export const buildCatalogHtml = (
   <header>
     ${profile.businessLogo ? `<img src="${esc(profile.businessLogo)}" alt="${negocio}">` : ''}
     <h1>${negocio}</h1>
-    ${profile.city ? `<p>${esc(profile.city)}</p>` : ''}
+    ${ubicacion ? `<p class="ubicacion">${ubicacion}</p>` : ''}
+    ${profile.city ? `<p class="ciudad">${esc(profile.city)}</p>` : ''}
   </header>
 
   <div class="barra-chat">

@@ -28,6 +28,10 @@ export const WelcomeOnboarding: React.FC<WelcomeOnboardingProps> = ({ onComplete
   const [passwordError, setPasswordError] = useState('');
   const [nit, setNit] = useState('');
   const [address, setAddress] = useState('');
+  // Dónde está el punto de venta. Sale en el catálogo, debajo del nombre, para
+  // quien escanea el QR y quiere volver.
+  const [local, setLocal] = useState('');
+  const [centroComercial, setCentroComercial] = useState('');
   const [city, setCity] = useState('');
   const [country, setCountry] = useState('Colombia');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -59,6 +63,8 @@ export const WelcomeOnboarding: React.FC<WelcomeOnboardingProps> = ({ onComplete
       email: email || initialEmail,
       nit,
       address,
+      local,
+      centroComercial,
       city,
       country,
     };
@@ -236,6 +242,34 @@ export const WelcomeOnboarding: React.FC<WelcomeOnboardingProps> = ({ onComplete
                   className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition font-medium text-slate-800"
                   placeholder="Ej: Calle 123 # 45-67, Of. 301"
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2">
+                  Local (opcional)
+                </label>
+                <input
+                  type="text"
+                  value={local}
+                  onChange={(e) => setLocal(e.target.value)}
+                  className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition font-medium text-slate-800"
+                  placeholder="Ej: Local 203"
+                />
+                <p className="text-xs text-slate-500 mt-1.5">Sale en tu catálogo, para que quien escanee el QR sepa dónde encontrarte.</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2">
+                  Centro comercial (opcional)
+                </label>
+                <input
+                  type="text"
+                  value={centroComercial}
+                  onChange={(e) => setCentroComercial(e.target.value)}
+                  className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition font-medium text-slate-800"
+                  placeholder="Ej: Centro Comercial Titán Plaza"
+                />
+                <p className="text-xs text-slate-500 mt-1.5">Déjalo vacío si tu negocio no está en uno.</p>
               </div>
 
               <div>
