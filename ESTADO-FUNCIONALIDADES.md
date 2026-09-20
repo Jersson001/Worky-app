@@ -311,6 +311,27 @@ Sin `FIREBASE_SERVICE_ACCOUNT` configurado no hace nada y lo dice. Los tokens
 que FCM da por muertos —app desinstalada, datos limpiados— se borran solos en
 vez de reintentarlos en cada mensaje para siempre.
 
+**El aviso no salió nunca de la base hasta el 20/09/2026.** El disparador
+llamaba a `extensions.net.http_post`, y ahí no está: `pg_net` registra la
+extensión en `extensions` pero crea sus funciones en un esquema propio, `net`.
+Con tres nombres separados por puntos Postgres lee el primero como el de otra
+base de datos, así que fallaba con «cross-database references are not
+implemented». Como el disparador captura cualquier error para no arriesgar el
+mensaje, eso salía solo como WARNING en los registros de Postgres y el mensaje
+se guardaba como si nada.
+
+Por eso la prueba del 11/09 lo daba por bueno: se llamó a la función con `curl`,
+que es la mitad de abajo del camino. La mitad de arriba —el disparador que la
+llama— no se había probado nunca. Arreglado en
+[supabase_avisar_mensaje_esquema_net.sql](supabase_avisar_mensaje_esquema_net.sql),
+aplicado, y comprobado insertando un mensaje de verdad: responde
+`{ok:true, avisados:1, limpiados:0}`.
+
+**Si no se concede el permiso, el registro se abandona en silencio.** No hay
+aviso ni rastro en la app, así que desde el teléfono no hay forma de saber si
+quedó enganchado. Es lo que dejó una cuenta de prueba sin un solo aparato
+registrado el 20/09 sin que nada lo dijera.
+
 ### Lo que cambia para Play
 
 **El token de FCM es un identificador de dispositivo.** En el formulario de
