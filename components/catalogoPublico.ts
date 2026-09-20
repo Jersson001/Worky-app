@@ -75,6 +75,22 @@ const boton = (texto: string, fondo: string, alPulsar: () => void): HTMLButtonEl
   return b;
 };
 
+/**
+ * El precio de una tarjeta, o vacío si no lo tiene.
+ *
+ * El HTML publicado escribe «Consultar precio» cuando no hay precio, y eso
+ * salía pintado como si fuera uno: la gente preguntaba por qué no se podía
+ * tocar. Es un letrero, no un dato, así que aquí se lee como «no hay precio» y
+ * la tarjeta ofrece preguntarlo. Se reconoce por la clase, y por el texto para
+ * los catálogos publicados antes de que la llevara.
+ */
+const precioDe = (card: Element): string => {
+  const p = card.querySelector('.precio');
+  if (!p || p.classList.contains('sin-precio')) return '';
+  const texto = p.textContent?.trim() || '';
+  return /^consultar precio$/i.test(texto) ? '' : texto;
+};
+
 /** Etiqueta de una foto dentro de su producto: la 1ª lleva el nombre a secas. */
 const etiquetaDe = (producto: string, i: number): string =>
   i === 0 ? producto : `${producto} (foto ${i + 1})`;
@@ -92,7 +108,7 @@ const leerCatalogo = (html: string): Catalogo => {
 
   const leerProducto = (card: Element): ProductoDelCatalogo => ({
     nombre: card.querySelector('h3')?.textContent?.trim() || 'Producto',
-    precio: card.querySelector('.precio')?.textContent?.trim() || '',
+    precio: precioDe(card),
     // Todas las <img> de la tarjeta: en el catálogo nuevo son la principal y sus
     // miniaturas; en los publicados antes, la única que había.
     fotos: [...card.querySelectorAll('img')].map(i => i.getAttribute('src') || '').filter(Boolean),
@@ -212,20 +228,21 @@ export const mostrarCatalogo = async (userId: string): Promise<void> => {
   document.body.append(cabecera, barraChat, contenido, cinta, barraInferior);
 
   // ── Visor de una foto, con el «me gusta» encima ───────────────────────────
-  const abrirFoto = (producto: ProductoDelCatalogo, i: number) => {
-    const src = producto.fotos[i];
-    const etiqueta = etiquetaDe(producto.nombre, i);
+  //
+  // Se abre sobre una foto concreta pero se queda con el producto entero: desde
+  // dentro se pasa a la siguiente y a la anterior sin volver a la rejilla, que
+  // es como se mira un producto con cuatro fotos —frente, espalda, detalle—.
+  const abrirFoto = (producto: ProductoDelCatalogo, desde: number) => {
+    let i = desde;
 
     const capa = document.createElement('div');
     capa.style.cssText =
       'position:fixed;inset:0;z-index:30;background:rgba(2,6,23,.94);display:flex;' +
-      'flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:20px';
+      'flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:20px';
 
     const foto = document.createElement('img');
-    foto.src = src;
-    foto.alt = etiqueta;
     foto.style.cssText =
-      'max-width:100%;max-height:calc(100vh - 190px);object-fit:contain;border-radius:10px';
+      'max-width:100%;max-height:calc(100vh - 230px);object-fit:contain;border-radius:10px';
 
     const cerrar = document.createElement('button');
     cerrar.textContent = '×';
@@ -233,25 +250,68 @@ export const mostrarCatalogo = async (userId: string): Promise<void> => {
     cerrar.style.cssText =
       'position:absolute;top:12px;right:16px;background:transparent;border:0;color:#fff;' +
       'font-size:2.4rem;line-height:1;cursor:pointer';
-    cerrar.onclick = () => capa.remove();
 
     const rotulo = document.createElement('p');
-    rotulo.textContent = etiqueta;
     rotulo.style.cssText = 'color:#e2e8f0;font-size:.9rem;margin:0;text-align:center';
 
+    // El precio también aquí: quien amplía una foto para mirarla de cerca es
+    // justo quien está decidiendo, y hasta ahora tenía que cerrar para verlo.
+    const precio = document.createElement('p');
+    precio.style.cssText =
+      'color:#fff;font-size:1.15rem;font-weight:800;margin:0;text-align:center';
+
     const gustar = document.createElement('button');
-    const pintarGustar = () => {
+    gustar.style.cssText =
+      'border:0;cursor:pointer;padding:14px 28px;border-radius:999px;font-weight:700;' +
+      `font-size:1rem;color:#fff;font-family:${FUENTE}`;
+
+    /** Las flechas van fijas a los lados, fuera del camino de la foto. */
+    const flecha = (texto: string, lado: 'left' | 'right', alPulsar: () => void) => {
+      const b = document.createElement('button');
+      b.textContent = texto;
+      b.setAttribute('aria-label', lado === 'left' ? 'Foto anterior' : 'Foto siguiente');
+      b.style.cssText =
+        `position:absolute;${lado}:10px;top:50%;transform:translateY(-50%);width:44px;height:44px;` +
+        'border:0;border-radius:999px;background:rgba(15,23,42,.65);color:#fff;font-size:1.6rem;' +
+        'line-height:44px;cursor:pointer;padding:0';
+      b.onclick = alPulsar;
+      return b;
+    };
+
+    const mostrar = (n: number) => {
+      // Da la vuelta en los extremos: con cuatro fotos, seguir tocando
+      // «siguiente» al llegar al final no debe dejar la flecha muerta.
+      i = (n + producto.fotos.length) % producto.fotos.length;
+      const src = producto.fotos[i];
+      const etiqueta = etiquetaDe(producto.nombre, i);
+      foto.src = src;
+      foto.alt = etiqueta;
+      rotulo.textContent = producto.fotos.length > 1
+        ? `${etiqueta} · ${i + 1} de ${producto.fotos.length}`
+        : etiqueta;
+      precio.textContent = producto.precio;
+      precio.style.display = producto.precio ? 'block' : 'none';
       const puesto = gusta(src);
       gustar.textContent = puesto ? '♥ Ya te gusta — quitar' : '♡ Me gusta';
       gustar.style.background = puesto ? '#e11d48' : '#2563eb';
     };
-    gustar.style.cssText =
-      'border:0;cursor:pointer;padding:14px 28px;border-radius:999px;font-weight:700;' +
-      `font-size:1rem;color:#fff;font-family:${FUENTE}`;
+
+    function cerrarVisor() {
+      document.removeEventListener('keydown', porTeclado);
+      capa.remove();
+    }
+
+    const porTeclado = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowRight') mostrar(i + 1);
+      else if (e.key === 'ArrowLeft') mostrar(i - 1);
+      else if (e.key === 'Escape') cerrarVisor();
+    };
+
     gustar.onclick = () => {
+      const src = producto.fotos[i];
       if (gusta(src)) {
-        meGustan.splice(meGustan.findIndex(f => f.imagen === src), 1);
-        pintarGustar();
+        meGustan.splice(meGustan.findIndex(x => x.imagen === src), 1);
+        mostrar(i);
         pintarCinta();
         pintarContenido();
         return;
@@ -260,20 +320,51 @@ export const mostrarCatalogo = async (userId: string): Promise<void> => {
         alert(`Puedes mandar hasta ${MAX_ELEGIDAS} fotos de una vez.`);
         return;
       }
-      meGustan.push({ imagen: src, etiqueta });
+      meGustan.push({ imagen: src, etiqueta: etiquetaDe(producto.nombre, i) });
       pintarCinta();
       pintarContenido();
       // Se minimiza sola: el gesto es «esta me gusta» y sigo mirando, no
       // quedarse en la foto para tener que cerrarla a mano.
-      capa.remove();
+      cerrarVisor();
     };
-    pintarGustar();
 
-    capa.append(cerrar, foto, rotulo, gustar);
-    // Tocar el fondo cierra; tocar la foto o el botón, no.
-    capa.onclick = e => { if (e.target === capa) capa.remove(); };
+    cerrar.onclick = cerrarVisor;
+    capa.append(cerrar, foto, rotulo, precio, gustar);
+    if (producto.fotos.length > 1) {
+      capa.append(
+        flecha('‹', 'left', () => mostrar(i - 1)),
+        flecha('›', 'right', () => mostrar(i + 1)),
+      );
+    }
+    mostrar(i);
+    // Tocar el fondo cierra; tocar la foto, las flechas o el botón, no.
+    capa.onclick = e => { if (e.target === capa) cerrarVisor(); };
+    document.addEventListener('keydown', porTeclado);
     document.body.appendChild(capa);
   };
+
+  /**
+   * «Pregunta el precio»: marca la foto del producto y abre el mensaje con la
+   * pregunta ya escrita.
+   *
+   * Lo que había era el letrero «Consultar precio», que la gente intentaba
+   * tocar y no hacía nada. Preguntar un precio es exactamente para lo que está
+   * el chat con el vendedor, y la foto va con la pregunta para que sepa de cuál
+   * de sus productos le hablan.
+   */
+  function preguntarPrecio(p: ProductoDelCatalogo) {
+    const src = p.fotos[0];
+    if (src && !gusta(src)) {
+      if (meGustan.length >= MAX_ELEGIDAS) {
+        alert(`Puedes mandar hasta ${MAX_ELEGIDAS} fotos de una vez.`);
+      } else {
+        meGustan.push({ imagen: src, etiqueta: etiquetaDe(p.nombre, 0) });
+        pintarCinta();
+        pintarContenido();
+      }
+    }
+    abrirMensaje(`Hola, ¿cuánto vale ${p.nombre}?`);
+  }
 
   // ── Tarjeta de producto ───────────────────────────────────────────────────
   const tarjeta = (p: ProductoDelCatalogo): HTMLElement => {
@@ -299,6 +390,20 @@ export const mostrarCatalogo = async (userId: string): Promise<void> => {
           (ancho ? 'border-radius:8px;flex:none;' : '');
         caja.innerHTML =
           `<img src="${src}" alt="${p.nombre}" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block">`;
+        // El precio va encima de la foto, también en las miniaturas: en una
+        // carpeta con varios modelos es lo que se compara de un vistazo, y
+        // tenerlo solo al pie de la tarjeta obliga a entrar en cada una.
+        if (p.precio) {
+          const etiquetaPrecio = document.createElement('span');
+          etiquetaPrecio.textContent = p.precio;
+          const chico = alto <= 70;
+          etiquetaPrecio.style.cssText =
+            `position:absolute;left:0;right:0;bottom:0;background:rgba(2,6,23,.66);color:#fff;` +
+            `font-weight:700;text-align:center;padding:${chico ? '1px 2px' : '3px 6px'};` +
+            `font-size:${chico ? '.56rem' : '.82rem'};white-space:nowrap;overflow:hidden;` +
+            'text-overflow:ellipsis';
+          caja.appendChild(etiquetaPrecio);
+        }
         if (gusta(src)) {
           const c = document.createElement('span');
           c.textContent = '♥';
@@ -322,12 +427,17 @@ export const mostrarCatalogo = async (userId: string): Promise<void> => {
     }
 
     const cuerpo = document.createElement('div');
-    cuerpo.style.cssText = 'padding:12px;display:flex;flex-direction:column;gap:6px;flex:1';
-    cuerpo.innerHTML =
-      `<h3 style="font-size:.95rem;font-weight:600;margin:0">${p.nombre}</h3>` +
-      (p.precio
-        ? `<p style="font-size:1.02rem;font-weight:700;color:#2563eb;margin:0">${p.precio}</p>`
-        : '');
+    cuerpo.style.cssText = 'padding:12px;display:flex;flex-direction:column;gap:8px;flex:1';
+    cuerpo.innerHTML = `<h3 style="font-size:.95rem;font-weight:600;margin:0">${p.nombre}</h3>`;
+
+    if (p.precio) {
+      cuerpo.innerHTML +=
+        `<p style="font-size:1.02rem;font-weight:700;color:#2563eb;margin:0">${p.precio}</p>`;
+    } else {
+      const preguntar = boton('Pregunta el precio', '#2563eb', () => preguntarPrecio(p));
+      preguntar.style.cssText += ';width:100%;padding:9px 12px;margin-top:auto';
+      cuerpo.appendChild(preguntar);
+    }
     art.appendChild(cuerpo);
     return art;
   };
@@ -441,7 +551,11 @@ export const mostrarCatalogo = async (userId: string): Promise<void> => {
   }
 
   // ── Ventana final: las que me gustan + el mensaje ─────────────────────────
-  function abrirMensaje() {
+  //
+  // El texto puede venir escrito: «Pregunta el precio» abre esta misma ventana
+  // con la pregunta puesta, para que no tenga que redactarla quien solo quiere
+  // saber cuánto vale.
+  function abrirMensaje(textoInicial = '') {
     const fondo = document.createElement('div');
     fondo.style.cssText =
       'position:fixed;inset:0;z-index:20;background:rgba(15,23,42,.6);display:flex;align-items:flex-end;' +
@@ -463,6 +577,7 @@ export const mostrarCatalogo = async (userId: string): Promise<void> => {
 
     const nota = document.createElement('textarea');
     nota.placeholder = 'Ej. quiero algo así pero en otro color';
+    nota.value = textoInicial;
     nota.rows = 3;
     nota.style.cssText =
       'width:100%;border:1px solid #e2e8f0;border-radius:12px;padding:10px;font-size:.9rem;' +
