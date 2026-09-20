@@ -74,6 +74,10 @@ android {
         // guardar una, «Pregunta el precio» donde antes había un letrero, el
         // precio encima de cada foto y el visor con flechas. Y la dirección
         // publicada, que era la casa del representante legal.
+        //
+        // El 26092002 (2.8.1) es un arreglo: el icono de las notificaciones
+        // salía como un cuadrado blanco en la barra de estado. Android solo pinta
+        // siluetas ahí, y sin decirle cuál usaba el icono de la app, a color.
         /*
          * Son dos cosas distintas y solo una es libre.
          *
@@ -111,8 +115,8 @@ android {
          * número de en medio —2.4, 2.5 y 2.6 en tres días— y a ese paso la 3.0
          * llegaba sin que hubiera cambiado nada grande.
          */
-        versionCode 26092001
-        versionName "2.8.0"
+        versionCode 26092002
+        versionName "2.8.1"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
