@@ -462,6 +462,25 @@ carpeta. Al confirmar se abre «Imágenes que me gustan» para escribir el mensa
 —«quiero algo así pero en otro color»— y mandarlo. Al vendedor le llegan
 etiquetadas «cocina m1», «cocina m1 (foto 2)».
 
+**El precio va encima de cada foto**, también en las miniaturas: en una carpeta
+con varios modelos es lo que se compara de un vistazo, y tenerlo solo al pie de
+la tarjeta obliga a entrar en cada una.
+
+**Ampliada, la foto trae su precio y flechas** para pasar a la siguiente y a la
+anterior sin volver a la rejilla, con el contador «3 de 4». Dan la vuelta en los
+extremos, y responden también a las flechas del teclado y a Escape. Es como se
+mira un producto con cuatro fotos —frente, espalda, detalle—; antes había que
+cerrar y abrir cada una desde la tarjeta, y el precio no se veía desde ahí.
+
+**Sin precio ya no hay letrero, hay un botón: «Pregunta el precio».** El HTML
+publicado escribe «Consultar precio» cuando el producto no lo tiene, y el visor
+lo pintaba como si fuera un precio: al usuario le preguntaban mucho por qué no
+se podía tocar. Ahora se lee como «no hay precio» —por su clase `sin-precio`, y
+por el texto en los catálogos publicados antes— y la tarjeta ofrece preguntarlo:
+marca la foto del producto y abre «Imágenes que me gustan» con la pregunta ya
+escrita. Preguntar un precio es justo para lo que está el chat con el vendedor,
+y la foto va con la pregunta para que sepa de cuál de sus productos le hablan.
+
 Tope de **seis fotos por envío**, que es del almacenamiento del navegador y no
 del gusto: viajan como data URL en `localStorage` hasta que el cliente se
 registra, y si no caben el pedido se guarda sin ellas.
