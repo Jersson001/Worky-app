@@ -69,7 +69,7 @@ const getAuthErrorMessage = (err: any): string => {
 };
 
 /**
- * Si se enseña «Continuar con Google».
+ * Si se enseña «Inicia sesión con Google».
  *
  * En `false` hasta que el proveedor esté activado en Supabase → Authentication
  * → Providers → Google, con el ID y el secreto de Google Cloud pegados.
@@ -844,7 +844,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister, i
                     className="w-full bg-white border border-slate-300 text-slate-700 py-3 rounded-xl font-bold text-sm hover:bg-slate-50 transition flex items-center justify-center gap-2.5 disabled:opacity-50"
                   >
                     <LogoGoogle />
-                    Continuar con Google
+                    Inicia sesión con Google
                   </button>
                   <p className="text-[11px] text-slate-400 text-center leading-snug">
                     Así no pierdes la conversación aunque cambies de teléfono.
@@ -1061,7 +1061,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister, i
                   className="w-full bg-white border border-slate-300 text-slate-700 py-3 rounded-xl font-bold text-sm hover:bg-slate-50 transition flex items-center justify-center gap-2.5 disabled:opacity-50"
                 >
                   <LogoGoogle />
-                  Continuar con Google
+                  Inicia sesión con Google
                 </button>
               </div>
             )}
