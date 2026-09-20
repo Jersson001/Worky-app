@@ -2,12 +2,13 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { ChatList } from './components/ChatList';
 import { ChatWindow } from './components/ChatWindow';
 import { FinancialReport } from './components/FinancialReport';
+import { TiendasGuardadas } from './components/TiendasGuardadas';
 import ContractGenerator from './components/ContractGenerator';
 import ProFeatureGuard from './components/ProFeatureGuard';
 import AdminPanel from './components/AdminPanel';
 import CatalogShareModal from './components/CatalogShareModal';
 import { getSharedDocument } from './services/whatsappService';
-import { recordarVendedorDeLaUrl, vendedorPendiente, olvidarVendedorPendiente, pedidoPendiente, olvidarPedidoPendiente, llegoInvitado, olvidarLlegadaInvitada, recordarDocumentoDeLaUrl, documentoPendiente, olvidarDocumentoPendiente } from './services/catalogShareService';
+import { recordarVendedorDeLaUrl, vendedorPendiente, olvidarVendedorPendiente, pedidoPendiente, olvidarPedidoPendiente, llegoInvitado, olvidarLlegadaInvitada, olvidarRegistroPedido, recordarDocumentoDeLaUrl, documentoPendiente, olvidarDocumentoPendiente } from './services/catalogShareService';
 import { uploadFileForChat } from './services/storageService';
 import { describeError } from './utils/errorMessage';
 import { leerImagenReducida } from './utils/imagen';
@@ -755,6 +756,7 @@ const App: React.FC = () => {
         country: 'Colombia',
       }).then(() => {
         olvidarLlegadaInvitada();
+        olvidarRegistroPedido();
       }).catch(e => {
         // Si no se puede guardar, se le enseña el formulario de siempre en vez
         // de dejarle atascado en una pantalla de espera.
@@ -841,6 +843,7 @@ const App: React.FC = () => {
   const [showFinancials, setShowFinancials] = useState(false);
   const [showStatus, setShowStatus] = useState(false);
   const [showWallet, setShowWallet] = useState(false);
+  const [showTiendas, setShowTiendas] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileEditor, setShowProfileEditor] = useState(false);
   const [showGanttChart, setShowGanttChart] = useState(false);
@@ -2677,6 +2680,14 @@ ${describeError(error)}
                       </div>
                       <span className="text-slate-700 text-[11.5px] font-semibold">Catálogo</span>
                     </button>
+                    {/* Las tiendas que guardó al escanear sus QR. Se le
+                        enseña a todo el mundo: quien vende también compra. */}
+                    <button onClick={() => setShowTiendas(true)} className="bg-white p-3 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2">
+                      <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center text-white shadow-sm shadow-amber-500/30">
+                        <i className="fa-solid fa-bookmark text-lg"></i>
+                      </div>
+                      <span className="text-slate-700 text-[11.5px] font-semibold">Tiendas</span>
+                    </button>
                     <button onClick={() => setShowWallet(true)} className="bg-white p-3 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2">
                       <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-sky-500 to-sky-600 flex items-center justify-center text-white shadow-sm shadow-sky-500/30">
                         <i className="fa-solid fa-money-check-dollar text-lg"></i>
@@ -2922,6 +2933,22 @@ ${describeError(error)}
         onSearch={handleSearchUser}
         onAddContact={handleAddContactFromSearch}
       />
+
+      {showTiendas && (
+        <TiendasGuardadas
+          onClose={() => setShowTiendas(false)}
+          onAbrirChat={(idTienda) => {
+            // Solo si ya es un contacto suyo. Si no, el modal manda a la
+            // invitación, que es lo que crea el contacto y abre el chat.
+            const contacto = contacts.find(c => c.id === idTienda);
+            if (!contacto) return false;
+            setSelectedContactId(idTienda);
+            setShowFinancials(false);
+            setMobileTab('chats');
+            return true;
+          }}
+        />
+      )}
 
       {showWallet && (
         <WalletModal

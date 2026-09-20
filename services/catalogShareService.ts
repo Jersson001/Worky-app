@@ -175,6 +175,19 @@ export const recordarVendedorDeLaUrl = (): string | null => {
   try {
     const url = new URL(window.location.href);
     const vendedor = url.searchParams.get('vendedor');
+    // Quien viene de guardar una tienda pidió cuenta, no el atajo del alias:
+    // se anota aquí porque esta función limpia la URL y el dato se perdería
+    // antes de que la pantalla de acceso llegue a mirarla.
+    if (url.searchParams.get('registro') === '1') {
+      try { localStorage.setItem(REGISTRO_KEY, '1'); } catch { /* sin sitio, se sigue */ }
+      url.searchParams.delete('registro');
+      window.history.replaceState({}, '', url.toString());
+    } else if (vendedor) {
+      // Llegó por «Chatear», que es el camino del nombre y el alias. Si antes
+      // había pulsado «Crear mi cuenta», esa marca seguiría guardada y le
+      // sacaría el formulario de correo en vez de preguntarle el nombre.
+      try { localStorage.removeItem(REGISTRO_KEY); } catch { /* nada que borrar */ }
+    }
     if (vendedor) {
       localStorage.setItem(VENDEDOR_KEY, vendedor);
       localStorage.setItem(INVITADO_KEY, '1');
@@ -197,6 +210,37 @@ export const recordarVendedorDeLaUrl = (): string | null => {
  * venía invitada y le sacaba el formulario igual.
  */
 const INVITADO_KEY = 'worky:llego-invitado';
+
+/**
+ * Pidió registrarse con correo, en vez del alias.
+ *
+ * Lo manda el botón «Crear mi cuenta» de las tiendas guardadas: ahí lo que se
+ * le ofrece es una cuenta que no se pierda al cambiar de teléfono, y un alias
+ * sin correo no se puede recuperar.
+ */
+const REGISTRO_KEY = 'worky:quiere-registro';
+
+export const quiereRegistroConCorreo = (): boolean => {
+  try {
+    // Si la URL todavía trae la invitación, manda la URL: la marca guardada es
+    // de una visita anterior y puede decir lo contrario. Y no se puede esperar
+    // a que la app la limpie, porque eso ocurre en un efecto suyo que corre
+    // después de que la pantalla de acceso ya preguntó.
+    const params = new URLSearchParams(window.location.search);
+    if (params.has('vendedor')) return params.get('registro') === '1';
+    return localStorage.getItem(REGISTRO_KEY) === '1';
+  } catch {
+    return false;
+  }
+};
+
+export const olvidarRegistroPedido = (): void => {
+  try {
+    localStorage.removeItem(REGISTRO_KEY);
+  } catch {
+    /* nada que olvidar */
+  }
+};
 
 export const llegoInvitado = (): boolean => {
   try {

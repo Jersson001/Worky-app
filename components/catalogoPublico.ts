@@ -16,6 +16,7 @@
  * catálogos publicados antes de todo esto, porque lo que se lee es su estructura.
  */
 import { fetchCatalogHtml, guardarPedidoPendiente } from '../services/catalogShareService';
+import { guardarTienda, leerTiendas, quitarTienda } from '../utils/tiendasGuardadas';
 
 interface ProductoDelCatalogo {
   nombre: string;
@@ -58,47 +59,6 @@ const FUENTE = "system-ui,-apple-system,'Segoe UI',Roboto,sans-serif";
  * el pedido se guarda sin ellas.
  */
 const MAX_ELEGIDAS = 6;
-
-/**
- * Las tiendas que el visitante guarda para volver.
- *
- * Viven en el navegador de su teléfono y no salen de ahí: quien escanea un QR
- * no tiene cuenta, y pedirle una para poder guardar sería perderlo en la puerta.
- * El precio es que se pierden si cambia de teléfono o limpia los datos, y por
- * eso al guardar se le ofrece registrarse.
- */
-const TIENDAS_KEY = 'worky:tiendas-guardadas';
-
-interface TiendaGuardada {
-  id: string;
-  negocio: string;
-  ubicacion?: string;
-  ciudad?: string;
-  logo?: string;
-  enlace: string;
-  guardadaEn: string;
-}
-
-/** Leer y escribir nunca tumban la página: en incógnito `localStorage` lanza. */
-const leerTiendas = (): TiendaGuardada[] => {
-  try {
-    const crudo = localStorage.getItem(TIENDAS_KEY);
-    const lista = crudo ? JSON.parse(crudo) : [];
-    return Array.isArray(lista) ? lista.filter(t => t && typeof t.id === 'string') : [];
-  } catch {
-    return [];
-  }
-};
-
-const escribirTiendas = (lista: TiendaGuardada[]): boolean => {
-  try {
-    localStorage.setItem(TIENDAS_KEY, JSON.stringify(lista));
-    return true;
-  } catch {
-    // Sin sitio o sin permiso. Se avisa en vez de fingir que quedó guardada.
-    return false;
-  }
-};
 
 const aviso = (texto: string) => {
   document.body.innerHTML =
@@ -585,11 +545,10 @@ export const mostrarCatalogo = async (userId: string): Promise<void> => {
   const estaGuardada = () => leerTiendas().some(t => t.id === userId);
 
   const guardar = boton('', '#f59e0b', () => {
-    const lista = leerTiendas();
-    const ya = lista.some(t => t.id === userId);
-    const nueva = ya
-      ? lista.filter(t => t.id !== userId)
-      : [{
+    const ya = estaGuardada();
+    const hecho = ya
+      ? quitarTienda(userId)
+      : guardarTienda({
           id: userId,
           negocio: cat.negocio,
           ubicacion: cat.ubicacion,
@@ -597,9 +556,9 @@ export const mostrarCatalogo = async (userId: string): Promise<void> => {
           logo: cat.logo,
           enlace,
           guardadaEn: new Date().toISOString(),
-        }, ...lista];
+        });
 
-    if (!escribirTiendas(nueva)) {
+    if (!hecho) {
       alert('Tu navegador no deja guardar en este teléfono. Prueba fuera del modo incógnito.');
       return;
     }
@@ -679,8 +638,12 @@ export const mostrarCatalogo = async (userId: string): Promise<void> => {
     const acciones = document.createElement('div');
     acciones.style.cssText = 'display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap';
     const ahoraNo = boton('Ahora no', '#94a3b8', () => fondo.remove());
+    // Con `registro=1` la app abre el formulario de correo, celular y nombre.
+    // El atajo del alias no sirve aquí: lo que se le ofrece es precisamente
+    // una cuenta que no se pierda al cambiar de teléfono, y un alias sin
+    // correo no se puede recuperar.
     const crearCuenta = boton('Crear mi cuenta', '#2563eb', () => {
-      window.location.href = `/?vendedor=${encodeURIComponent(userId)}`;
+      window.location.href = `/?vendedor=${encodeURIComponent(userId)}&registro=1`;
     });
     acciones.append(ahoraNo, crearCuenta);
     panel.appendChild(acciones);
@@ -721,7 +684,7 @@ export const mostrarCatalogo = async (userId: string): Promise<void> => {
         const abrir = boton('Abrir', '#2563eb', () => { window.location.href = t.enlace; });
         abrir.style.padding = '7px 14px';
         const quitar = boton('Quitar', '#e2e8f0', () => {
-          escribirTiendas(leerTiendas().filter(x => x.id !== t.id));
+          quitarTienda(t.id);
           pintar();
           pintarGuardar();
           pintarChip();

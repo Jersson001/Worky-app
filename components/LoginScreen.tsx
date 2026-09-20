@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { supabase } from '../services/supabaseConfig';
 import { setCurrentUserId } from '../services/messagingService';
-import { llegoInvitado, vendedorPendiente } from '../services/catalogShareService';
+import { llegoInvitado, olvidarRegistroPedido, quiereRegistroConCorreo, vendedorPendiente } from '../services/catalogShareService';
 import { URL_PRIVACIDAD, URL_TERMINOS, constanciaDeAceptacion } from '../utils/legal';
 import { WORKY_APP_URL } from '../services/catalogShareService';
 import { avatarDeIniciales } from '../utils/avatar';
@@ -148,6 +148,13 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister, i
     pestanaAjustada.current = true;
     setAuthMode('register');
   }, [invitadoPor]);
+
+  // Y lo mismo con «quiero registrarme con correo»: la marca la escribe la app
+  // al leer la URL, que es un efecto y corre después del primer pintado. Sin
+  // esto el visitante que pulsó «Crear mi cuenta» veía el atajo del alias.
+  useEffect(() => {
+    if (quiereRegistroConCorreo()) setPrefiereFormulario(true);
+  }, [invitadoPor]);
   // Se acaba de registrar pero Supabase exige confirmar el correo antes de
   // dar sesión (signUp devuelve session: null). No se puede hacer nada más
   // hasta que haga clic en el enlace del email.
@@ -224,7 +231,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister, i
   const [aliasElegido, setAliasElegido] = useState('');
   const [buscandoAlias, setBuscandoAlias] = useState(false);
   // Con correo también se puede: el atajo no cierra la puerta de siempre.
-  const [prefiereFormulario, setPrefiereFormulario] = useState(false);
+  //
+  // Arranca en el formulario si lo pidió: es lo que hace el botón «Crear mi
+  // cuenta» de una tienda guardada, donde el alias no sirve porque lo que se le
+  // prometió es una cuenta que no se pierde al cambiar de teléfono.
+  const [prefiereFormulario, setPrefiereFormulario] = useState(() => quiereRegistroConCorreo());
   const entradaPorAlias = formularioCorto && authMode === 'register' && !prefiereFormulario;
 
   const pedirSugerencias = async () => {
@@ -1071,7 +1082,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister, i
                   arrepiente no tiene por qué recargar la página. */}
               {formularioCorto && prefiereFormulario && authMode === 'register' && (
                 <button
-                  onClick={() => { setPrefiereFormulario(false); setError(''); }}
+                  onClick={() => { setPrefiereFormulario(false); olvidarRegistroPedido(); setError(''); }}
                   className="text-slate-500 hover:text-slate-700 text-xs font-semibold mt-3"
                 >
                   <i className="fa-solid fa-arrow-left mr-1"></i>
