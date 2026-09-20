@@ -11,7 +11,10 @@
 export const EMPRESA = {
   razonSocial: 'FERRY APP S.A.S.',
   nit: '902.028.115-2',
-  direccion: 'Carrera 112 No. 23 C 21',
+  // No es la del RUT: esa es la casa del representante legal y estas páginas
+  // las ve cualquiera que abra la app. La Ley 1581 sí pide una dirección del
+  // responsable, así que va esta, de correspondencia.
+  direccion: 'Calle 22J No. 114A 46',
   ciudad: 'Bogotá D.C., Colombia',
   correo: 'contacto@ferryapp.co',
 } as const;
