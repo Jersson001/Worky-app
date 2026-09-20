@@ -336,6 +336,12 @@ no hay un origen real del que tirar —el caso del APK—. Desde la web,
 `origenCompartible` usa el origen actual, así que los enlaces salen con el
 dominio por el que se entró.
 
+**Salvo por el dominio viejo, que es la excepción.** Entrar por él —un marcador,
+un enlace ya repartido— hacía que todo lo compartido saliera otra vez con él,
+repartiendo la dirección que se quiso dejar atrás. Desde el 20/09/2026 se trata
+como si no hubiera origen: los enlaces salen con `worky.ferryapp.co`. Los
+previews siguen generando los suyos, que para eso son.
+
 Cambiar de dominio toca cinco sitios, y tres están fuera del código: el Site
 URL y las Redirect URLs de Supabase, los orígenes autorizados de Google, y
 las URLs de política y eliminación de cuenta en Play. Si se olvidan los de
@@ -388,6 +394,30 @@ No hace falta abrirle permisos a ese HTML porque **nunca se ejecuta**: solo se
 interpreta su estructura. Y por eso mismo los catálogos publicados antes siguen
 funcionando; de ellos salen una foto por producto y ninguna carpeta, que es lo
 que tenían.
+
+### Dónde queda el negocio, y guardar la tienda
+
+Debajo del nombre salía solo la ciudad: «Hábitat Home · Bogotá». A quien escanea
+el QR dentro de un centro comercial eso no le sirve para volver. Desde el
+20/09/2026 salen también **local, centro comercial y dirección**, en una línea
+con un alfiler. Los dos primeros son campos nuevos del registro y del perfil
+(`local` y `centro_comercial` en `user_profiles`,
+[supabase_local_y_centro_comercial.sql](supabase_local_y_centro_comercial.sql)),
+opcionales y de texto libre: hay negocios de calle y gente que trabaja en su
+casa. La dirección ya se pedía en el registro y no se usaba en ninguna parte.
+
+En el HTML publicado van en su propio `<p class="ubicacion">` y la ciudad en
+`<p class="ciudad">`. Los catálogos publicados antes traen un solo `<p>`
+sin clase, y por eso el visor lo lee con un respaldo: `p.ciudad` y, si no,
+el primer `<p>` que no sea la ubicación.
+
+**Guardar la tienda.** Un botón en la barra de abajo guarda el catálogo en el
+teléfono de quien lo mira, y arriba aparece «Mis tiendas guardadas (n)» con la
+lista, para abrirlas o quitarlas. Vive en `localStorage` y no sale de ese
+teléfono: pedirle cuenta a quien acaba de escanear un QR es perderlo en la
+puerta. Como eso se pierde al cambiar de teléfono, la primera vez que guarda se
+le ofrece crear cuenta —con «Ahora no» al lado, porque la tienda ya quedó
+guardada y esto no es un peaje—.
 
 ### Cómo lo recorre el cliente
 
