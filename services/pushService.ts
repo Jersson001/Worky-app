@@ -26,7 +26,16 @@ export const puedeRecibirPush = (): boolean =>
  * viejo no falla al enviar, simplemente no llega. `visto_en` sirve para
  * limpiar después los que lleven meses sin aparecer.
  */
+/**
+ * El token de este aparato, para poder soltarlo al cerrar sesión.
+ *
+ * Solo lo conoce el plugin, y solo cuando llega el evento de registro: sin
+ * guardarlo aquí, al cerrar sesión no había forma de saber qué fila borrar.
+ */
+let tokenDeEsteAparato: string | null = null;
+
 const guardarToken = async (token: string) => {
+  tokenDeEsteAparato = token;
   const { data } = await supabase.auth.getUser();
   const userId = data?.user?.id;
   if (!userId) return;
@@ -105,11 +114,23 @@ export const engancharNotificaciones = async (
  * mensajes del anterior: el token sigue colgado de aquel usuario y FCM no sabe
  * nada de sesiones.
  */
-export const soltarNotificaciones = async (token?: string) => {
+//
+// Estuvo escrita y sin llamarse desde el 11/09/2026 hasta el 20/09: pedía el
+// token como argumento y nadie lo tenía a mano. Mientras tanto, cerrar sesión
+// dejaba el teléfono enganchado a la cuenta, y le seguían llegando sus avisos
+// —con el nombre de quien escribe y el comienzo del mensaje— a quien tuviera
+// el teléfono después.
+//
+// Hay que llamarla ANTES de cerrar la sesión: la base solo deja borrar un
+// token a su dueño, y sin sesión no hay dueño.
+export const soltarNotificaciones = async () => {
   if (!puedeRecibirPush()) return;
   try {
     await PushNotifications.removeAllListeners();
-    if (token) await supabase.from('push_tokens').delete().eq('token', token);
+    if (tokenDeEsteAparato) {
+      await supabase.from('push_tokens').delete().eq('token', tokenDeEsteAparato);
+      tokenDeEsteAparato = null;
+    }
   } catch (e) {
     console.warn('No se pudo soltar el aparato:', e);
   }

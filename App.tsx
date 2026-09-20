@@ -29,7 +29,7 @@ import { Contact, Message, UserStatus, ProjectStage, Product, Expense, Story, Pa
 import { LoginScreen } from './components/LoginScreen';
 import { avatarDeIniciales, fotoOIniciales } from './utils/avatar';
 import { NuevaContrasena } from './components/NuevaContrasena';
-import { engancharNotificaciones } from './services/pushService';
+import { engancharNotificaciones, soltarNotificaciones } from './services/pushService';
 import { WelcomeOnboarding } from './components/WelcomeOnboarding';
 import { sendMessage as sendMessageToFirebase, listenToMessages, listenToContacts, addContact, deleteContact, saveUserProfile, getUserProfile, initializeUserId, setCurrentUserId, getCurrentUserId, searchUserByPhoneOrEmail, addContactFromSearch, deleteMessage, updateMessage, listenToGlobalIncomingMessages, markChatAsRead, markMessagesAsDelivered, markMessagesAsRead, getPublicInfoById } from './services/messagingService';
 import { saveProduct, deleteProduct, listenToProducts, saveCategory, deleteCategory, listenToCategories, saveProject, deleteProject, updateProject, addExpenseToProject, updateContactWithProjects, listenToPaymentAccounts, savePaymentAccount, deletePaymentAccount, PaymentAccountData, listenToThirdPartyAccounts, saveThirdPartyAccount, deleteThirdPartyAccount, fetchProjectsForContact, listenToProjects } from './services/dataService';
@@ -804,6 +804,10 @@ const App: React.FC = () => {
   const esCliente = esAnonimo || (llegoDeUnCatalogo && !userProfile?.businessType);
 
   const handleLogout = useCallback(async () => {
+    // Primero se suelta el teléfono, con la sesión todavía abierta: después de
+    // cerrarla la base ya no deja borrar el token, y el aparato seguiría
+    // recibiendo los avisos de esta cuenta.
+    await soltarNotificaciones();
     try {
       await supabase.auth.signOut();
     } catch (error) {
