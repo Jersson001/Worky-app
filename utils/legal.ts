@@ -37,7 +37,9 @@ export const URL_TERMINOS = '/terminos.html';
  * Al cambiar los documentos se sube esta fecha, y a quien aceptó una versión
  * anterior habrá que volver a pedírsela.
  */
-export const VERSION_POLITICAS = '2026-09-01';
+// 2026-09-20: la política añade el token de notificaciones y a Google como
+// encargado, para el aviso y para «Inicia sesión con Google».
+export const VERSION_POLITICAS = '2026-09-20';
 
 /** El año del aviso de derechos: arranca en el de la constitución. */
 export const ANIO_INICIAL = 2025;
