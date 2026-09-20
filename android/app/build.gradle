@@ -68,6 +68,12 @@ android {
         // con datos de verdad —vendido, cobrado y gastos, que salía en $0— y
         // las condiciones de negociación de cada oficio, que a una carpintería
         // le salían las de confección.
+        //
+        // El 26092001 (2.8.0): el local y el centro comercial en el catálogo,
+        // guardar tiendas con su agenda en el inicio, el registro con correo al
+        // guardar una, «Pregunta el precio» donde antes había un letrero, el
+        // precio encima de cada foto y el visor con flechas. Y la dirección
+        // publicada, que era la casa del representante legal.
         /*
          * Son dos cosas distintas y solo una es libre.
          *
@@ -105,8 +111,8 @@ android {
          * número de en medio —2.4, 2.5 y 2.6 en tres días— y a ese paso la 3.0
          * llegaba sin que hubiera cambiado nada grande.
          */
-        versionCode 26091601
-        versionName "2.7.0"
+        versionCode 26092001
+        versionName "2.8.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
