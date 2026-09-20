@@ -39,13 +39,20 @@ const APP_PUBLICADA = 'https://worky.ferryapp.co';
  * generados en un preview se quedan dentro del preview y se puede probar el
  * recorrido completo del QR antes de publicar. Con la URL fija, un QR hecho en
  * el preview llevaba a producción y parecía que el cambio no funcionaba.
+ *
+ * Con una excepción: el **dominio viejo de producción**. Sigue vivo y sigue
+ * abriéndose desde marcadores y enlaces repartidos, y entrar por ahí hacía que
+ * todo lo compartido saliera con él, repartiendo otra vez la dirección que se
+ * quiso dejar atrás. Un preview no tiene ese problema porque se usa y se tira.
  */
+const DOMINIO_VIEJO = 'worky-app-khaki.vercel.app';
+
 const origenCompartible = (): string | null => {
   try {
     const { protocol, hostname, origin } = window.location;
     if (protocol !== 'http:' && protocol !== 'https:') return null;
     const local = hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1' || hostname.endsWith('.local');
-    return local ? null : origin;
+    return local || hostname === DOMINIO_VIEJO ? null : origin;
   } catch {
     // Sin `window` —cualquier ejecución fuera del navegador— manda la publicada.
     return null;
