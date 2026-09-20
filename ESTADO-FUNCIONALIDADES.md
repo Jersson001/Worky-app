@@ -65,7 +65,7 @@ código y no en la práctica.
 
 ### Entrar con Google
 
-Hay «Continuar con Google» en la pantalla de acceso y en la del alias, con la
+Hay «Inicia sesión con Google» en la pantalla de acceso y en la del alias, con la
 «G» a cuatro colores dibujada en el código —sus normas de marca exigen esos
 colores exactos, y el `fa-google` empaquetado es de un solo tono—.
 
@@ -418,6 +418,31 @@ teléfono: pedirle cuenta a quien acaba de escanear un QR es perderlo en la
 puerta. Como eso se pierde al cambiar de teléfono, la primera vez que guarda se
 le ofrece crear cuenta —con «Ahora no» al lado, porque la tienda ya quedó
 guardada y esto no es un peaje—.
+
+**«Crear mi cuenta» lleva al registro con correo, no al atajo del alias.** Lo
+que se le prometió es una cuenta que no se pierda al cambiar de teléfono, y un
+alias sin correo no se puede recuperar. El enlace lleva `registro=1`, que la
+app se guarda —la URL se limpia enseguida— y la pantalla de acceso abre con el
+formulario corto: nombre, correo, celular y contraseña. Sale una cuenta sin
+oficio, o sea de cliente, y al terminar aterriza en el chat de esa tienda.
+
+**Quien pulsa «Chatear» sigue entrando con el nombre y su alias**, que es el
+camino corto de siempre. Y si antes había pulsado «Crear mi cuenta», la marca
+se borra al llegar por ahí: si no, le habría salido el formulario de correo
+cuando lo que pidió fue entrar a escribir. Manda la URL y no la marca guardada,
+porque la marca se limpia en un efecto de la app que corre después de que la
+pantalla de acceso ya decidió qué enseñar.
+
+La marca se lee **después de montar** la pantalla y no solo al construirla: la
+escribe la app al leer la URL, que es un efecto y corre después del primer
+pintado. Leyéndola solo al principio, el visitante veía el atajo del alias.
+
+**La agenda de tiendas.** En el inicio, dentro de Herramientas, el botón
+«Tiendas» abre lo guardado: abrir su catálogo, escribirle o quitarla. Sin esto,
+lo guardado solo se podía volver a ver desde el catálogo de esa misma tienda, o
+sea desde donde ya estabas. Escribirle abre el chat si ya es un contacto; si no
+—lo normal la primera vez— pasa por la invitación, que es la que lo crea. Se le
+enseña a todo el mundo, porque quien vende también compra.
 
 ### Cómo lo recorre el cliente
 
