@@ -507,7 +507,7 @@ export const buildCatalogHtml = (
             // La inicial y no el icono de la carpeta: la instantánea no carga
             // Font Awesome —es HTML autónomo a propósito— y un <i class="fa-…">
             // ahí dentro no pinta nada, así que la ficha salía en blanco.
-            : `<span class="portada sin-portada" style="background:${esc(g.color || '#2563eb')}">${esc(g.nombre.slice(0, 1).toUpperCase())}</span>`}
+            : `<span class="portada sin-portada"><i></i><b>${esc(g.nombre)}</b></span>`}
           <span class="pie"><span class="nombre">${esc(g.nombre)}</span><span class="cuenta">${g.productos.length}</span></span>
         </summary>
         ${grid(g.productos)}
@@ -543,7 +543,14 @@ export const buildCatalogHtml = (
   .carpeta>summary{list-style:none;cursor:pointer;user-select:none;display:block}
   .carpeta>summary::-webkit-details-marker{display:none}
   .ficha .portada{display:block;width:100%;height:110px;object-fit:cover}
-  .ficha .sin-portada{display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.8rem;font-weight:700}
+  /* Sin foto, la portada es el nombre: una serif del propio teléfono sobre
+     fondo oscuro, que se lee mejor que una inicial suelta. */
+  .ficha .sin-portada{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;
+    padding:10px 12px;box-sizing:border-box;background:linear-gradient(135deg,#1e293b,#334155);color:#fff;text-align:center}
+  .ficha .sin-portada i{width:26px;height:2px;background:rgba(255,255,255,.55);flex:none}
+  .ficha .sin-portada b{font-family:Georgia,'Noto Serif','Times New Roman',serif;font-size:.98rem;
+    font-weight:600;line-height:1.25;letter-spacing:.01em;display:-webkit-box;-webkit-line-clamp:3;
+    -webkit-box-orient:vertical;overflow:hidden}
   .ficha .pie{display:flex;align-items:center;gap:8px;padding:10px 12px;font-weight:700;font-size:.95rem}
   /* Dos lineas antes de cortar: «Cocinas integrales» en una sola sale como
      «Cocinas inte…», que no dice cual es. */

@@ -91,6 +91,28 @@ const precioDe = (card: Element): string => {
   return /^consultar precio$/i.test(texto) ? '' : texto;
 };
 
+/**
+ * La portada de una carpeta que no tiene foto.
+ *
+ * Antes era un cuadro de color con la inicial, que no dice nada: dos carpetas
+ * que empiezan igual se ven iguales. Ahora se pinta el nombre entero como una
+ * portada de verdad, con una serif —la que trae el teléfono, sin pedirle nada a
+ * ningún servidor— sobre un fondo oscuro con una raya fina encima.
+ *
+ * El nombre se corta a tres renglones: en 150 px de ancho, más que eso ya no se
+ * lee, y el nombre completo está justo debajo, en el pie de la ficha.
+ */
+const SERIF = "Georgia,'Noto Serif','Times New Roman',serif";
+
+const portadaDeNombre = (nombre: string, alto = 110): string =>
+  `<span style="height:${alto}px;display:flex;flex-direction:column;align-items:center;` +
+  `justify-content:center;gap:7px;padding:10px 12px;box-sizing:border-box;` +
+  `background:linear-gradient(135deg,#1e293b,#334155);color:#fff;text-align:center">` +
+  '<span style="width:26px;height:2px;background:rgba(255,255,255,.55);flex:none"></span>' +
+  `<span style="font-family:${SERIF};font-size:.98rem;font-weight:600;line-height:1.25;` +
+  `letter-spacing:.01em;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;` +
+  `overflow:hidden">${nombre}</span></span>`;
+
 /** Etiqueta de una foto dentro de su producto: la 1ª lleva el nombre a secas. */
 const etiquetaDe = (producto: string, i: number): string =>
   i === 0 ? producto : `${producto} (foto ${i + 1})`;
@@ -500,10 +522,16 @@ export const mostrarCatalogo = async (userId: string): Promise<void> => {
         f.innerHTML =
           (c.portada
             ? `<img src="${c.portada}" alt="" style="width:100%;height:110px;object-fit:cover;display:block">`
-            : `<span style="height:110px;display:flex;align-items:center;justify-content:center;background:#2563eb;color:#fff;font-size:1.8rem;font-weight:700">${c.nombre.slice(0, 1).toUpperCase()}</span>`) +
+            : portadaDeNombre(c.nombre)) +
           '<span style="display:flex;align-items:center;gap:8px;padding:10px 12px;font-weight:700;font-size:.95rem">' +
-          `<span style="flex:1;line-height:1.25">${c.nombre}</span>` +
-          `<span style="background:#eff6ff;color:#2563eb;border-radius:999px;padding:2px 10px;font-size:.75rem;flex:none">${c.productos.length}</span></span>`;
+          // Con el nombre ya en la portada, repetirlo debajo es decir dos veces
+          // lo mismo en la misma ficha: ahí va lo que falta, cuántos hay.
+          `<span style="flex:1;line-height:1.25">${c.portada ? c.nombre : `${c.productos.length} producto${c.productos.length === 1 ? '' : 's'}`}</span>` +
+          // La burbuja con el número sobra si el pie ya dice «3 productos».
+          (c.portada
+            ? `<span style="background:#eff6ff;color:#2563eb;border-radius:999px;padding:2px 10px;font-size:.75rem;flex:none">${c.productos.length}</span>`
+            : '') +
+          '</span>';
         f.onclick = () => { carpetaAbierta = c; pintarContenido(); window.scrollTo(0, 0); };
         fichas.appendChild(f);
       });
