@@ -472,6 +472,14 @@ tienen. Pulsa una y entra: las demás se apartan y queda una cabecera «← Nomb
 para volver. Con una sola carpeta no se pinta ninguna, por el mismo criterio que
 las pestañas de la cotización: una carpeta suelta solo esconde el catálogo.
 
+**Sin foto de portada, la portada es el nombre.** Antes era un cuadro de color
+con la inicial, que no distingue dos carpetas que empiecen igual. Ahora se pinta
+el nombre entero sobre un fondo oscuro, con una serif del propio teléfono
+—`Georgia, Noto Serif`—, para no depender de una fuente que haya que descargar.
+Se corta a tres renglones, y entonces el pie de la ficha dice cuántos productos
+hay en vez de repetir el nombre. Los catálogos ya publicados también lo ven, sin
+republicar: la portada la decide el visor.
+
 Cada producto enseña **hasta cuatro fotos**, la principal grande y el resto en
 miniatura debajo, todas a la vista. Fueron un carrusel y no servía: nadie
 descubre que hay que arrastrar, y quien entraba creía que el producto tenía una
