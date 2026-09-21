@@ -34,7 +34,8 @@ import { WelcomeOnboarding } from './components/WelcomeOnboarding';
 import { sendMessage as sendMessageToFirebase, listenToMessages, listenToContacts, addContact, deleteContact, saveUserProfile, getUserProfile, initializeUserId, setCurrentUserId, getCurrentUserId, searchUserByPhoneOrEmail, addContactFromSearch, deleteMessage, updateMessage, listenToGlobalIncomingMessages, markChatAsRead, markMessagesAsDelivered, markMessagesAsRead, getPublicInfoById } from './services/messagingService';
 import { saveProduct, deleteProduct, listenToProducts, saveCategory, deleteCategory, listenToCategories, saveProject, deleteProject, updateProject, addExpenseToProject, updateContactWithProjects, listenToPaymentAccounts, savePaymentAccount, deletePaymentAccount, PaymentAccountData, listenToThirdPartyAccounts, saveThirdPartyAccount, deleteThirdPartyAccount, fetchProjectsForContact, listenToProjects } from './services/dataService';
 import { supabase } from './services/supabaseConfig';
-import { formatCurrency } from './utils/currency';
+import { formatCurrency, parseAmount } from './utils/currency';
+import { CurrencyInput } from './components/chat/modals/CurrencyInput';
 
 // Mock Data (usado como fallback o inicial)
 const MOCK_CONTACTS: Contact[] = [
@@ -1804,29 +1805,11 @@ const App: React.FC = () => {
     ));
   };
 
-  const formatCurrencyInput = (value: string): string => {
-    // Remover todo excepto números
-    const numbers = value.replace(/\D/g, '');
-    if (!numbers) return '';
-    // Formatear con puntos como separadores de miles (sin signo $)
-    return Number(numbers).toLocaleString('es-CO');
-  };
-
-  const parseCurrencyInput = (value: string): string => {
-    // Remover todo excepto números para guardar
-    return value.replace(/\D/g, '');
-  };
-
   /** Precio para mostrar. Sin precio no se enseña "$ 0", que confunde. */
   const mostrarPrecio = (price: number): string =>
     price
       ? new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(price)
       : 'Consultar precio';
-
-  const handleProductPriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const formatted = formatCurrencyInput(e.target.value);
-    setNewProductPrice(formatted);
-  };
 
   const handleSaveProduct = async () => {
     // Antes se salía en silencio: el botón parecía no responder y no había
@@ -1875,13 +1858,14 @@ ${describeError(error)}
     let productToSave: Product;
 
     // Parsear el precio removiendo el formato
-    const priceValue = parseCurrencyInput(newProductPrice);
+    // El campo entrega el monto canónico; aquí solo se pasa a número.
+    const priceValue = parseAmount(newProductPrice);
 
     if (editingProduct) {
       productToSave = {
         ...editingProduct,
         name: newProductName,
-        price: Number(priceValue),
+        price: priceValue,
         stock: Number(newProductStock) || 0,
         description: newProductDescription,
         image: mainImage,
@@ -1892,7 +1876,7 @@ ${describeError(error)}
       productToSave = {
         id: newId(),
         name: newProductName,
-        price: Number(priceValue),
+        price: priceValue,
         stock: Number(newProductStock) || 0,
         description: newProductDescription,
         image: mainImage,
@@ -2008,7 +1992,7 @@ ${describeError(error)}
   const handleEditProduct = (product: Product) => {
     setEditingProduct(product);
     setNewProductName(product.name);
-    setNewProductPrice(product.price ? formatCurrencyInput(product.price.toString()) : '');
+    setNewProductPrice(product.price ? String(product.price) : '');
     setNewProductStock(product.stock?.toString() || '');
     setNewProductDescription(product.description);
     setNewProductImage(product.image);
@@ -3322,12 +3306,16 @@ ${describeError(error)}
                           onChange={e => setNewProductName(e.target.value)}
                           className="bg-white p-3 rounded-lg border border-slate-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-100 outline-none"
                         />
-                        <input
-                          type="text"
-                          placeholder="Precio (opcional, ej: 500.000)"
+                        {/* El mismo campo de dinero de las cotizaciones: con el
+                            signo de pesos y los miles puestos al teclear. Antes
+                            era un input a secas, y el precio se escribía sin
+                            ninguna señal de que fueran pesos. */}
+                        <CurrencyInput
                           value={newProductPrice}
-                          onChange={handleProductPriceChange}
-                          className="bg-white p-3 rounded-lg border border-slate-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-100 outline-none"
+                          onCommit={setNewProductPrice}
+                          placeholder="Precio (opcional)"
+                          symbol
+                          className="bg-white p-3 rounded-lg border border-slate-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-100 outline-none w-full"
                         />
                       </div>
 
