@@ -1,6 +1,6 @@
 # Cómo funciona el chat
 
-Última revisión: 1 de septiembre de 2026.
+Última revisión: 20 de septiembre de 2026.
 
 > Este documento describía el chat sobre Firebase Realtime Database, con un
 > `userIndex/` de claves escapadas y login por SMS. Nada de eso sigue siendo
@@ -208,15 +208,26 @@ un botón molesta, faltarle una herramienta es peor.
 Cuando entra un mensaje y la pestaña lo permite, se lanza una **notificación del
 navegador** (`Notification`, si hay permiso) además del toast dentro de la app.
 
-Eso **no son notificaciones push**: solo funciona con la app abierta. No hay FCM
-ni ningún servicio de push, ni avisos por correo. Está en la lista de
-[ESTADO-FUNCIONALIDADES.md](ESTADO-FUNCIONALIDADES.md#lo-que-no-hay).
+Eso es lo de **dentro**: solo funciona con la app abierta.
+
+**Con la app cerrada hay notificaciones desde el 11/09/2026**, y solo en la app
+instalada. Un disparador en `messages` llama a la función `notificar-mensaje`,
+que busca los aparatos del destinatario en `push_tokens` y manda el aviso por
+FCM. Cómo está armado y qué protege al mensaje, en
+[ESTADO-FUNCIONALIDADES.md](ESTADO-FUNCIONALIDADES.md#notificaciones).
+
+Probado en un teléfono el 20/09/2026. **Hasta ese día no salía ninguno**: el
+disparador llamaba a `extensions.net.http_post` y `pg_net` vive en el esquema
+`net`, así que fallaba en silencio —el error se captura para no arriesgar el
+mensaje— y solo se veía en los registros de Postgres.
+
+Por correo sigue sin haber avisos.
 
 ---
 
 ## Lo que NO hay
 
-- **Push.** Ver arriba.
+- **Avisos por correo.** Las push sí están; ver arriba.
 - **Búsqueda por nombre.** Solo por correo o celular exacto.
 - **Acceso a la agenda del teléfono.**
 - **Bloquear a alguien.**

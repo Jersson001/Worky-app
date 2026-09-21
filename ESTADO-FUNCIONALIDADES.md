@@ -1,6 +1,6 @@
 # Estado de funcionalidades — Worky
 
-Última revisión: 16 de septiembre de 2026.
+Última revisión: 20 de septiembre de 2026.
 
 > Este documento describía el proyecto cuando corría sobre Firebase y decía que
 > los clientes no podían tener cuenta, que Storage no estaba implementado y que
@@ -982,15 +982,24 @@ llegue a publicarse, así que cada intento fallido quema un número:
 | 20 (2.5) | Recuperar la contraseña, los gastos del proyecto en el balance, el correo y el celular en la ficha del contacto, el enlace compartido con el mismo documento que se imprime, y las iniciales dibujadas en el teléfono. |
 | 21 | Enviado a Play |
 | **26091001 (2.6.0)** | Capítulo de ropa deportiva —prendas, escudos, numeración y nombre de cada jugador—, el producto del catálogo que se mandaba al chat y no se veía, y las dos pantallas de arranque con el logo de Worky |
+| 26091601 (2.7.0) | Notificaciones con la app cerrada, el dominio propio en los enlaces, los comentarios por línea en la cotización básica, Estados Financieros con datos de verdad, y las condiciones de negociación de cada oficio. Compilada y no enviada |
+| 26092001 (2.8.0) | El local y el centro comercial en el catálogo, guardar tiendas con su agenda, el registro con correo al guardar una, «Pregunta el precio», el precio encima de cada foto y el visor con flechas. Y la dirección publicada, que era la casa del representante legal. Con esta se probaron las notificaciones en un teléfono: llegan |
+| 26092002 (2.8.1) | El icono de las notificaciones, que salía como un cuadrado blanco. Probada en el teléfono |
+| 26092003 (2.8.2) | Cerrar sesión suelta el teléfono de las notificaciones, y la política al 20/09 con el token |
+| **26092004 (2.8.3)** | El precio del producto con signo de pesos, y la carpeta sin foto presentada con su nombre. **Es la que va a Play** |
 
 Play exige **API 36** desde el 1 de septiembre de 2026.
 
-**El 26091001 (2.6.0) está compilado y firmado.** El `versionCode` va por
-fecha desde hoy, que llevarlo a mano costó dos rechazos de Play por repetido. El 19 y el 20 ya se subieron a Play, así que
-sus números están gastados. La 2.4 se probó en un teléfono, un Motorola G13, y **en modo avión**: se
-ve con sus estilos, sus iconos y su tipografía. Hasta el 18 la aplicación se los
-pedía a un CDN al arrancar y sin cobertura salía en crudo. Cómo se compila y se
-prueba está en
+**La que va a Play es la 26092004 (2.8.3)**, compilada y firmada el 20/09/2026.
+Del 14 al 21 son números gastados —enviados o rechazados—; del 26091601 en
+adelante están compiladas pero sin enviar, así que sus números siguen libres.
+El `versionCode` va por fecha desde el 10/09/2026, que llevarlo a mano costó dos
+rechazos de Play por repetido.
+
+Probado en un teléfono, un Motorola G13: la 2.4 en modo avión —se ve con sus
+estilos, que hasta el 18 se pedían a un CDN— y la 2.8.x con las notificaciones,
+que llegan con la app cerrada y con la W en la barra de estado. Cómo se compila
+y se prueba está en
 [GENERAR-APK-ANDROID-STUDIO.md](GENERAR-APK-ANDROID-STUDIO.md) — con la
 distinción entre el `.aab`, que solo se sube a Play, y el `.apk`, que es el que
 se instala.

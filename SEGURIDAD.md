@@ -210,6 +210,40 @@ siempre lo para—.
 
 ---
 
+### El vendedor y sus proyectos — 16 de septiembre de 2026
+
+Un proyecto cuelga de una ficha de contacto, y las políticas solo dejaban verlo
+a quien es dueño de esa ficha. Cuando el **cliente** aprueba una cotización, el
+proyecto nace desde su lado: el vendedor no lo veía —Estados Financieros le
+salía en $0— ni podía apuntarle gastos.
+
+Abrirlo por `contractor_id = auth.uid()` habría sido un agujero: esa columna la
+escribe quien crea el proyecto, así que cualquiera podría colgar en su ficha un
+proyecto «vendido por» otro y meterle ventas falsas en su reporte. La condición
+que se aplicó es más estricta: **el vendedor ve el proyecto si él mismo le mandó
+a ese cliente la cotización con ese código**
+([supabase_finanzas_del_vendedor.sql](supabase_finanzas_del_vendedor.sql), con
+pruebas contra un Postgres de verdad).
+
+Eso solo se puede fingir mandando un mensaje a nombre de otro, y ahí apareció lo
+segundo: **la política de UPDATE de `messages` dejaba al destinatario reescribir un
+mensaje recibido entero**, remitente y tipo incluidos. Un trigger lo congela:
+remitente, destinatario, chat y tipo ya no cambian. La app nunca los cambia.
+
+### El teléfono que seguía recibiendo avisos — 20 de septiembre de 2026
+
+Cerrar sesión no soltaba el aparato. `soltarNotificaciones` existía desde que se
+montaron las notificaciones, pero nadie la llamaba y pedía un token que la app
+no guardaba. Resultado: quien cerraba sesión seguía recibiendo en ese teléfono
+los avisos de su cuenta, **con el nombre de quien escribe y el comienzo del
+mensaje**, aunque el teléfono ya estuviera en otras manos.
+
+Ahora la app recuerda el token al registrarlo y lo borra **antes** de cerrar la
+sesión: la política de `push_tokens` solo deja borrar el token a su dueño, y sin
+sesión no hay dueño.
+
+---
+
 ## Restos conocidos
 
 - **`shared_docs/<id>` no lleva el dueño en la ruta**, así que ahí solo se puede
@@ -220,6 +254,14 @@ siempre lo para—.
   No es urgente: el cliente crea el perfil al entrar.
 - **Dos versiones de `add_contact_mutual`** conviven en la base (6 y 7
   parámetros). La app usa la de 7. Convendría retirar la otra.
+- **La metadata de un mensaje sí la puede reescribir el destinatario.** El
+  trigger congela remitente, destinatario, chat y tipo, pero no la metadata,
+  porque la app la usa para aprobar una cotización. Un cliente podría cambiarle
+  los montos a la que recibió. Cerrarlo pide limitar qué claves toca.
+- **El cliente puede leer los gastos de su proyecto.** La aplicación no se los
+  enseña —son cuentas de la casa— pero la base no lo impide.
+- **El vendedor no puede editar valor ni etapa** de un proyecto que aprobó el
+  cliente: lo ve, pero la escritura sigue siendo del dueño de la ficha.
 
 ---
 

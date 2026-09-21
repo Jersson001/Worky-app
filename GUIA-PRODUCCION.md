@@ -129,7 +129,9 @@ Hay pruebas para `supabase_alias`, `supabase_no_autoascenderse`,
 ## 3. Web
 
 `npm run build` deja el sitio estático en `dist/`, que vale para cualquier
-hosting. Hoy está en Vercel: <https://worky-app-khaki.vercel.app>.
+hosting. Hoy está en Vercel, con dominio propio desde el 11/09/2026:
+<https://worky.ferryapp.co>. El anterior, <https://worky-app-khaki.vercel.app>,
+sigue vivo y no se retira: los QR impresos apuntan ahí.
 
 Las dos variables `VITE_*` hay que declararlas también en el hosting. Vite las
 mete en el bundle **en tiempo de compilación**: si no están al compilar, no

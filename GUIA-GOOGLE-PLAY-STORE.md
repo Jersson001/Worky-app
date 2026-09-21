@@ -4,12 +4,19 @@ Esta guía te llevará paso a paso para publicar tu aplicación Worky en Google 
 
 ---
 
-## 📌 Dónde va esto — al 11 de septiembre de 2026
+## 📌 Dónde va esto — al 20 de septiembre de 2026
 
-El siguiente envío va con el **`versionCode` 26091001 (versión 2.6.0)**,
-compilado y firmado. El 19, el 20 y el 21 ya se enviaron a Play. La política está viva en
-`worky-app-khaki.vercel.app/privacidad.html`, y la página de eliminación de
-cuenta que Play exige, en `worky-app-khaki.vercel.app/eliminar-cuenta.html`.
+El siguiente envío va con el **`versionCode` 26092004 (versión 2.8.3)**,
+compilado y firmado, en el Escritorio. El 19, el 20 y el 21 ya se enviaron a
+Play; del 26091601 en adelante están compiladas y sin enviar. La política y la
+página de eliminación de cuenta viven ahora en el dominio propio:
+`worky.ferryapp.co/privacidad.html` y `worky.ferryapp.co/eliminar-cuenta.html`.
+**En la ficha de Play siguen apuntando a `worky-app-khaki.vercel.app`, y hay que
+cambiarlas**: el dominio viejo funciona, pero no dice quién publica.
+
+**Antes de enviar esta versión hay que rehacer «Seguridad de los datos»**: es la
+primera que sube con notificaciones, y el token de FCM es un identificador de
+dispositivo. Ver abajo.
 
 **El `versionCode` va por fecha desde el 10/09/2026: `AAMMDDNN`.** Hoy sería
 `26091001`. Se dejó de llevar a mano porque eso obliga a saber cuál fue el
@@ -27,7 +34,7 @@ Y **los paquetes no se compilan por iniciativa propia**: ni el `.apk` ni el
 `.aab` se generan hasta que él lo pida —cada bump quema un número que Play no
 deja reutilizar, y él prueba cuando le viene bien, juntando varios arreglos en
 una sola instalación. Mientras tanto, lo que se sube a `main` se publica solo en
-`worky-app-khaki.vercel.app`, y ahí lo puede probar sin instalar nada.
+`worky.ferryapp.co`, y ahí lo puede probar sin instalar nada.
 
 Para probar en el teléfono se compila aparte un `.apk` —el `.aab` no se
 instala—; cómo, en
@@ -48,17 +55,22 @@ mencionarlo en la política **antes** de publicar una versión con notificacione
 
 **Lo que queda antes de subirlo:**
 
-1. **Llenar «Seguridad de los datos»**, que es un formulario aparte de la
-   política y tiene que coincidir con ella (ver el Paso 5). Está resuelto campo
-   por campo, y de dónde salió cada respuesta, en la ficha que se preparó el
-   7/09/2026.
-2. **Rotar la clave de subida**, expuesta en el historial público de git.
-3. **Configurar un SMTP propio en Supabase**, o los correos de recuperación de
+1. **Rehacer «Seguridad de los datos»**, que es un formulario aparte de la
+   política y tiene que coincidir con ella (ver el Paso 5). Se resolvió campo
+   por campo el 7/09/2026, pero entonces se declaró que Worky no recoge
+   identificadores de dispositivo. Ya no es cierto: hay que añadir
+   **«Identificadores de dispositivo u otros»**, recogido, no compartido,
+   opcional y para **funcionalidad de la app**. La política ya lo cuenta en su
+   sección 2.5, desde el 20/09/2026.
+2. **Cambiar en la ficha las URLs** de la política y de eliminación de cuenta al
+   dominio propio, `worky.ferryapp.co`.
+3. **Rotar la clave de subida**, expuesta en el historial público de git.
+4. **Configurar un SMTP propio en Supabase**, o los correos de recuperación de
    contraseña no llegan: el servicio interno está limitado a unos pocos por hora
    y ellos mismos dicen que no es para producción.
-4. Mirar si la cuenta es personal o de organización. Si es personal piden el
+5. Mirar si la cuenta es personal o de organización. Si es personal piden el
    **D-U-N-S**, que tarda semanas y conviene empezar antes.
-5. Que un abogado lea una vez la política y los términos.
+6. Que un abogado lea una vez la política y los términos.
 
 ### Los `versionCode` quemados
 
@@ -75,7 +87,12 @@ intento fallido gasta un número:
 | 19 (2.4) | **Enviado a Play.** Estilos empaquetados —hasta el 18 se pedían a un CDN y sin cobertura la app salía en crudo—, los cuatro fallos de la prueba con un cliente real, el botón de responder en el documento, cotización de confección |
 | 20 (2.5) | **Enviado a Play.** Recuperar la contraseña —no existía—, los gastos del proyecto en el balance, el correo y el celular del contacto, el enlace compartido enseñando el documento de imprimir con sus fotos, y las iniciales sin pedirlas a un tercero |
 | 21 | **Enviado a Play.** |
-| **26091001 (2.6.0)** | Ropa deportiva con numeración y nombres, el producto del catálogo que no se veía en el chat, y las pantallas de arranque —la nativa llevaba el logo de Capacitor— |
+| 26091001 (2.6.0) | Ropa deportiva con numeración y nombres, el producto del catálogo que no se veía en el chat, y las pantallas de arranque —la nativa llevaba el logo de Capacitor— |
+| 26091601 (2.7.0) | Notificaciones con la app cerrada, dominio propio en los enlaces, comentarios por línea, Estados Financieros con datos de verdad, condiciones por oficio |
+| 26092001 (2.8.0) | El catálogo con el local y el centro comercial, guardar tiendas, «Pregunta el precio», el precio sobre cada foto, y la dirección publicada que era la casa del representante legal |
+| 26092002 (2.8.1) | El icono de las notificaciones, que salía como un cuadrado blanco |
+| 26092003 (2.8.2) | Cerrar sesión suelta el teléfono de las notificaciones, y la política al 20/09 |
+| **26092004 (2.8.3)** | El precio del producto con signo de pesos y la carpeta sin foto con su nombre. **La que va a Play** |
 
 **Play exige API 36** desde el 1 de septiembre de 2026. Está en
 `android/variables.gradle`.
@@ -128,8 +145,11 @@ fue por el contenido de la app:
 - ✅ **Política de privacidad y términos** escritos, en `public/`, empaquetados con la app
 - ✅ **Página de eliminación de cuenta** en `public/eliminar-cuenta.html`, que es
   la URL que pide el formulario de Seguridad de los datos
-- ✅ VersionCode 26091001 (2.6.0) compilado y firmado el 10/09/2026, con todo
-  lo del 9 y el 10 dentro. El 19, el 20 y el 21 ya se enviaron
+- ✅ VersionCode 26092004 (2.8.3) compilado y firmado el 20/09/2026, con todo
+  lo de esa semana dentro. El 19, el 20 y el 21 ya se enviaron; las 2.6.0 a
+  2.8.2 están compiladas y sin enviar
+- ✅ **Notificaciones probadas en un teléfono de verdad** el 20/09/2026: llegan
+  con la app cerrada, con la W en la barra de estado
 - ⏳ **Pendiente de subir.** Ver arriba lo que falta.
 
 ---
@@ -295,9 +315,12 @@ verdad, no sobre una plantilla. Los términos, en
 Al desplegar quedan en:
 
 ```
-https://worky-app-khaki.vercel.app/privacidad.html   ← la URL que pide Play
-https://worky-app-khaki.vercel.app/terminos.html
+https://worky.ferryapp.co/privacidad.html   ← la URL que pide Play
+https://worky.ferryapp.co/terminos.html
 ```
+
+El dominio anterior, `worky-app-khaki.vercel.app`, sigue sirviéndolas y no se
+retira: los QR impresos y los enlaces repartidos apuntan ahí.
 
 **Van en `public/` a propósito**: Vite las copia al build y Capacitor las
 empaqueta, así que los enlaces del registro y del apartado Legal funcionan

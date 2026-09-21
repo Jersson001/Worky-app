@@ -1,6 +1,6 @@
 # Vista general del proyecto
 
-Última revisión: 1 de septiembre de 2026.
+Última revisión: 20 de septiembre de 2026.
 
 > Este documento describía la app sobre Firebase (Authentication, Realtime
 > Database, Storage) y con Gemini analizando las fotos del catálogo. Nada de eso
@@ -48,7 +48,8 @@ worky_app/
 │   ├── CatalogShareModal.tsx · catalogoPublico.ts  # Publicar y pintar el catálogo
 │   ├── SharedDocumentViewer.tsx                    # Ruta `?view=`, sin sesión
 │   ├── ProjectBoard.tsx · GanttChart.tsx
-│   ├── FinancialReport.tsx · WalletModal.tsx
+│   ├── FinancialReport.tsx · WalletModal.tsx     # Finanzas: lee de la base, no de la pantalla
+│   ├── TiendasGuardadas.tsx                      # La agenda de tiendas que guarda quien escanea un QR
 │   ├── GroupsManager.tsx · GroupChatWindow.tsx     # Solo localStorage
 │   ├── StatusView.tsx                              # Historias, solo localStorage
 │   ├── AdminPanel.tsx · ProFeatureGuard.tsx
@@ -58,6 +59,8 @@ worky_app/
 ├── services/
 │   ├── supabaseConfig.ts     # Cliente, PUBLIC_BUCKET y uniqueTopic
 │   ├── messagingService.ts   # Contactos, mensajes, Realtime, no leídos
+│   ├── finanzasService.ts    # Ventas, cobros y gastos para Estados Financieros
+│   ├── pushService.ts        # Notificaciones con la app cerrada: engancha y suelta el teléfono
 │   ├── dataService.ts        # Productos, categorías, proyectos, gastos, cuentas
 │   ├── storageService.ts     # Subidas a Storage
 │   ├── catalogShareService.ts# Instantánea HTML del catálogo, QR y enlaces
@@ -92,7 +95,8 @@ Tablas de `public` que toca la app:
 | `messages` | Todos los mensajes, agrupados por `chat_id` |
 | `user_chats` | Último mensaje y contador de no leídos por conversación |
 | `products` · `categories` | Catálogo |
-| `projects` · `expenses` | Proyectos y sus gastos |
+| `projects` · `expenses` | Proyectos y sus gastos. El vendedor los ve si él mandó la cotización con ese código |
+| `push_tokens` | Un aparato por fila, para las notificaciones con la app cerrada. Cada quien solo ve los suyos |
 | `payment_accounts` | Cuentas propias donde le consignan, con su QR de cobro en `qr_image` |
 | `third_party_accounts` | Las cuentas a las que él paga. Vivían en el `localStorage` y se perdían al reinstalar |
 

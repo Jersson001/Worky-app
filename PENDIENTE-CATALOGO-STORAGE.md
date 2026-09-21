@@ -55,7 +55,7 @@ y lo pinta en un iframe con `sandbox` sin `allow-same-origin`.
 > HTML porque nunca se ejecuta. Lo demás de este documento sigue vigente: el
 > motivo por el que Storage no puede servir la página no ha cambiado.
 
-El enlace del QR es ahora `https://worky-app-khaki.vercel.app/?catalogo=<userId>`,
+El enlace del QR es ahora `https://worky.ferryapp.co/?catalogo=<userId>`,
 más corto que la URL de Storage y estable por usuario, así que el QR impreso
 sigue sirviendo tras republicar.
 
