@@ -1010,13 +1010,19 @@ llegue a publicarse, así que cada intento fallido quema un número:
 | 26092002 (2.8.1) | El icono de las notificaciones, que salía como un cuadrado blanco. Probada en el teléfono |
 | 26092003 (2.8.2) | Cerrar sesión suelta el teléfono de las notificaciones, y la política al 20/09 con el token |
 | 26092004 (2.8.3) | El precio del producto con signo de pesos, y la carpeta sin foto presentada con su nombre |
-| **26092201 (2.8.4)** | Contactos por su usuario de WhatsApp y con el correo opcional, compartir sin número, el cliente manual que al registrarse entra a su propio chat, el catálogo que ya no pierde la ubicación al compartir, y el icono para volver al catálogo desde el chat. **Es la que va a Play** |
+| 26092201 (2.8.4) | **Subida a Play**, y su número gastado. Contactos por su usuario de WhatsApp y con el correo opcional, compartir sin número, el cliente manual que al registrarse entra a su propio chat, y el catálogo que ya no pierde la ubicación al compartir |
+| **26092202 (2.8.5)** | La 2.8.4 más el icono para volver al catálogo de la tienda desde el chat. **Es la que va a Play** |
 
 Play exige **API 36** desde el 1 de septiembre de 2026.
 
-**La que va a Play es la 26092201 (2.8.4)**, compilada y firmada el 22/09/2026.
-Del 14 al 21 son números gastados —enviados o rechazados—; del 26091601 en
-adelante están compiladas pero sin enviar, así que sus números siguen libres.
+**La que va a Play es la 26092202 (2.8.5)**, compilada y firmada el 22/09/2026.
+Del 14 al 21 son números gastados —enviados o rechazados—, y también el 26092201
+(2.8.4), que se subió. Del 26091601 al 26092004 están compiladas pero sin enviar.
+
+**Un número entregado no se vuelve a usar, aunque cambie el contenido.** La 2.8.4
+se compiló a las 9:14 y se subió; a las 9:21 se recompiló con el mismo número
+para meterle un icono, y Play la rechazó: «Version code 26092201 has already
+been used». Si hay que recompilar después de entregar un paquete, sube el número.
 El `versionCode` va por fecha desde el 10/09/2026, que llevarlo a mano costó dos
 rechazos de Play por repetido.
 
