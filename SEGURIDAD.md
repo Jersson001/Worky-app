@@ -244,6 +244,41 @@ sesión no hay dueño.
 
 ---
 
+### Invitaciones de contactos manuales — 22 de septiembre de 2026
+
+Cuando un cliente que el vendedor creó a mano se registra, su ficha manual pasa
+a ser su cuenta, con los mensajes y los proyectos
+([supabase_invitaciones_contacto.sql](supabase_invitaciones_contacto.sql), con
+pruebas). Se decidió **no** reconocerlo por el usuario de WhatsApp que anotó el
+vendedor: lo escribe cualquiera al registrarse, y quien pusiera «@andres.23» sin
+serlo habría entrado al chat del vendedor con Andrés.
+
+Lo reconoce una **invitación**: un token al azar que va en el enlace del
+documento que el vendedor le manda por WhatsApp. La tabla no la lee nadie por la
+API —RLS sin políticas—; solo dos funciones. Reclamarla pide una cuenta con
+correo y no anónima, se gasta al usarla y vence a los 90 días.
+
+La invitación va en el enlace y **no dentro del documento** por lo de abajo.
+
+### Cualquiera podía listar los archivos de todos — 22 de septiembre de 2026
+
+La única política de lectura de `chat_media` era para todo el mundo y sin
+mirar la ruta. Con la clave pública, que va dentro de la app, se podía **listar el
+bucket entero**, y como es público, descargar cada archivo: todas las
+cotizaciones, facturas y cuentas de cobro compartidas, con nombres de clientes,
+montos y números de cuenta. Comprobado pidiendo `shared_docs/` sin sesión.
+
+El arreglo está escrito y probado en producción dentro de una transacción
+deshecha: [supabase_storage_sin_listado.sql](supabase_storage_sin_listado.sql).
+Sin cuenta solo se listan los catálogos —el visor lo necesita—; con cuenta, lo
+propio, que es lo que piden las subidas con `upsert`. Las descargas por enlace
+público no pasan por esa política y siguen igual. **Aplicado el 22/09/2026** y
+comprobado desde fuera con la clave pública: listar documentos o fotos devuelve
+cero, el catálogo se sigue listando, y un documento se sigue abriendo por su
+enlace.
+
+---
+
 ## Restos conocidos
 
 - **`shared_docs/<id>` no lleva el dueño en la ruta**, así que ahí solo se puede

@@ -87,6 +87,13 @@ cuenta y lo vincula al guardarlo. Con ese mismo cliente no se tiene ni el
 número, así que dejarlo obligatorio era dejarlo fuera. Si se pone, sigue
 vinculando; si no, queda como contacto manual y puede registrarse después.
 
+**Y cuando se registra, su ficha manual pasa a ser su cuenta.** Al compartirle un
+documento a un contacto manual, el enlace lleva una invitación; quien lo abre,
+pulsa «Responder por el chat» y se registra con correo, reclama esa ficha: el
+vendedor no se queda con dos Andrés, y los mensajes que le mandó cuando era
+manual pasan a la conversación entre los dos. Detalles y por qué no se hace por
+el usuario de WhatsApp, en [SEGURIDAD.md](SEGURIDAD.md).
+
 ---
 
 ## Los mensajes
