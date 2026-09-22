@@ -79,14 +79,20 @@ android {
         // salía como un cuadrado blanco en la barra de estado. Android solo pinta
         // siluetas ahí, y sin decirle cuál usaba el icono de la app, a color.
         //
-        // El 26092003 (2.8.2) es la que va a Play. Otro arreglo: cerrar sesión no
+        // El 26092003 (2.8.2), compilada y sin enviar. Otro arreglo: cerrar sesión no
         // soltaba el teléfono, y a quien lo tuviera después le seguían llegando
         // los avisos de esa cuenta. Y la política al 20/09, con el token de
         // notificaciones, que es lo que obliga a rehacer «Seguridad de los datos».
         //
-        // El 26092004 (2.8.3) es la que va a Play. Suma dos cosas del catálogo:
+        // El 26092004 (2.8.3), compilada y sin enviar. Suma dos cosas del catálogo:
         // el precio del producto se escribe con signo de pesos y miles, y la
         // carpeta sin foto se presenta con su nombre en vez de con su inicial.
+        //
+        // El 26092201 (2.8.4) es la que va a Play. Contactos por su usuario de
+        // WhatsApp y con el correo opcional; compartir sin número, que abre
+        // WhatsApp para elegir el chat; el cliente manual que al registrarse
+        // entra a su propio chat; y compartir un documento ya no le borra la
+        // ubicación al catálogo.
         /*
          * Son dos cosas distintas y solo una es libre.
          *
@@ -124,8 +130,8 @@ android {
          * número de en medio —2.4, 2.5 y 2.6 en tres días— y a ese paso la 3.0
          * llegaba sin que hubiera cambiado nada grande.
          */
-        versionCode 26092004
-        versionName "2.8.3"
+        versionCode 26092201
+        versionName "2.8.4"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
