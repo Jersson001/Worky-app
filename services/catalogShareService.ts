@@ -129,6 +129,22 @@ const ultimaInstantanea = async (userId: string): Promise<string | null> => {
 };
 
 /**
+ * Si alguien tiene catálogo publicado. Para no enseñar un botón de «ver su
+ * catálogo» que lleve a «No encontramos este catálogo».
+ *
+ * Un contacto manual no tiene cuenta y por tanto no tiene carpeta: da false sin
+ * preguntar nada. Cualquier fallo, también false: sin botón, el chat sigue igual.
+ */
+export const tieneCatalogo = async (userId: string): Promise<boolean> => {
+  if (!/^[0-9a-f-]{36}$/i.test(userId)) return false;
+  try {
+    return (await ultimaInstantanea(userId)) !== null;
+  } catch {
+    return false;
+  }
+};
+
+/**
  * URL que se comparte: la del QR y la del enlace. Estable por usuario, así que
  * el QR impreso sigue sirviendo después de republicar.
  */

@@ -14,11 +14,16 @@ interface ChatHeaderProps {
   showInfo: boolean;
   onOpenGantt?: (projectId?: string) => void;
   onOpenProductPicker: () => void;
+  /**
+   * Abre el catálogo público de este contacto. Solo llega si lo tiene publicado:
+   * sin él no hay botón.
+   */
+  onVerCatalogo?: () => void;
 }
 
 export const ChatHeader: React.FC<ChatHeaderProps> = React.memo(({
   contact, approvedProjectsCount, displayProjectName, hasMultipleProjects,
-  onBack, onToggleInfo, showInfo, onOpenGantt, onOpenProductPicker,
+  onBack, onToggleInfo, showInfo, onOpenGantt, onOpenProductPicker, onVerCatalogo,
 }) => {
   const [showChatMenu, setShowChatMenu] = useState(false);
 
@@ -56,14 +61,30 @@ export const ChatHeader: React.FC<ChatHeaderProps> = React.memo(({
             <i className="fa-solid fa-chart-gantt text-base"></i>
           </button>
         )}
-        {/* Catalog button for suppliers */}
+        {/* Su catálogo: para volver a ver lo que vende quien está al otro lado.
+            Quien llega por un QR y se pone a chatear no tenía cómo regresar a
+            los productos de la tienda. */}
+        {onVerCatalogo && (
+          <button
+            onClick={onVerCatalogo}
+            className="hover:text-blue-600 transition w-8 h-8 rounded-lg flex items-center justify-center hover:bg-slate-100"
+            title={`Ver el catálogo de ${contact.alias || contact.clientName}`}
+            aria-label="Ver su catálogo"
+          >
+            <i className="fa-solid fa-store text-base"></i>
+          </button>
+        )}
+        {/* Mandarle al proveedor un producto del catálogo PROPIO. Llevaba el
+            mismo icono de tienda y el título «Catálogo», y se confundía con el
+            de arriba: parecía abrir el del proveedor y abría el tuyo. */}
         {contact.role === 'supplier' && (
           <button
             onClick={onOpenProductPicker}
             className="hover:text-blue-600 transition w-8 h-8 rounded-lg flex items-center justify-center hover:bg-slate-100"
-            title="Catálogo"
+            title="Mandar un producto de mi catálogo"
+            aria-label="Mandar un producto de mi catálogo"
           >
-            <i className="fa-solid fa-store text-base"></i>
+            <i className="fa-solid fa-box-open text-base"></i>
           </button>
         )}
         <button className="hover:text-blue-600 transition w-8 h-8 rounded-lg flex items-center justify-center hover:bg-slate-100">

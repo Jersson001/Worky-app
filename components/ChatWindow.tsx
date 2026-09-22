@@ -5,6 +5,7 @@
  * Original: 2393 lines → Now: ~250 lines.
  */
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { tieneCatalogo } from '../services/catalogShareService';
 import { telefonoDe } from '../utils/contactoWhatsApp';
 import { Contact, Message, ProjectStage, Product, ProductCategory, PaymentAccount, UserProfileData, Project } from '../types';
 import { DocumentViewer } from './QuoteDocument';
@@ -96,6 +97,23 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
 }) => {
   // ── UI Toggles ──
   const [showInfo, setShowInfo] = useState(false);
+
+  // Si este contacto tiene catálogo publicado, la cabecera ofrece volver a él.
+  // Se mira una vez por contacto; un contacto manual no tiene y ni se pregunta.
+  const [conCatalogo, setConCatalogo] = useState(false);
+  useEffect(() => {
+    let vigente = true;
+    setConCatalogo(false);
+    void tieneCatalogo(contact.id).then(si => { if (vigente) setConCatalogo(si); });
+    return () => { vigente = false; };
+  }, [contact.id]);
+
+  // Ruta relativa y no la URL publicada: en el APK la app corre en el propio
+  // teléfono, y una dirección externa la abriría en el navegador, fuera de
+  // Worky. Desde el catálogo, «Chatear con…» lo devuelve a esta conversación.
+  const verSuCatalogo = useCallback(() => {
+    window.location.href = `/?catalogo=${encodeURIComponent(contact.id)}`;
+  }, [contact.id]);
   const [showFinancials, setShowFinancials] = useState(false);
   const [showSystemMessages, setShowSystemMessages] = useState(false);
 
@@ -542,6 +560,7 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
           showInfo={showInfo}
           onOpenGantt={onOpenGantt}
           onOpenProductPicker={() => forms.openModal('productPicker')}
+          onVerCatalogo={conCatalogo ? verSuCatalogo : undefined}
         />
 
         {/* Financial Bar */}
