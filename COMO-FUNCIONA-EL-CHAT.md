@@ -1,6 +1,6 @@
 # Cómo funciona el chat
 
-Última revisión: 20 de septiembre de 2026.
+Última revisión: 22 de septiembre de 2026.
 
 > Este documento describía el chat sobre Firebase Realtime Database, con un
 > `userIndex/` de claves escapadas y login por SMS. Nada de eso sigue siendo
@@ -69,6 +69,23 @@ Un contacto sin cuenta nace con id `lead_<uuid>` y va a `contacts` con
 Ese prefijo `lead_` hace que el id **no sea un uuid válido**, y choca con
 `contacts.id` y `projects.contact_id`, que sí lo son. Sigue pendiente; está
 anotado en [PENDIENTE-CATALOGO-STORAGE.md](PENDIENTE-CATALOGO-STORAGE.md).
+
+**Qué pide el formulario**, desde el 22/09/2026: el nombre y **el celular o el
+usuario de WhatsApp**. El correo es opcional.
+
+El usuario hace falta porque WhatsApp deja escribir desde un nombre de usuario
+—`@andres.23`— sin enseñar el número, y a ese cliente no había forma de
+agregarlo. Se guarda en el mismo campo que el teléfono, con su @, y
+`utils/contactoWhatsApp.ts` lo distingue de un número: nunca se le sacan los
+dígitos —de `@andres.23_MSG` salía el número 23— ni se imprime como teléfono en
+un documento. Al compartirle algo, el enlace de WhatsApp sale sin número, y
+WhatsApp abre el mensaje para elegir la conversación: no hay enlace que apunte al
+chat de un usuario.
+
+El correo era obligatorio porque es lo que reconoce a alguien que ya tiene
+cuenta y lo vincula al guardarlo. Con ese mismo cliente no se tiene ni el
+número, así que dejarlo obligatorio era dejarlo fuera. Si se pone, sigue
+vinculando; si no, queda como contacto manual y puede registrarse después.
 
 ---
 

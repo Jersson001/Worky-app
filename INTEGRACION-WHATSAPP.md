@@ -1,6 +1,6 @@
 # Compartir por WhatsApp
 
-Última revisión: 1 de septiembre de 2026.
+Última revisión: 22 de septiembre de 2026.
 
 > Este documento decía que para mandar un documento habría que «generar el PDF y
 > subirlo a Firebase Storage». Firebase ya no está, y lo que se manda no es un
@@ -94,6 +94,15 @@ todo lo que vendes sin cuenta, y solo necesita registrarse si quiere chatear.
 - **El número tiene que estar bien.** `formatPhoneForWhatsApp` solo quita lo que
   no son dígitos: no valida ni añade indicativo de país. Un número guardado sin
   indicativo abre un chat con un número que no existe.
+- **Sin número también se puede.** WhatsApp deja que alguien escriba desde un
+  nombre de usuario —`@andres.23`— sin enseñar su número, y a ese no hay número
+  al que apuntar. Hasta el 22/09/2026 la app se negaba a compartir: «No hay
+  número de teléfono disponible». Ahora el enlace sale sin `phone=`, WhatsApp
+  abre el mensaje y deja elegir la conversación, y la de esa persona está ahí.
+- **Compartir republica el catálogo**, para que el documento lleve su enlace y
+  su QR. Se hacía con solo la ciudad, así que cada documento compartido le
+  borraba al catálogo público la dirección, el local y el centro comercial.
+  Corregido el 22/09/2026: se le pasa la ubicación entera.
 
 ---
 
