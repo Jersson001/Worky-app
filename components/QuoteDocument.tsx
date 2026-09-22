@@ -128,11 +128,17 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
     // Instantánea del catálogo, para que el documento lleve enlace y QR.
     // Si falla o no hay productos, el documento sale igual, sin ese bloque.
     const negocio = userProfile?.businessName || userProfile?.ownerName || 'nuestro catálogo';
+    // Con todos los datos de ubicación: esto republica el catálogo, y con solo
+    // la ciudad cada documento compartido le borraba al catálogo público la
+    // dirección, el local y el centro comercial.
     const catalogLink = await publishCatalogForCurrentUser({
       businessName: userProfile?.businessName ?? '',
       ownerName: userProfile?.ownerName ?? '',
       phone: userProfile?.phone ?? '',
       city: userProfile?.city,
+      address: userProfile?.address,
+      local: userProfile?.local,
+      centroComercial: userProfile?.centroComercial,
       businessLogo: userProfile?.businessLogo,
     });
 
