@@ -227,6 +227,22 @@ un botón molesta, faltarle una herramienta es peor.
 
 ---
 
+### Volver al catálogo desde el chat
+
+Quien llega por un QR, se pone a chatear y quiere volver a mirar los productos
+no tenía por dónde. Desde el 22/09/2026 la cabecera del chat lleva un icono de
+tienda —«Ver el catálogo de…»— cuando ese contacto tiene catálogo publicado; se
+comprueba una vez por contacto, y un contacto manual ni se pregunta. Abre
+`/?catalogo=<id>` con ruta relativa, para que en el APK no salte al navegador,
+y desde el catálogo «Chatear con…» devuelve a la conversación.
+
+El icono de tienda que ya había con los proveedores hace otra cosa —manda un
+producto del catálogo propio— y pasó a ser una caja, «Mandar un producto de mi
+catálogo»: con el mismo icono y el título «Catálogo» parecía abrir el del
+proveedor.
+
+---
+
 ## Avisos
 
 Cuando entra un mensaje y la pestaña lo permite, se lanza una **notificación del
