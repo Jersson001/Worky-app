@@ -274,8 +274,12 @@ export const getSharedDocument = async (documentId: string): Promise<any | null>
  * text/plain con nosniff, así que el destinatario veía el código fuente. La app
  * lee el JSON de Storage y lo pinta ella, igual que hace con el catálogo.
  */
-export const generateDocumentViewLink = (documentId: string): string =>
-  `${WORKY_APP_URL}/?view=${documentId}`;
+export const generateDocumentViewLink = (documentId: string, invitacion?: string | null): string =>
+  `${WORKY_APP_URL}/?view=${documentId}`
+  // La invitación va en el enlace y NO dentro del documento: el documento vive
+  // en Storage con lectura pública, y lo que va en el enlace solo lo tiene
+  // quien lo recibió por WhatsApp.
+  + (invitacion ? `&invita=${invitacion}` : '');
 
 /**
  * Genera un mensaje para compartir una cotización

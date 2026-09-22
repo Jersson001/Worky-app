@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { supabase } from '../services/supabaseConfig';
 import { setCurrentUserId } from '../services/messagingService';
-import { llegoInvitado, olvidarRegistroPedido, quiereRegistroConCorreo, vendedorPendiente } from '../services/catalogShareService';
+import { llegoInvitado, olvidarRegistroPedido, quiereRegistroConCorreo, vendedorPendiente, invitacionPendiente } from '../services/catalogShareService';
 import { URL_PRIVACIDAD, URL_TERMINOS, constanciaDeAceptacion } from '../utils/legal';
 import { WORKY_APP_URL } from '../services/catalogShareService';
 import { avatarDeIniciales } from '../utils/avatar';
@@ -391,6 +391,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister, i
         // Allí no había ni rastro de a quién iba a escribirle y aterrizaba en
         // una app vacía. Prendido de la cuenta, el dato le sigue a donde entre.
         const vendedor = vendedorPendiente();
+        const invitacion = invitacionPendiente();
         const { data, error: signUpError } = await supabase.auth.signUp({
           email: normalizedEmail,
           password,
@@ -403,6 +404,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister, i
               phone: fullPhone,
               ...constanciaDeAceptacion(),
               ...(vendedor ? { vendedor } : {}),
+              // La invitación de un contacto manual, por lo mismo que el vendedor:
+              // si confirma el correo desde otro navegador, sigue ahí.
+              ...(invitacion ? { invitacion } : {}),
             },
           },
         });

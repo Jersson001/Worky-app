@@ -94,8 +94,14 @@ export const SharedDocumentViewer: React.FC<SharedDocumentViewerProps> = ({ docu
   }
 
   const { type, data, businessLogo, userProfile, digitalSignature } = documento;
+  // Si el enlace trae invitación —lo mandaron a un contacto manual—, «Responder
+  // por el chat» la pasa: al registrarse, ese contacto pasa a ser él. Se lee de
+  // la URL y no del documento, que es público.
+  const invitacion = (() => {
+    try { return new URLSearchParams(window.location.search).get('invita'); } catch { return null; }
+  })();
   const enlaceAlChat = documento?.vendedorId
-    ? chatInviteUrl(documento.vendedorId, documento.documentId || documentId)
+    ? chatInviteUrl(documento.vendedorId, documento.documentId || documentId, invitacion)
     : null;
 
   return (

@@ -525,6 +525,7 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
           businessLogo={businessLogo}
           digitalSignature={digitalSignature}
           contactPhone={contact.phone}
+          contactId={contact.id}
           userProfile={userProfile}
         />
       )}

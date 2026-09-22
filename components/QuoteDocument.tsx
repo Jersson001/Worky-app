@@ -5,7 +5,7 @@ import { QuoteData, InvoiceData, ReceiptData, CollectionAccountData, UserProfile
 import { formatCurrency } from '../utils/currency';
 import { describeError } from '../utils/errorMessage';
 import { shareQuoteViaWhatsApp, shareInvoiceViaWhatsApp, openWhatsApp, generateDocumentId, saveSharedDocument, generateDocumentViewLink } from '../services/whatsappService';
-import { publishCatalogForCurrentUser, catalogPageUrl, qrImageUrl, WORKY_APP_URL } from '../services/catalogShareService';
+import { publishCatalogForCurrentUser, catalogPageUrl, qrImageUrl, WORKY_APP_URL, crearInvitacionContacto } from '../services/catalogShareService';
 import { getCurrentUserId } from '../services/messagingService';
 import { computeLineSubtotal, computeMaterialSubtotal, computeManoDeObraTotal, computeMaterialesTotal, computeGroupSubtotal, computeSectionSubtotal, seccionesConContenido, describeCantidad, describeMaterial } from '../utils/carpentryCalculations';
 import { ORDEN_CONDICIONES, lineasDe, hayCondiciones, repartoDePago } from '../utils/condicionesCotizacion';
@@ -20,6 +20,11 @@ interface DocumentViewerProps {
   digitalSignature?: string;
   userProfile?: UserProfileData | null;
   contactPhone?: string; // Teléfono del contacto para compartir por WhatsApp
+  /**
+   * A quién se le manda. Si es un contacto manual, el enlace lleva una
+   * invitación: al registrarse, esa persona pasa a ser ese contacto.
+   */
+  contactId?: string;
   /**
    * Lo abre el cliente desde el enlace compartido, no su dueño.
    *
@@ -43,7 +48,7 @@ interface DocumentViewerProps {
 const ANCHO_HOJA = 850;
 
 export const DocumentViewer: React.FC<DocumentViewerProps> = ({
-  type, data, onClose, businessLogo, digitalSignature, userProfile, contactPhone,
+  type, data, onClose, businessLogo, digitalSignature, userProfile, contactPhone, contactId,
   soloLectura = false, acciones, pie, catalogoUrl,
 }) => {
   /**
@@ -155,7 +160,9 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
       documentToShare,
       catalogLink ? { url: catalogLink, negocio } : undefined,
     );
-    const documentLink = generateDocumentViewLink(documentId, documentToShare);
+    // Solo sale invitación si el contacto es manual y es suyo; si no, null.
+    const invitacion = contactId ? await crearInvitacionContacto(contactId) : null;
+    const documentLink = generateDocumentViewLink(documentId, invitacion);
 
     if (type === 'quote') {
       const quoteData = data as QuoteData;

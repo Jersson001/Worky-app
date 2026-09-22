@@ -143,8 +143,12 @@ export const catalogPageUrl = (userId: string): string =>
  * abre el chat: sin esto aterrizaba en una app vacía sin saber con quién
  * estaba hablando.
  */
-export const chatInviteUrl = (userId: string, documentId?: string): string =>
-  `${WORKY_APP_URL}/?vendedor=${userId}` + (documentId ? `&doc=${documentId}` : '');
+export const chatInviteUrl = (userId: string, documentId?: string, invitacion?: string | null): string =>
+  `${WORKY_APP_URL}/?vendedor=${userId}`
+  + (documentId ? `&doc=${documentId}` : '')
+  // La invitación de un contacto manual: quien entra con ella y se registra
+  // pasa a ser ese contacto, con su historia. Ver supabase_invitaciones_contacto.sql.
+  + (invitacion ? `&invita=${invitacion}` : '');
 
 /** Baja la instantánea vigente. La usa la página pública del catálogo. */
 export const fetchCatalogHtml = async (userId: string): Promise<string | null> => {
@@ -175,10 +179,19 @@ export const recordarVendedorDeLaUrl = (): string | null => {
   try {
     const url = new URL(window.location.href);
     const vendedor = url.searchParams.get('vendedor');
+    const invitacion = url.searchParams.get('invita');
+    // La invitación de un contacto manual se guarda igual que el vendedor: entre
+    // que llega y termina de registrarse, la URL se pierde.
+    if (invitacion) {
+      try { localStorage.setItem(INVITACION_KEY, invitacion); } catch { /* sin sitio, se sigue */ }
+      url.searchParams.delete('invita');
+      window.history.replaceState({}, '', url.toString());
+    }
     // Quien viene de guardar una tienda pidió cuenta, no el atajo del alias:
     // se anota aquí porque esta función limpia la URL y el dato se perdería
-    // antes de que la pantalla de acceso llegue a mirarla.
-    if (url.searchParams.get('registro') === '1') {
+    // antes de que la pantalla de acceso llegue a mirarla. Con una invitación,
+    // igual: solo una cuenta con correo puede reclamarla.
+    if (url.searchParams.get('registro') === '1' || invitacion) {
       try { localStorage.setItem(REGISTRO_KEY, '1'); } catch { /* sin sitio, se sigue */ }
       url.searchParams.delete('registro');
       window.history.replaceState({}, '', url.toString());
@@ -227,7 +240,7 @@ export const quiereRegistroConCorreo = (): boolean => {
     // a que la app la limpie, porque eso ocurre en un efecto suyo que corre
     // después de que la pantalla de acceso ya preguntó.
     const params = new URLSearchParams(window.location.search);
-    if (params.has('vendedor')) return params.get('registro') === '1';
+    if (params.has('vendedor')) return params.get('registro') === '1' || params.has('invita');
     return localStorage.getItem(REGISTRO_KEY) === '1';
   } catch {
     return false;
@@ -240,6 +253,61 @@ export const olvidarRegistroPedido = (): void => {
   } catch {
     /* nada que olvidar */
   }
+};
+
+// ─── Invitación de un contacto manual ────────────────────────────────────────
+
+const INVITACION_KEY = 'worky:invitacion-contacto';
+
+/** La invitación con la que llegó, si trae una y no se ha reclamado. */
+export const invitacionPendiente = (): string | null => {
+  try {
+    return localStorage.getItem(INVITACION_KEY);
+  } catch {
+    return null;
+  }
+};
+
+export const olvidarInvitacion = (): void => {
+  try {
+    localStorage.removeItem(INVITACION_KEY);
+  } catch {
+    /* nada que olvidar */
+  }
+};
+
+/**
+ * Pide una invitación para un contacto manual, al compartirle un documento.
+ *
+ * Devuelve null si el contacto ya tiene cuenta, si no es suyo, o si la base no
+ * responde: en todos esos casos el documento se comparte igual, sin invitación.
+ */
+export const crearInvitacionContacto = async (contactoId: string): Promise<string | null> => {
+  // Los contactos con cuenta se identifican por el uid del usuario, y los
+  // manuales por el id de su fila; los dos son uuid, así que decide la base.
+  if (!/^[0-9a-f-]{36}$/i.test(contactoId)) return null;
+  try {
+    const { data, error } = await supabase.rpc('crear_invitacion_contacto', { p_contacto: contactoId });
+    if (error) {
+      console.warn('No se pudo crear la invitación del contacto:', error.message);
+      return null;
+    }
+    return (data as string | null) ?? null;
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * Reclama la invitación con la que llegó: su contacto manual pasa a ser él.
+ *
+ * Devuelve el vendedor si funcionó. Con null la invitación no sirve —usada,
+ * vencida, o una cuenta sin correo—, y quien llama decide si la olvida.
+ */
+export const reclamarInvitacion = async (token: string): Promise<string | null> => {
+  const { data, error } = await supabase.rpc('reclamar_contacto', { p_token: token });
+  if (error) throw error;
+  return (data as string | null) ?? null;
 };
 
 export const llegoInvitado = (): boolean => {

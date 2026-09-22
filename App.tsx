@@ -8,7 +8,7 @@ import ProFeatureGuard from './components/ProFeatureGuard';
 import AdminPanel from './components/AdminPanel';
 import CatalogShareModal from './components/CatalogShareModal';
 import { getSharedDocument } from './services/whatsappService';
-import { recordarVendedorDeLaUrl, vendedorPendiente, olvidarVendedorPendiente, pedidoPendiente, olvidarPedidoPendiente, llegoInvitado, olvidarLlegadaInvitada, olvidarRegistroPedido, recordarDocumentoDeLaUrl, documentoPendiente, olvidarDocumentoPendiente } from './services/catalogShareService';
+import { recordarVendedorDeLaUrl, vendedorPendiente, olvidarVendedorPendiente, pedidoPendiente, olvidarPedidoPendiente, llegoInvitado, olvidarLlegadaInvitada, olvidarRegistroPedido, invitacionPendiente, olvidarInvitacion, reclamarInvitacion, recordarDocumentoDeLaUrl, documentoPendiente, olvidarDocumentoPendiente } from './services/catalogShareService';
 import { uploadFileForChat } from './services/storageService';
 import { describeError } from './utils/errorMessage';
 import { leerImagenReducida } from './utils/imagen';
@@ -386,6 +386,28 @@ const App: React.FC = () => {
         return;
       }
 
+      // Si llegó con la invitación de un contacto manual, se reclama ANTES de
+      // crear el contacto: así la ficha que el vendedor ya tenía —con su
+      // nombre, sus mensajes y sus proyectos— pasa a ser la suya, en vez de
+      // quedarle al vendedor una manual y otra nueva. Solo con correo: una
+      // cuenta anónima la deja pendiente hasta que lo tenga.
+      let reclamada = false;
+      const { data: sesion } = await supabase.auth.getUser();
+      const invitacion = invitacionPendiente()
+        || (sesion?.user?.user_metadata?.invitacion as string) || null;
+      if (invitacion && sesion?.user?.email && !sesion.user.is_anonymous) {
+        try {
+          reclamada = (await reclamarInvitacion(invitacion)) !== null;
+          // Tanto si sirvió como si no —usada, vencida—, no se vuelve a intentar.
+          olvidarInvitacion();
+          void supabase.auth.updateUser({ data: { invitacion: null } });
+        } catch (e) {
+          // Un fallo de red la deja pendiente: se reintenta al volver a entrar.
+          console.warn('No se pudo reclamar la invitación del contacto:', e);
+        }
+      }
+      if (cancelado) return;
+
       try {
         const info = await getPublicInfoById(vendedor);
         const nombre = info?.name || 'Worky';
@@ -420,7 +442,10 @@ const App: React.FC = () => {
         void supabase.auth.updateUser({ data: { vendedor: null } });
 
         await enviarPedidoPendiente(vendedor);
-        await colocarDocumentoPendiente(vendedor);
+        // Con la invitación reclamada, el documento ya está en la conversación:
+        // es uno de los mensajes que el vendedor le mandó cuando era manual.
+        if (reclamada) olvidarDocumentoPendiente();
+        else await colocarDocumentoPendiente(vendedor);
       } catch (e) {
         // Si falla se deja pendiente: lo volverá a intentar la próxima vez que
         // entre, en vez de perder la vinculación en silencio.
