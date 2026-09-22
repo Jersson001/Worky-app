@@ -3,6 +3,7 @@ import { getCurrentUserId } from './messagingService';
 import { qrImageUrl, WORKY_APP_URL, chatInviteUrl } from './catalogShareService';
 import { buildDocumentHtml } from './documentHtml';
 import { formatCurrency } from '../utils/currency';
+import { esUsuarioDeWhatsApp } from '../utils/contactoWhatsApp';
 import { describeCantidad, seccionesConContenido } from '../utils/carpentryCalculations';
 import { CarpentrySection } from '../types';
 
@@ -67,6 +68,10 @@ const bloqueCatalogo = (
  * Elimina caracteres especiales y deja solo números
  */
 export const formatPhoneForWhatsApp = (phone: string): string => {
+  // Un usuario de WhatsApp no es un número: quitarle las letras dejaba los
+  // dígitos que llevara —«@andres.23» daba 23— y el enlace abría un chat con un
+  // número que no existe. Vacío hace que WhatsApp deje elegir la conversación.
+  if (esUsuarioDeWhatsApp(phone)) return '';
   return phone.replace(/\D/g, '');
 };
 
@@ -77,9 +82,15 @@ export const formatPhoneForWhatsApp = (phone: string): string => {
  * @returns URL de WhatsApp
  */
 export const generateWhatsAppLink = (phone: string, message: string): string => {
-  const formattedPhone = formatPhoneForWhatsApp(phone);
+  const formattedPhone = formatPhoneForWhatsApp(phone || '');
   const encodedMessage = encodeURIComponent(message);
-  return `https://api.whatsapp.com/send?phone=${formattedPhone}&text=${encodedMessage}`;
+  // Sin número, WhatsApp abre el mensaje y deja elegir la conversación. Es lo
+  // que hace falta con quien escribe desde un nombre de usuario —«@andres.23»—,
+  // que WhatsApp permite para no enseñar el número: no hay a qué número
+  // apuntar, pero el chat con esa persona sí está en la lista.
+  return formattedPhone
+    ? `https://api.whatsapp.com/send?phone=${formattedPhone}&text=${encodedMessage}`
+    : `https://api.whatsapp.com/send?text=${encodedMessage}`;
 };
 
 /**

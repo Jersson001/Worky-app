@@ -5,6 +5,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Contact, Message, Project } from '../../types';
 import { formatCurrency } from '../../utils/currency';
 import { datosDeContacto } from '../../services/messagingService';
+import { esUsuarioDeWhatsApp } from '../../utils/contactoWhatsApp';
 
 interface InfoPanelProps {
   show: boolean;
@@ -145,7 +146,9 @@ export const InfoPanel: React.FC<InfoPanelProps> = React.memo(({
             )}
             {celularVisible && (
               <p className="text-slate-500 text-sm flex items-center justify-center gap-2">
-                <i className="fa-solid fa-phone text-[11px] text-slate-400"></i>
+                {/* Un usuario de WhatsApp no es un teléfono: con el icono de
+                    teléfono se leía como un número raro. */}
+                <i className={`${esUsuarioDeWhatsApp(celularVisible) ? 'fa-brands fa-whatsapp' : 'fa-solid fa-phone'} text-[11px] text-slate-400`}></i>
                 {celularVisible}
               </p>
             )}

@@ -91,10 +91,9 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
   };
 
   const handleShareViaWhatsApp = async () => {
-    if (!contactPhone) {
-      alert('No hay número de teléfono disponible para compartir');
-      return;
-    }
+    // Sin número ya no se corta aquí: WhatsApp abre el mensaje y deja elegir la
+    // conversación. Antes se negaba, y un cliente que escribe desde un nombre de
+    // usuario de WhatsApp —sin enseñar el número— se quedaba sin su cotización.
 
     // La pestaña se abre aquí, dentro del clic: lo que viene detrás son varias
     // esperas —publicar el catálogo, subir el documento— y al terminar el
@@ -280,7 +279,8 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
                 </button>
               </>
             )}
-            {contactPhone && !soloLectura && (
+            {/* Sin número también: WhatsApp deja elegir la conversación. */}
+            {!soloLectura && (
               <button
                 onClick={handleShareViaWhatsApp}
                 className="bg-[#25D366] text-white px-6 py-2 rounded-full font-bold shadow-lg hover:bg-[#20BA5A] transition flex items-center gap-2"

@@ -5,6 +5,7 @@
  * Original: 2393 lines → Now: ~250 lines.
  */
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { telefonoDe } from '../utils/contactoWhatsApp';
 import { Contact, Message, ProjectStage, Product, ProductCategory, PaymentAccount, UserProfileData, Project } from '../types';
 import { DocumentViewer } from './QuoteDocument';
 import { formatCurrency } from '../utils/currency';
@@ -109,7 +110,9 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
   // ── Hooks ──
   const forms = useChatFormState(
     contact.clientName,
-    contact.phone || '',
+    // Al documento solo pasa un número: un usuario de WhatsApp saldría impreso
+    // como «Tel: @andres.23».
+    telefonoDe(contact.phone),
     contact.projects[0]?.id || '',
     // Las condiciones del negocio y su anticipo de costumbre, para que cada
     // cotización nueva salga ya con ellos puestos.
@@ -180,7 +183,7 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
       forms.setExpenseField('targetProjectId', contact.projects[0].id);
     }
     if (contact.phone) {
-      forms.setQuoteField('clientPhone', contact.phone);
+      forms.setQuoteField('clientPhone', telefonoDe(contact.phone));
     }
   }, [contact]);
 
@@ -195,7 +198,7 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
       };
       const modal = actionMap[activeAction];
       if (modal) {
-        if (activeAction === 'quote') forms.setQuoteField('clientPhone', contact.phone || '');
+        if (activeAction === 'quote') forms.setQuoteField('clientPhone', telefonoDe(contact.phone));
         forms.openModal(modal);
       }
       onClearAction?.();
@@ -362,7 +365,7 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
       date: new Date(), validUntil: validDate, status: 'pending',
     });
 
-    forms.resetQuote(contact.phone || '');
+    forms.resetQuote(telefonoDe(contact.phone));
     forms.closeModal('quote');
   }, [forms.quote, contact, onSendMessage, enviandoCotizacion, paymentAccounts]);
 
@@ -468,7 +471,7 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
    * nuevo y volver a subirla, que es lo que hacía hasta ahora.
    */
   const handleQuoteImage = useCallback((imageUrl: string, texto?: string) => {
-    forms.setQuoteField('clientPhone', contact.phone || '');
+    forms.setQuoteField('clientPhone', telefonoDe(contact.phone));
     forms.addPhotoToQuote(imageUrl, texto);
     forms.openModal('quote');
   }, [forms, contact.phone]);
@@ -585,7 +588,7 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
           esCliente={esCliente}
           contactPhone={contact.phone}
           onSendMessage={handleSendTextMessage}
-          onOpenQuote={() => { forms.setQuoteField('clientPhone', contact.phone || ''); forms.openModal('quote'); }}
+          onOpenQuote={() => { forms.setQuoteField('clientPhone', telefonoDe(contact.phone)); forms.openModal('quote'); }}
           onOpenCollection={() => forms.openModal('collection')}
           onOpenInvoice={() => forms.openModal('invoice')}
           onOpenReceipt={() => forms.openModal('receipt')}
@@ -612,7 +615,7 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
           onSend={handleSendInvoice}
         />
         <QuoteModal
-          show={forms.modals.quote} onClose={() => { forms.resetQuote(contact.phone || ''); forms.closeModal('quote'); }}
+          show={forms.modals.quote} onClose={() => { forms.resetQuote(telefonoDe(contact.phone)); forms.closeModal('quote'); }}
           contactRole={contact.role} items={forms.quote.items}
           validDays={forms.quote.validDays} taxType={forms.quote.taxType} taxPercentage={forms.quote.taxPercentage}
           aiuAdmin={forms.quote.aiuAdmin} aiuImprevistos={forms.quote.aiuImprevistos} aiuUtilidad={forms.quote.aiuUtilidad} aiuIva={forms.quote.aiuIva}

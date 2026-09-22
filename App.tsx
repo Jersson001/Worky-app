@@ -35,6 +35,7 @@ import { sendMessage as sendMessageToFirebase, listenToMessages, listenToContact
 import { saveProduct, deleteProduct, listenToProducts, saveCategory, deleteCategory, listenToCategories, saveProject, deleteProject, updateProject, addExpenseToProject, updateContactWithProjects, listenToPaymentAccounts, savePaymentAccount, deletePaymentAccount, PaymentAccountData, listenToThirdPartyAccounts, saveThirdPartyAccount, deleteThirdPartyAccount, fetchProjectsForContact, listenToProjects } from './services/dataService';
 import { supabase } from './services/supabaseConfig';
 import { formatCurrency, parseAmount } from './utils/currency';
+import { normalizarContactoWhatsApp } from './utils/contactoWhatsApp';
 import { CurrencyInput } from './components/chat/modals/CurrencyInput';
 
 // Mock Data (usado como fallback o inicial)
@@ -2280,14 +2281,22 @@ ${describeError(error)}
       return;
     }
 
+    // El número o el usuario de WhatsApp: hay clientes que escriben desde un
+    // nombre de usuario —«@andres.23»— sin enseñar su número, y exigir un número
+    // dejaba fuera justo a esos.
     if (!newContactPhone.trim()) {
-      alert('El número de teléfono es obligatorio: es por donde le escribes por WhatsApp.');
+      alert('Escribe el celular o el usuario de WhatsApp: es por donde le escribes.');
       return;
     }
 
+    // El correo es opcional desde el 22/09/2026. Era obligatorio porque es lo que
+    // reconoce a alguien que ya tiene cuenta, pero dejaba fuera al cliente que
+    // escribe desde un usuario de WhatsApp: de ese no se tiene ni el número, y
+    // menos el correo. Sin correo queda como contacto manual; si se registra
+    // después, se le puede agregar por su cuenta.
     const email = newContactEmail.trim().toLowerCase();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      alert('Hace falta el correo del cliente, y bien escrito. Es lo que identifica a un usuario en Worky: sin él no hay forma de reconocerlo si ya tiene cuenta.');
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      alert('Ese correo no está bien escrito. Corrígelo o déjalo vacío: es opcional.');
       return;
     }
 
@@ -2296,11 +2305,13 @@ ${describeError(error)}
     // toma el camino de add_contact_mutual, que crea la conversación por ambos
     // lados. Antes esto solo pasaba desde el buscador, nunca al crear a mano.
     let registrado: Awaited<ReturnType<typeof searchUserByPhoneOrEmail>> = null;
-    try {
-      registrado = await searchUserByPhoneOrEmail(email);
-    } catch (e) {
-      // Que no se pueda comprobar no debe impedir guardar el contacto.
-      console.warn('No se pudo comprobar si el correo ya es de un usuario:', e);
+    if (email) {
+      try {
+        registrado = await searchUserByPhoneOrEmail(email);
+      } catch (e) {
+        // Que no se pueda comprobar no debe impedir guardar el contacto.
+        console.warn('No se pudo comprobar si el correo ya es de un usuario:', e);
+      }
     }
 
     const newContact: Contact = {
@@ -2311,8 +2322,8 @@ ${describeError(error)}
       // quien lo agrega, que es como lo tiene guardado.
       avatar: registrado?.avatar
         || avatarDeIniciales(newContactName.trim()),
-      phone: newContactPhone.trim(),
-      email,
+      phone: normalizarContactoWhatsApp(newContactPhone),
+      email: email || undefined,
       status: UserStatus.Lead,
       role: newContactRole,
       // Agregar a alguien no crea proyecto: un proyecto nace al aceptar una
@@ -2880,17 +2891,24 @@ ${describeError(error)}
                 />
               </div>
               <div>
-                <label className="text-xs text-slate-700 font-bold uppercase mb-1 block tracking-wide">Teléfono (Obligatorio) *</label>
+                <label className="text-xs text-slate-700 font-bold uppercase mb-1 block tracking-wide">Celular o usuario de WhatsApp *</label>
+                {/* Texto y no `tel`: el teclado de números no tiene @, y un
+                    usuario de WhatsApp lo lleva. */}
                 <input
-                  type="tel"
-                  placeholder="Ej. 3001234567"
+                  type="text"
+                  placeholder="Ej. 3001234567 o @usuario"
                   value={newContactPhone}
                   onChange={e => setNewContactPhone(e.target.value)}
+                  autoCapitalize="none"
+                  autoCorrect="off"
                   className="w-full bg-slate-50 text-slate-900 font-semibold p-3 rounded-xl outline-none border border-slate-200 focus:border-blue-500 focus:bg-white transition text-sm placeholder-slate-400"
                 />
+                <p className="text-[11px] text-slate-500 mt-1">
+                  Si te escribe desde un usuario de WhatsApp y no ves su número, pon el usuario: al compartirle algo, WhatsApp te deja elegir su chat.
+                </p>
               </div>
               <div>
-                <label className="text-xs text-slate-700 font-bold uppercase mb-1 block tracking-wide">Correo (Obligatorio) *</label>
+                <label className="text-xs text-slate-700 font-bold uppercase mb-1 block tracking-wide">Correo (opcional)</label>
                 <input
                   type="email"
                   placeholder="Ej. juan@correo.com"
@@ -2899,12 +2917,12 @@ ${describeError(error)}
                   className="w-full bg-slate-50 text-slate-900 font-semibold p-3 rounded-xl outline-none border border-slate-200 focus:border-blue-500 focus:bg-white transition text-sm placeholder-slate-400"
                 />
                 <p className="text-[11px] text-slate-500 mt-1">
-                  Es lo que identifica a tu cliente en Worky. Si ya tiene cuenta, queda vinculado al guardarlo.
+                  Si ya tiene cuenta en Worky, con su correo queda vinculado al guardarlo. Si no lo tienes, déjalo vacío.
                 </p>
               </div>
               <button
                 onClick={handleCreateContact}
-                disabled={!newContactName.trim() || !newContactPhone.trim() || !newContactEmail.trim()}
+                disabled={!newContactName.trim() || !newContactPhone.trim()}
                 className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 rounded-xl font-bold mt-2 hover:shadow-lg transition shadow-md shadow-blue-500/25 disabled:opacity-50 disabled:shadow-none disabled:cursor-not-allowed active:scale-[0.99]"
               >
                 Guardar Contacto
