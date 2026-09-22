@@ -1,6 +1,6 @@
 # Estado de funcionalidades — Worky
 
-Última revisión: 20 de septiembre de 2026.
+Última revisión: 22 de septiembre de 2026.
 
 > Este documento describía el proyecto cuando corría sobre Firebase y decía que
 > los clientes no podían tener cuenta, que Storage no estaba implementado y que
@@ -212,6 +212,29 @@ existía: salía una burbuja vacía con solo la hora. Se mandaba y no llegaba.
 Corregido el 9/09/2026 con `ProductBubble`, que además pone el nombre del
 producto como texto del mensaje —la burbuja no lo pinta, tiene el suyo— porque
 es lo que se lee en la lista de chats, que con el texto vacío quedaba en blanco.
+
+---
+
+### Clientes que escriben desde un usuario de WhatsApp
+
+WhatsApp deja escribir desde un nombre de usuario —`@andres.23`— sin enseñar el
+número. Desde el 22/09/2026:
+
+- **El contacto nuevo pide «Celular o usuario de WhatsApp»**, y el correo es
+  opcional. `utils/contactoWhatsApp.ts` distingue un usuario de un número: de
+  `@andres.23_MSG` ya no sale el número 23 ni se imprime «Tel: @andres» en una
+  cotización.
+- **Compartir por WhatsApp funciona sin número**: el enlace sale sin destinatario
+  y WhatsApp deja elegir el chat. No hay enlace que abra el de un usuario.
+- **Cuando ese cliente se registra, su ficha manual pasa a ser su cuenta**, con
+  los mensajes y los proyectos, por una invitación que va en el enlace del
+  documento. No se reconoce por el usuario de WhatsApp, que lo escribe
+  cualquiera. Ver [COMO-FUNCIONA-EL-CHAT.md](COMO-FUNCIONA-EL-CHAT.md) y
+  [SEGURIDAD.md](SEGURIDAD.md).
+
+Y en la cabecera del chat, un icono de tienda lleva al catálogo del contacto si
+lo tiene publicado: quien llegaba por un QR y se ponía a chatear no tenía cómo
+volver a los productos.
 
 ---
 
@@ -986,11 +1009,12 @@ llegue a publicarse, así que cada intento fallido quema un número:
 | 26092001 (2.8.0) | El local y el centro comercial en el catálogo, guardar tiendas con su agenda, el registro con correo al guardar una, «Pregunta el precio», el precio encima de cada foto y el visor con flechas. Y la dirección publicada, que era la casa del representante legal. Con esta se probaron las notificaciones en un teléfono: llegan |
 | 26092002 (2.8.1) | El icono de las notificaciones, que salía como un cuadrado blanco. Probada en el teléfono |
 | 26092003 (2.8.2) | Cerrar sesión suelta el teléfono de las notificaciones, y la política al 20/09 con el token |
-| **26092004 (2.8.3)** | El precio del producto con signo de pesos, y la carpeta sin foto presentada con su nombre. **Es la que va a Play** |
+| 26092004 (2.8.3) | El precio del producto con signo de pesos, y la carpeta sin foto presentada con su nombre |
+| **26092201 (2.8.4)** | Contactos por su usuario de WhatsApp y con el correo opcional, compartir sin número, el cliente manual que al registrarse entra a su propio chat, el catálogo que ya no pierde la ubicación al compartir, y el icono para volver al catálogo desde el chat. **Es la que va a Play** |
 
 Play exige **API 36** desde el 1 de septiembre de 2026.
 
-**La que va a Play es la 26092004 (2.8.3)**, compilada y firmada el 20/09/2026.
+**La que va a Play es la 26092201 (2.8.4)**, compilada y firmada el 22/09/2026.
 Del 14 al 21 son números gastados —enviados o rechazados—; del 26091601 en
 adelante están compiladas pero sin enviar, así que sus números siguen libres.
 El `versionCode` va por fecha desde el 10/09/2026, que llevarlo a mano costó dos

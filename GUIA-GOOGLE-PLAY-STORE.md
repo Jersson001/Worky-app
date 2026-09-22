@@ -4,9 +4,9 @@ Esta guía te llevará paso a paso para publicar tu aplicación Worky en Google 
 
 ---
 
-## 📌 Dónde va esto — al 20 de septiembre de 2026
+## 📌 Dónde va esto — al 22 de septiembre de 2026
 
-El siguiente envío va con el **`versionCode` 26092004 (versión 2.8.3)**,
+El siguiente envío va con el **`versionCode` 26092201 (versión 2.8.4)**,
 compilado y firmado, en el Escritorio. El 19, el 20 y el 21 ya se enviaron a
 Play; del 26091601 en adelante están compiladas y sin enviar. La política y la
 página de eliminación de cuenta viven ahora en el dominio propio:
@@ -92,7 +92,8 @@ intento fallido gasta un número:
 | 26092001 (2.8.0) | El catálogo con el local y el centro comercial, guardar tiendas, «Pregunta el precio», el precio sobre cada foto, y la dirección publicada que era la casa del representante legal |
 | 26092002 (2.8.1) | El icono de las notificaciones, que salía como un cuadrado blanco |
 | 26092003 (2.8.2) | Cerrar sesión suelta el teléfono de las notificaciones, y la política al 20/09 |
-| **26092004 (2.8.3)** | El precio del producto con signo de pesos y la carpeta sin foto con su nombre. **La que va a Play** |
+| 26092004 (2.8.3) | El precio del producto con signo de pesos y la carpeta sin foto con su nombre |
+| **26092201 (2.8.4)** | Contactos por usuario de WhatsApp, correo opcional, el cliente manual que entra a su chat al registrarse, y volver al catálogo desde el chat. **La que va a Play** |
 
 **Play exige API 36** desde el 1 de septiembre de 2026. Está en
 `android/variables.gradle`.
@@ -145,9 +146,9 @@ fue por el contenido de la app:
 - ✅ **Política de privacidad y términos** escritos, en `public/`, empaquetados con la app
 - ✅ **Página de eliminación de cuenta** en `public/eliminar-cuenta.html`, que es
   la URL que pide el formulario de Seguridad de los datos
-- ✅ VersionCode 26092004 (2.8.3) compilado y firmado el 20/09/2026, con todo
-  lo de esa semana dentro. El 19, el 20 y el 21 ya se enviaron; las 2.6.0 a
-  2.8.2 están compiladas y sin enviar
+- ✅ VersionCode 26092201 (2.8.4) compilado y firmado el 22/09/2026, con todo
+  lo de esas dos semanas dentro. El 19, el 20 y el 21 ya se enviaron; las 2.6.0
+  a 2.8.3 están compiladas y sin enviar
 - ✅ **Notificaciones probadas en un teléfono de verdad** el 20/09/2026: llegan
   con la app cerrada, con la W en la barra de estado
 - ⏳ **Pendiente de subir.** Ver arriba lo que falta.

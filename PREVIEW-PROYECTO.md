@@ -1,6 +1,6 @@
 # Vista general del proyecto
 
-Última revisión: 20 de septiembre de 2026.
+Última revisión: 22 de septiembre de 2026.
 
 > Este documento describía la app sobre Firebase (Authentication, Realtime
 > Database, Storage) y con Gemini analizando las fotos del catálogo. Nada de eso
@@ -71,6 +71,7 @@ worky_app/
 │
 ├── hooks/          useChatFormState.ts · useFileUpload.ts
 ├── utils/          currency · imagen · id · errorMessage · carpentryCalculations · taxCalculations
+│                   finanzas · tiendasGuardadas · contactoWhatsApp · legal · avatar · tallas · condicionesCotizacion · tiposDeNegocio
 │                  legal · tiposDeNegocio · condicionesCotizacion · tallas
 ├── supabase/       functions/ (gemini, view-doc — ambas sin uso) y migrations/
 ├── android/        Proyecto Capacitor
@@ -97,6 +98,7 @@ Tablas de `public` que toca la app:
 | `products` · `categories` | Catálogo |
 | `projects` · `expenses` | Proyectos y sus gastos. El vendedor los ve si él mandó la cotización con ese código |
 | `push_tokens` | Un aparato por fila, para las notificaciones con la app cerrada. Cada quien solo ve los suyos |
+| `invitaciones_contacto` | Para que un contacto manual, al registrarse, pase a ser su cuenta. Nadie la lee por la API: solo `crear_invitacion_contacto` y `reclamar_contacto` |
 | `payment_accounts` | Cuentas propias donde le consignan, con su QR de cobro en `qr_image` |
 | `third_party_accounts` | Las cuentas a las que él paga. Vivían en el `localStorage` y se perdían al reinstalar |
 
@@ -116,6 +118,11 @@ Todo en el bucket `chat_media`. El bucket `files` está cerrado.
 | Fotos de producto | `<uid>/<carpeta>/<archivo>` |
 | Catálogos publicados | `shared_catalogs/<uid>/<fecha>.html` |
 | Documentos compartidos | `shared_docs/<id>.json` y `.html` |
+
+El bucket es público: todo se **descarga** por su enlace. Lo que no se puede, desde
+el 22/09/2026, es **listarlo**: sin cuenta solo se listan los catálogos, que es lo
+que necesita el visor, y con cuenta cada uno ve lo suyo. Antes se listaba entero,
+documentos compartidos de todos incluidos. Ver [SEGURIDAD.md](SEGURIDAD.md).
 
 ### Lo que no se sincroniza
 
