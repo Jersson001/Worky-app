@@ -98,8 +98,13 @@ android {
         // entra a su propio chat; y compartir un documento ya no le borra la
         // ubicación al catálogo.
         //
-        // El 26092202 (2.8.5) es la que va a Play: la 2.8.4 más el icono para
-        // volver al catálogo de la tienda desde el chat.
+        // El 26092202 (2.8.5) quedó gastado: se compiló pero se le agregaron más
+        // cosas antes de subir y tocó incrementar el número.
+        //
+        // El 26092203 (2.8.6): registro acepta usuario de WhatsApp, deep links
+        // en las notificaciones push para abrir el chat directo desde Android,
+        // nombre pre-cargado y botón «Saltar paso» en el onboarding, y botón
+        // «← Volver» en el catálogo público para regresar al chat.
         /*
          * Son dos cosas distintas y solo una es libre.
          *
@@ -137,8 +142,8 @@ android {
          * número de en medio —2.4, 2.5 y 2.6 en tres días— y a ese paso la 3.0
          * llegaba sin que hubiera cambiado nada grande.
          */
-        versionCode 26092202
-        versionName "2.8.5"
+        versionCode 26092203
+        versionName "2.8.6"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
