@@ -9,6 +9,7 @@ interface AttachMenuItem {
   bg: string;
   shadow: string;
   label: string;
+  tooltip: string;
   action: () => void;
 }
 
@@ -51,7 +52,7 @@ export const ChatFooter: React.FC<ChatFooterProps> = React.memo(({
   }, [handleSend]);
 
   const getMenuItems = (): AttachMenuItem[] => {
-    const archivo = { icon: 'fa-paperclip', bg: 'from-blue-500 to-blue-600', shadow: 'shadow-blue-500/30', label: 'Archivo', action: onTriggerDocumentInput };
+    const archivo = { icon: 'fa-paperclip', bg: 'from-blue-500 to-blue-600', shadow: 'shadow-blue-500/30', label: 'Archivo', tooltip: 'PDF, imagen u otro archivo', action: onTriggerDocumentInput };
 
     // Un cliente solo necesita poder mandar cosas: el plano, la foto de la
     // medida, el PDF que le piden. Cotizar, cobrar y anotar gastos son
@@ -64,18 +65,18 @@ export const ChatFooter: React.FC<ChatFooterProps> = React.memo(({
     if (contactRole === 'supplier') {
       return [
         archivo,
-        { icon: 'fa-receipt', bg: 'from-emerald-500 to-emerald-600', shadow: 'shadow-emerald-500/30', label: 'Recibo', action: onOpenReceipt },
-        { icon: 'fa-money-bill-transfer', bg: 'from-rose-500 to-rose-600', shadow: 'shadow-rose-500/30', label: 'Registrar gasto', action: onOpenExpense },
+        { icon: 'fa-receipt', bg: 'from-emerald-500 to-emerald-600', shadow: 'shadow-emerald-500/30', label: 'Recibo', tooltip: 'Confirma un pago recibido', action: onOpenReceipt },
+        { icon: 'fa-money-bill-transfer', bg: 'from-rose-500 to-rose-600', shadow: 'shadow-rose-500/30', label: 'Registrar gasto', tooltip: 'Anota compras y pagos a proveedor', action: onOpenExpense },
       ];
     }
     return [
-      { icon: 'fa-file-invoice-dollar', bg: 'from-blue-500 to-blue-600', shadow: 'shadow-blue-500/30', label: 'Cotización', action: onOpenQuote },
-      { icon: 'fa-hand-holding-dollar', bg: 'from-violet-500 to-violet-600', shadow: 'shadow-violet-500/30', label: 'Cuenta de Cobro', action: onOpenCollection },
-      { icon: 'fa-file-invoice', bg: 'from-indigo-500 to-indigo-600', shadow: 'shadow-indigo-500/30', label: 'Factura', action: onOpenInvoice },
-      { icon: 'fa-receipt', bg: 'from-emerald-500 to-emerald-600', shadow: 'shadow-emerald-500/30', label: 'Recibo', action: onOpenReceipt },
-      { icon: 'fa-store', bg: 'from-cyan-500 to-cyan-600', shadow: 'shadow-cyan-500/30', label: 'Catálogo', action: onOpenProductPicker },
-      { icon: 'fa-money-bill-transfer', bg: 'from-rose-500 to-rose-600', shadow: 'shadow-rose-500/30', label: 'Registrar gasto', action: onOpenExpense },
-      { icon: 'fa-paperclip', bg: 'from-slate-500 to-slate-600', shadow: 'shadow-slate-500/20', label: 'Archivo', action: onTriggerDocumentInput },
+      { icon: 'fa-file-invoice-dollar', bg: 'from-blue-500 to-blue-600', shadow: 'shadow-blue-500/30', label: 'Cotización', tooltip: 'Oferta con precios, tallas o capítulos', action: onOpenQuote },
+      { icon: 'fa-hand-holding-dollar', bg: 'from-violet-500 to-violet-600', shadow: 'shadow-violet-500/30', label: 'Cuenta de Cobro', tooltip: 'Cobra servicios sin ser empresa', action: onOpenCollection },
+      { icon: 'fa-file-invoice', bg: 'from-indigo-500 to-indigo-600', shadow: 'shadow-indigo-500/30', label: 'Factura', tooltip: 'Documento con IVA para empresas', action: onOpenInvoice },
+      { icon: 'fa-receipt', bg: 'from-emerald-500 to-emerald-600', shadow: 'shadow-emerald-500/30', label: 'Recibo', tooltip: 'Confirma un pago recibido', action: onOpenReceipt },
+      { icon: 'fa-store', bg: 'from-cyan-500 to-cyan-600', shadow: 'shadow-cyan-500/30', label: 'Catálogo', tooltip: 'Elige un producto de tu tienda', action: onOpenProductPicker },
+      { icon: 'fa-money-bill-transfer', bg: 'from-rose-500 to-rose-600', shadow: 'shadow-rose-500/30', label: 'Registrar gasto', tooltip: 'Anota compras y pagos a proveedor', action: onOpenExpense },
+      { icon: 'fa-paperclip', bg: 'from-slate-500 to-slate-600', shadow: 'shadow-slate-500/20', label: 'Archivo', tooltip: 'PDF, imagen u otro archivo', action: onTriggerDocumentInput },
     ];
   };
 
@@ -95,16 +96,24 @@ export const ChatFooter: React.FC<ChatFooterProps> = React.memo(({
               className="fixed inset-0 bg-slate-900/30 z-40"
               onClick={() => setShowAttachMenu(false)}
             />
-            <div className="absolute bottom-14 left-0 bg-white border border-slate-200 rounded-2xl shadow-xl p-4 z-50 w-64 animate-scale-in origin-bottom-left">
+            <div className="absolute bottom-14 left-0 bg-white border border-slate-200 rounded-2xl shadow-xl p-4 z-50 w-64 animate-scale-in origin-bottom-left overflow-visible">
               <div className="text-[13px] font-bold text-slate-900 mb-3">¿Qué querés enviar?</div>
               <div className="grid grid-cols-3 gap-3">
                 {getMenuItems().map((item, i) => (
                   <button
                     key={i}
                     type="button"
-                    className="flex flex-col items-center gap-1.5"
+                    className="flex flex-col items-center gap-1.5 relative group"
                     onClick={() => { item.action(); setShowAttachMenu(false); }}
                   >
+                    {/* Tooltip flotante */}
+                    <div className="pointer-events-none absolute bottom-full mb-2 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-[60]">
+                      <div className="bg-slate-800 text-white text-[10px] font-medium rounded-lg px-2.5 py-1.5 whitespace-nowrap shadow-lg leading-none">
+                        {item.tooltip}
+                      </div>
+                      {/* Flechita hacia abajo */}
+                      <div className="absolute top-full left-1/2 -translate-x-1/2 border-[5px] border-transparent border-t-slate-800" />
+                    </div>
                     <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${item.bg} text-white flex items-center justify-center shadow-md ${item.shadow}`}>
                       <i className={`fa-solid ${item.icon} text-lg`}></i>
                     </div>
