@@ -2644,10 +2644,22 @@ ${describeError(error)}
               {/* Header */}
               <div className="mb-6 flex items-center gap-3">
                 <img src="/worky-logo 2.png" alt="Worky" className="w-11 h-11 object-contain" />
-                <div>
+                <div className="flex-1">
                   <div className="text-xl font-bold text-slate-900">Inicio</div>
                   <div className="text-[12.5px] text-slate-500">{userProfile?.businessName || 'Tu negocio'}</div>
                 </div>
+                <button
+                  onClick={() => setShowProfileEditor(true)}
+                  className="flex items-center gap-2 bg-white border border-slate-200 rounded-full px-3 py-1.5 shadow-sm hover:shadow-md transition"
+                >
+                  {businessLogo
+                    ? <img src={businessLogo} alt="" className="w-6 h-6 rounded-full object-cover" />
+                    : <div className="w-6 h-6 rounded-full bg-gradient-to-br from-slate-600 to-slate-700 flex items-center justify-center">
+                        <i className="fa-solid fa-user text-white text-[10px]"></i>
+                      </div>
+                  }
+                  <span className="text-[12px] font-semibold text-slate-700">Mi perfil</span>
+                </button>
               </div>
 
               {/* Dos columnas: lo que se hace a diario a la izquierda, lo que se
