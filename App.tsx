@@ -246,34 +246,35 @@ const App: React.FC = () => {
     }
   }, []);
 
-  // Manejar deep links de notificaciones push: worky://chat?sender=<contactId>
-  useEffect(() => {
-    const handleDeepLink = async (event: any) => {
-      const url = event.url;
-      if (!url) return;
-
-      // Parsear deep link: worky://chat?sender=<contactId>
+  // Abre el chat del contacto a partir de un deep link worky://chat?sender=<id>.
+  // Se usa tanto desde appUrlOpen (links externos) como desde
+  // pushNotificationActionPerformed (toque en notificación push).
+  const abrirChatPorUrl = useCallback((url: string) => {
+    try {
       const urlObj = new URL(url);
       if (urlObj.protocol === 'worky:' && urlObj.hostname === 'chat') {
         const contactId = urlObj.searchParams.get('sender');
         if (contactId && isAuthenticated) {
-          // Abrir el chat del contacto
           setSelectedContactId(contactId);
           setMobileTab('home');
           setShowNotifications(false);
           setShowFinancials(false);
         }
       }
-    };
-
-    // Solo en la app nativa
-    if (typeof CapacitorApp !== 'undefined') {
-      const listener = CapacitorApp.addListener('appUrlOpen', handleDeepLink);
-      return () => {
-        listener.remove();
-      };
-    }
+    } catch { /* URL inválida, se ignora */ }
   }, [isAuthenticated]);
+
+  // appUrlOpen: cubre el caso en que Android abre la app desde un intent worky://
+  // (p.ej. un enlace en WhatsApp). addListener devuelve Promise, así que hay que
+  // esperarla antes de llamar .remove() en el cleanup.
+  useEffect(() => {
+    if (typeof CapacitorApp === 'undefined') return;
+    let handle: { remove: () => void } | undefined;
+    CapacitorApp.addListener('appUrlOpen', (event: { url: string }) => {
+      abrirChatPorUrl(event.url);
+    }).then(h => { handle = h; });
+    return () => { handle?.remove(); };
+  }, [abrirChatPorUrl]);
 
   // Quien llega desde un catálogo trae consigo a quién se lo mandó. Se guarda
   // antes de nada, porque el registro puede pasar por confirmación de correo y
@@ -519,7 +520,7 @@ const App: React.FC = () => {
         // El teléfono se engancha aquí y no al abrir la app: el token se cuelga
         // de una cuenta, y sin sesión no hay de quién. En el navegador no hace
         // nada. Si la persona niega el permiso, la app sigue igual, sin avisos.
-        void engancharNotificaciones();
+        void engancharNotificaciones(undefined, abrirChatPorUrl);
 
         // Try to load profile from Supabase
         unsubProfileRef?.();

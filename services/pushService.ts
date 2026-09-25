@@ -65,6 +65,7 @@ const guardarToken = async (token: string) => {
  */
 export const engancharNotificaciones = async (
   alLlegarMensaje?: (titulo: string, cuerpo: string, datos: Record<string, unknown>) => void,
+  alTocarNotificacion?: (clickAction: string) => void,
 ): Promise<boolean> => {
   if (!puedeRecibirPush()) return false;
 
@@ -97,6 +98,14 @@ export const engancharNotificaciones = async (
     // propia aplicación, que es lo que ya hacía con los mensajes en vivo.
     await PushNotifications.addListener('pushNotificationReceived', n => {
       alLlegarMensaje?.(n.title ?? 'Worky', n.body ?? '', n.data ?? {});
+    });
+
+    // El usuario tocó la notificación con la app cerrada o en segundo plano.
+    // El campo `clickAction` viaja en el payload de datos de FCM; Android no lo
+    // convierte en un intent automáticamente —por eso no basta con appUrlOpen—.
+    await PushNotifications.addListener('pushNotificationActionPerformed', action => {
+      const url = action.notification?.data?.clickAction as string | undefined;
+      if (url) alTocarNotificacion?.(url);
     });
 
     await PushNotifications.register();
