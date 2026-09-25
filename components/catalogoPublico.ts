@@ -219,11 +219,21 @@ export const mostrarCatalogo = async (userId: string): Promise<void> => {
   barraChat.style.cssText =
     'position:sticky;top:0;z-index:15;background:rgba(241,245,249,.94);backdrop-filter:blur(8px);' +
     'padding:8px 16px;border-bottom:1px solid #e2e8f0';
+  const volverAtras = document.createElement('button');
+  volverAtras.textContent = '← Volver';
+  volverAtras.style.cssText =
+    `border:0;cursor:pointer;padding:11px 14px;border-radius:999px;font-weight:700;` +
+    `font-size:.85rem;background:#e2e8f0;color:#334155;font-family:${FUENTE};flex:none;white-space:nowrap`;
+  volverAtras.onclick = () => history.back();
+
   const irAlChat = boton(`💬 Chatear con ${cat.negocio}`, '#2563eb', () => {
     window.location.href = `/?vendedor=${encodeURIComponent(userId)}`;
   });
-  irAlChat.style.width = '100%';
-  irAlChat.style.padding = '11px 16px';
+  irAlChat.style.cssText += ';flex:1;padding:11px 16px';
+
+  const filaBotones = document.createElement('div');
+  filaBotones.style.cssText = 'display:flex;gap:8px;align-items:center';
+  filaBotones.append(volverAtras, irAlChat);
 
   // Entrada a las tiendas guardadas. Solo aparece si hay alguna: en la primera
   // visita no hay nada que abrir y sería un botón que no hace nada.
@@ -239,7 +249,7 @@ export const mostrarCatalogo = async (userId: string): Promise<void> => {
     chipTiendas.textContent = `🔖 Mis tiendas guardadas (${n})`;
   };
 
-  barraChat.append(irAlChat, chipTiendas);
+  barraChat.append(filaBotones, chipTiendas);
 
   const contenido = document.createElement('div');
   contenido.style.cssText = 'max-width:960px;margin:0 auto;padding:16px';
