@@ -67,16 +67,16 @@ export const ChatFooter: React.FC<ChatFooterProps> = React.memo(({
       return [
         archivo,
         { icon: 'fa-receipt', bg: 'from-emerald-500 to-emerald-600', shadow: 'shadow-emerald-500/30', label: 'Recibo', tooltip: 'Confirma un pago recibido', action: onOpenReceipt },
-        { icon: 'fa-money-bill-transfer', bg: 'from-rose-500 to-rose-600', shadow: 'shadow-rose-500/30', label: 'Registrar gasto', tooltip: 'Anota compras y pagos a proveedor', action: onOpenExpense },
+        { icon: 'fa-money-bill-transfer', bg: 'from-rose-500 to-rose-600', shadow: 'shadow-rose-500/30', label: 'Registrar gasto', tooltip: 'Anota gastos según proyecto asignado', action: onOpenExpense },
       ];
     }
     return [
-      { icon: 'fa-file-invoice-dollar', bg: 'from-blue-500 to-blue-600', shadow: 'shadow-blue-500/30', label: 'Cotización', tooltip: 'Oferta con precios, tallas o capítulos', action: onOpenQuote },
-      { icon: 'fa-hand-holding-dollar', bg: 'from-violet-500 to-violet-600', shadow: 'shadow-violet-500/30', label: 'Cuenta de Cobro', tooltip: 'Cobra servicios sin ser empresa', action: onOpenCollection },
+      { icon: 'fa-file-invoice-dollar', bg: 'from-blue-500 to-blue-600', shadow: 'shadow-blue-500/30', label: 'Cotización', tooltip: 'Crea ofertas en segundos con imágenes y en PDF', action: onOpenQuote },
+      { icon: 'fa-hand-holding-dollar', bg: 'from-violet-500 to-violet-600', shadow: 'shadow-violet-500/30', label: 'Cuenta de Cobro', tooltip: 'Crea una cuenta de cobro según proyecto asignado', action: onOpenCollection },
       { icon: 'fa-file-invoice', bg: 'from-indigo-500 to-indigo-600', shadow: 'shadow-indigo-500/30', label: 'Factura', tooltip: 'Documento con IVA para empresas', action: onOpenInvoice },
       { icon: 'fa-receipt', bg: 'from-emerald-500 to-emerald-600', shadow: 'shadow-emerald-500/30', label: 'Recibo', tooltip: 'Confirma un pago recibido', action: onOpenReceipt },
       { icon: 'fa-store', bg: 'from-cyan-500 to-cyan-600', shadow: 'shadow-cyan-500/30', label: 'Catálogo', tooltip: 'Elige un producto de tu tienda', action: onOpenProductPicker },
-      { icon: 'fa-money-bill-transfer', bg: 'from-rose-500 to-rose-600', shadow: 'shadow-rose-500/30', label: 'Registrar gasto', tooltip: 'Anota compras y pagos a proveedor', action: onOpenExpense },
+      { icon: 'fa-money-bill-transfer', bg: 'from-rose-500 to-rose-600', shadow: 'shadow-rose-500/30', label: 'Registrar gasto', tooltip: 'Anota gastos según proyecto asignado', action: onOpenExpense },
       { icon: 'fa-paperclip', bg: 'from-slate-500 to-slate-600', shadow: 'shadow-slate-500/20', label: 'Archivo', tooltip: 'PDF, imagen u otro archivo', action: onTriggerDocumentInput },
     ];
   };

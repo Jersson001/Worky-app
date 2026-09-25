@@ -2681,7 +2681,7 @@ ${describeError(error)}
                       )}
                     </button>
                     <button onClick={() => handleDocumentClick('quote')} className="bg-white p-3.5 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2.5 relative group">
-                      <Tip text="Crea una oferta con precios y condiciones" />
+                      <Tip text="Crea ofertas en segundos con imágenes y en PDF" />
                       <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white shadow-md shadow-blue-500/30">
                         <i className="fa-solid fa-file-invoice-dollar text-xl"></i>
                       </div>
@@ -2695,31 +2695,34 @@ ${describeError(error)}
                       <span className="text-slate-700 text-[12.5px] font-semibold">Factura</span>
                     </button>
                     <button onClick={() => handleDocumentClick('collection_account')} className="bg-white p-3.5 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2.5 relative group">
-                      <Tip text="Cobra servicios sin ser empresa registrada" />
+                      <Tip text="Crea una cuenta de cobro según proyecto asignado" />
                       <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center text-white shadow-md shadow-emerald-500/30">
                         <i className="fa-solid fa-hand-holding-dollar text-xl"></i>
                       </div>
                       <span className="text-slate-700 text-[12.5px] font-semibold">Cuenta Cobro</span>
                     </button>
                     <button onClick={() => handleDocumentClick('expense')} className="bg-white p-3.5 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2.5 relative group">
-                      <Tip text="Anota compras y pagos a proveedor" />
+                      <Tip text="Anota gastos según proyecto asignado" />
                       <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-rose-500 to-rose-600 flex items-center justify-center text-white shadow-md shadow-rose-500/30">
                         <i className="fa-solid fa-money-bill-transfer text-xl"></i>
                       </div>
                       <span className="text-slate-700 text-[12.5px] font-semibold">Reg. Gasto</span>
                     </button>
-                    <ProFeatureGuard isPro={userProfile?.isPro} trialEndsAt={userProfile?.trialEndsAt}>
-                      <ContractGenerator
-                        defaultContractorName={userProfile?.ownerName || userProfile?.businessName || ''}
-                        defaultContractorId={userProfile?.nit || ''}
-                        defaultLogo={businessLogo}
-                        digitalSignature={digitalSignature}
-                        documents={documents}
-                        contacts={contacts}
-                        onShareContractPdf={handleShareContractPdf}
-                        onUploadContractPdf={handleUploadContractPdf}
-                      />
-                    </ProFeatureGuard>
+                    <div className="relative group">
+                      <Tip text="Genera contratos con firma digital" />
+                      <ProFeatureGuard isPro={userProfile?.isPro} trialEndsAt={userProfile?.trialEndsAt}>
+                        <ContractGenerator
+                          defaultContractorName={userProfile?.ownerName || userProfile?.businessName || ''}
+                          defaultContractorId={userProfile?.nit || ''}
+                          defaultLogo={businessLogo}
+                          digitalSignature={digitalSignature}
+                          documents={documents}
+                          contacts={contacts}
+                          onShareContractPdf={handleShareContractPdf}
+                          onUploadContractPdf={handleUploadContractPdf}
+                        />
+                      </ProFeatureGuard>
+                    </div>
                   </div>
                 </div>
 
