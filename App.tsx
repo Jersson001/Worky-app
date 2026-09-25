@@ -2740,7 +2740,7 @@ ${describeError(error)}
                       <span className="text-slate-700 text-[11.5px] font-semibold">Finanzas</span>
                     </button>
                     <button onClick={() => setShowCatalogManager(true)} className="bg-white p-3 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2 relative group">
-                      <Tip text="Gestiona y publica tu vitrina de productos" />
+                      <Tip text="Gestiona, publica tus productos y compártelos por QR" />
                       <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-fuchsia-500 to-fuchsia-600 flex items-center justify-center text-white shadow-sm shadow-fuchsia-500/30">
                         <i className="fa-solid fa-box-open text-lg"></i>
                       </div>
