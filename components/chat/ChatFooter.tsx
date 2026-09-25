@@ -3,6 +3,7 @@
  */
 import React, { useState, useCallback } from 'react';
 import { ContactRole } from '../../types';
+import Tip from '../ui/Tip';
 
 interface AttachMenuItem {
   icon: string;
@@ -106,14 +107,7 @@ export const ChatFooter: React.FC<ChatFooterProps> = React.memo(({
                     className="flex flex-col items-center gap-1.5 relative group"
                     onClick={() => { item.action(); setShowAttachMenu(false); }}
                   >
-                    {/* Tooltip flotante */}
-                    <div className="pointer-events-none absolute bottom-full mb-2 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-[60]">
-                      <div className="bg-slate-800 text-white text-[10px] font-medium rounded-lg px-2.5 py-1.5 whitespace-nowrap shadow-lg leading-none">
-                        {item.tooltip}
-                      </div>
-                      {/* Flechita hacia abajo */}
-                      <div className="absolute top-full left-1/2 -translate-x-1/2 border-[5px] border-transparent border-t-slate-800" />
-                    </div>
+                    <Tip text={item.tooltip} />
                     <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${item.bg} text-white flex items-center justify-center shadow-md ${item.shadow}`}>
                       <i className={`fa-solid ${item.icon} text-lg`}></i>
                     </div>

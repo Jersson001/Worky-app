@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import Tip from './components/ui/Tip';
 import { ChatList } from './components/ChatList';
 import { ChatWindow } from './components/ChatWindow';
 import { FinancialReport } from './components/FinancialReport';
@@ -2659,14 +2660,16 @@ ${describeError(error)}
                   <div className="grid grid-cols-2 gap-2.5">
                     {/* Perfil y chat: los dos estaban solo en menús, donde no se
                         encuentran. Aquí son lo primero que se ve al entrar. */}
-                    <button onClick={() => setShowProfileEditor(true)} className="bg-white p-3.5 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2.5">
+                    <button onClick={() => setShowProfileEditor(true)} className="bg-white p-3.5 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2.5 relative group">
+                      <Tip text="Edita los datos de tu negocio y tu logo" />
                       <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-slate-600 to-slate-700 flex items-center justify-center text-white shadow-md shadow-slate-500/30">
                         <i className="fa-solid fa-id-card text-xl"></i>
                       </div>
                       <span className="text-slate-700 text-[12.5px] font-semibold">Mi perfil</span>
                     </button>
 
-                    <button onClick={() => { setSelectedContactId(null); setMobileTab('chats'); }} className="bg-white p-3.5 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2.5 relative">
+                    <button onClick={() => { setSelectedContactId(null); setMobileTab('chats'); }} className="bg-white p-3.5 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2.5 relative group">
+                      <Tip text="Mensajes con clientes y proveedores" />
                       <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center text-white shadow-md shadow-green-500/30">
                         <i className="fa-solid fa-comments text-xl"></i>
                       </div>
@@ -2677,25 +2680,29 @@ ${describeError(error)}
                         </span>
                       )}
                     </button>
-                    <button onClick={() => handleDocumentClick('quote')} className="bg-white p-3.5 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2.5">
+                    <button onClick={() => handleDocumentClick('quote')} className="bg-white p-3.5 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2.5 relative group">
+                      <Tip text="Crea una oferta con precios y condiciones" />
                       <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white shadow-md shadow-blue-500/30">
                         <i className="fa-solid fa-file-invoice-dollar text-xl"></i>
                       </div>
                       <span className="text-slate-700 text-[12.5px] font-semibold">Cotización</span>
                     </button>
-                    <button onClick={() => handleDocumentClick('invoice')} className="bg-white p-3.5 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2.5">
+                    <button onClick={() => handleDocumentClick('invoice')} className="bg-white p-3.5 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2.5 relative group">
+                      <Tip text="Documento con IVA para empresas" />
                       <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-indigo-500/30">
                         <i className="fa-solid fa-file-invoice text-xl"></i>
                       </div>
                       <span className="text-slate-700 text-[12.5px] font-semibold">Factura</span>
                     </button>
-                    <button onClick={() => handleDocumentClick('collection_account')} className="bg-white p-3.5 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2.5">
+                    <button onClick={() => handleDocumentClick('collection_account')} className="bg-white p-3.5 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2.5 relative group">
+                      <Tip text="Cobra servicios sin ser empresa registrada" />
                       <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center text-white shadow-md shadow-emerald-500/30">
                         <i className="fa-solid fa-hand-holding-dollar text-xl"></i>
                       </div>
                       <span className="text-slate-700 text-[12.5px] font-semibold">Cuenta Cobro</span>
                     </button>
-                    <button onClick={() => handleDocumentClick('expense')} className="bg-white p-3.5 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2.5">
+                    <button onClick={() => handleDocumentClick('expense')} className="bg-white p-3.5 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2.5 relative group">
+                      <Tip text="Anota compras y pagos a proveedor" />
                       <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-rose-500 to-rose-600 flex items-center justify-center text-white shadow-md shadow-rose-500/30">
                         <i className="fa-solid fa-money-bill-transfer text-xl"></i>
                       </div>
@@ -2722,13 +2729,15 @@ ${describeError(error)}
                   {/* De tres en tres solo cuando hay sitio: compartiendo ancho
                       con la otra columna, tres tarjetas caen a unos 75px. */}
                   <div className="grid grid-cols-3 min-[480px]:grid-cols-2 md:grid-cols-3 gap-2.5">
-                    <button onClick={() => setShowFinancials(true)} className="bg-white p-3 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2">
+                    <button onClick={() => setShowFinancials(true)} className="bg-white p-3 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2 relative group">
+                      <Tip text="Ingresos, cobros y gastos del negocio" />
                       <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center text-white shadow-sm shadow-teal-500/30">
                         <i className="fa-solid fa-chart-pie text-lg"></i>
                       </div>
                       <span className="text-slate-700 text-[11.5px] font-semibold">Finanzas</span>
                     </button>
-                    <button onClick={() => setShowCatalogManager(true)} className="bg-white p-3 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2">
+                    <button onClick={() => setShowCatalogManager(true)} className="bg-white p-3 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2 relative group">
+                      <Tip text="Gestiona y publica tu vitrina de productos" />
                       <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-fuchsia-500 to-fuchsia-600 flex items-center justify-center text-white shadow-sm shadow-fuchsia-500/30">
                         <i className="fa-solid fa-box-open text-lg"></i>
                       </div>
@@ -2736,57 +2745,64 @@ ${describeError(error)}
                     </button>
                     {/* Las tiendas que guardó al escanear sus QR. Se le
                         enseña a todo el mundo: quien vende también compra. */}
-                    <button onClick={() => setShowTiendas(true)} className="bg-white p-3 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2">
+                    <button onClick={() => setShowTiendas(true)} className="bg-white p-3 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2 relative group">
+                      <Tip text="Tiendas que guardaste al escanear QRs" />
                       <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center text-white shadow-sm shadow-amber-500/30">
                         <i className="fa-solid fa-bookmark text-lg"></i>
                       </div>
                       <span className="text-slate-700 text-[11.5px] font-semibold">Tiendas</span>
                     </button>
-                    <button onClick={() => setShowWallet(true)} className="bg-white p-3 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2">
+                    <button onClick={() => setShowWallet(true)} className="bg-white p-3 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2 relative group">
+                      <Tip text="Tu número de cuenta y datos bancarios" />
                       <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-sky-500 to-sky-600 flex items-center justify-center text-white shadow-sm shadow-sky-500/30">
                         <i className="fa-solid fa-money-check-dollar text-lg"></i>
                       </div>
                       <span className="text-slate-700 text-[11.5px] font-semibold">Datos de pago</span>
                     </button>
-                    <button onClick={() => { setShowStatus(true); setStartCamera(false); }} className="bg-white p-3 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2">
+                    <button onClick={() => { setShowStatus(true); setStartCamera(false); }} className="bg-white p-3 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2 relative group">
+                      <Tip text="Publica fotos de tus productos" />
                       <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-pink-500 to-pink-600 flex items-center justify-center text-white shadow-sm shadow-pink-500/30">
                         <i className="fa-solid fa-images text-lg"></i>
                       </div>
                       <span className="text-slate-700 text-[11.5px] font-semibold">Historias</span>
                     </button>
-                    <button onClick={() => { setShowStatus(true); setStartCamera(true); }} className="bg-white p-3 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2">
+                    <button onClick={() => { setShowStatus(true); setStartCamera(true); }} className="bg-white p-3 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2 relative group">
+                      <Tip text="Toma una foto para una historia nueva" />
                       <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center text-white shadow-sm shadow-orange-500/30">
                         <i className="fa-solid fa-camera text-lg"></i>
                       </div>
                       <span className="text-slate-700 text-[11.5px] font-semibold">Cámara</span>
                     </button>
-                    <button onClick={() => setShowGanttChart(true)} className="bg-white p-3 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2">
+                    <button onClick={() => setShowGanttChart(true)} className="bg-white p-3 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2 relative group">
+                      <Tip text="Cronograma visual de tus proyectos" />
                       <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center text-white shadow-sm shadow-purple-500/30">
                         <i className="fa-solid fa-bars-progress text-lg"></i>
                       </div>
                       <span className="text-slate-700 text-[11.5px] font-semibold">Gantt</span>
                     </button>
-                    <button onClick={() => setShowGroupsManager(true)} className="bg-white p-3 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2">
+                    <button onClick={() => setShowGroupsManager(true)} className="bg-white p-3 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2 relative group">
+                      <Tip text="Agrupa contactos por proyecto o categoría" />
                       <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-cyan-500 to-cyan-600 flex items-center justify-center text-white shadow-sm shadow-cyan-500/30">
                         <i className="fa-solid fa-users-rectangle text-lg"></i>
                       </div>
                       <span className="text-slate-700 text-[11.5px] font-semibold">Grupos</span>
                     </button>
                     <button onClick={() => {
-                      // Limpiar campos antes de abrir el modal
                       setNewContactName('');
                       setNewContactAlias('');
                       setNewContactPhone('');
                       setNewContactRole('client');
                       setShowNewContactModal(true);
-                    }} className="bg-gradient-to-br from-blue-600 to-blue-700 p-3 rounded-xl transition shadow-md shadow-blue-500/30 hover:shadow-lg flex flex-col items-center gap-2">
+                    }} className="bg-gradient-to-br from-blue-600 to-blue-700 p-3 rounded-xl transition shadow-md shadow-blue-500/30 hover:shadow-lg flex flex-col items-center gap-2 relative group">
+                      <Tip text="Agrega un cliente o proveedor nuevo" />
                       <div className="w-11 h-11 rounded-xl bg-white/15 flex items-center justify-center text-white">
                         <i className="fa-solid fa-user-plus text-lg"></i>
                       </div>
                       <span className="text-white text-[11.5px] font-semibold">Contacto</span>
                     </button>
                     {userProfile?.isAdmin && (
-                      <button onClick={() => setShowAdminPanel(true)} className="bg-white p-3 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2">
+                      <button onClick={() => setShowAdminPanel(true)} className="bg-white p-3 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2 relative group">
+                        <Tip text="Panel de administración de la plataforma" />
                         <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center text-white shadow-sm shadow-amber-500/30">
                           <i className="fa-solid fa-user-shield text-lg"></i>
                         </div>
