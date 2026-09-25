@@ -375,9 +375,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister, i
         }
 
         const fullName = formularioCorto ? firstName.trim() : `${firstName} ${lastName}`;
-        // E.164 estricto (sin espacios): Supabase rechaza el envío de SMS si el
-        // número no matchea ese formato exacto.
-        const fullPhone = `${countryCode}${phone.replace(/\s+/g, '')}`;
+        // E.164 estricto para números; si es @usuario de WhatsApp se guarda tal cual.
+        const rawPhone = phone.trim();
+        const fullPhone = (formularioCorto && rawPhone.startsWith('@'))
+          ? rawPhone
+          : `${countryCode}${rawPhone.replace(/\s+/g, '')}`;
         const normalizedEmail = email.trim().toLowerCase();
 
         // ── Supabase Auth: Create user with email/password ──
@@ -930,11 +932,14 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister, i
                       </div>
                     )}
                     <div className={formularioCorto ? 'w-full' : 'w-2/3'}>
-                      <label className="text-xs text-slate-700 font-bold uppercase mb-1.5 block tracking-wide">Celular *</label>
+                      <label className="text-xs text-slate-700 font-bold uppercase mb-1.5 block tracking-wide">
+                        {formularioCorto ? 'Celular o usuario de WhatsApp *' : 'Celular *'}
+                      </label>
                       <input
-                        type="tel"
+                        type={formularioCorto ? 'text' : 'tel'}
+                        inputMode={formularioCorto ? undefined : 'tel'}
                         className="w-full p-3.5 bg-slate-50 border border-slate-200 text-slate-900 font-semibold rounded-xl outline-none focus:border-blue-600 focus:bg-white transition placeholder-slate-400 text-sm"
-                        placeholder={formularioCorto ? `${countryCode} 300 123 4567` : '3001234567'}
+                        placeholder={formularioCorto ? `${countryCode} 300 123 4567 o @usuario` : '3001234567'}
                         value={phone}
                         onChange={e => setPhone(e.target.value)}
                         required

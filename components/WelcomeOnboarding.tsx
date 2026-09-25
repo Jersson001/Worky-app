@@ -48,6 +48,36 @@ export const WelcomeOnboarding: React.FC<WelcomeOnboardingProps> = ({ onComplete
     }
   };
 
+  const handleSkip = async () => {
+    setIsSubmitting(true);
+    setSubmitError('');
+    const nombre = ownerName.trim() || initialName;
+    const userData: UserProfileData = {
+      businessName: nombre,
+      ownerName: nombre,
+      phone: phone || initialPhone,
+      businessType: '',
+      businessLogo: '',
+      username: '',
+      password: '',
+      email: email || initialEmail,
+      nit: '',
+      address: '',
+      local: '',
+      centroComercial: '',
+      city: '',
+      country: 'Colombia',
+    };
+    try {
+      await onComplete(userData);
+      localStorage.removeItem('tempCredentials');
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Error desconocido';
+      setSubmitError(errorMsg);
+      setIsSubmitting(false);
+    }
+  };
+
   const handleComplete = async () => {
     setIsSubmitting(true);
     setSubmitError('');
@@ -125,6 +155,14 @@ export const WelcomeOnboarding: React.FC<WelcomeOnboardingProps> = ({ onComplete
                   <i className="fa-solid fa-briefcase text-indigo-600"></i>
                   Información de tu negocio
                 </h2>
+              </div>
+
+              {/* Aviso: para qué sirve registrar el negocio */}
+              <div className="flex items-start gap-3 bg-indigo-50 border border-indigo-200 rounded-xl p-4">
+                <i className="fa-solid fa-file-invoice text-indigo-500 mt-0.5 flex-shrink-0"></i>
+                <p className="text-sm text-indigo-800 leading-snug">
+                  <span className="font-bold">Registra tu negocio</span> para crear tus documentos personalizados —cotizaciones, facturas y cuentas de cobro— con tu logo y datos.
+                </p>
               </div>
 
               <div>
@@ -331,6 +369,14 @@ export const WelcomeOnboarding: React.FC<WelcomeOnboardingProps> = ({ onComplete
                     <i className="fa-solid fa-check"></i>
                   </>
                 )}
+              </button>
+
+              <button
+                onClick={() => void handleSkip()}
+                disabled={isSubmitting}
+                className="w-full text-slate-500 hover:text-slate-700 py-2 text-sm font-semibold transition disabled:opacity-50"
+              >
+                Saltar paso — lo completo después
               </button>
             </div>
           </div>
