@@ -10,6 +10,10 @@ const config: CapacitorConfig = {
       // Complies with Google Play policy by avoiding broad storage permissions
       presentationStyle: 'popover',
     },
+    App: {
+      // Handle deep links from push notifications
+      allowInAppWebViewDeeplink: true,
+    },
   },
 };
 

@@ -196,6 +196,7 @@ Deno.serve(async (req) => {
         const vivo = await avisarAlAparato(cuenta, permiso, token, titulo, cuerpo, {
           chat: String(remitente ?? ''),
           tipo: String(record?.type ?? 'text'),
+          clickAction: `worky://chat?sender=${remitente}`,
         });
         if (!vivo) muertos.push(token);
       }),

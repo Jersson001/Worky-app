@@ -37,6 +37,7 @@ import { supabase } from './services/supabaseConfig';
 import { formatCurrency, parseAmount } from './utils/currency';
 import { normalizarContactoWhatsApp } from './utils/contactoWhatsApp';
 import { CurrencyInput } from './components/chat/modals/CurrencyInput';
+import { App as CapacitorApp } from '@capacitor/app';
 
 // Mock Data (usado como fallback o inicial)
 const MOCK_CONTACTS: Contact[] = [
@@ -243,6 +244,35 @@ const App: React.FC = () => {
       setSharedDocumentId(viewParam);
     }
   }, []);
+
+  // Manejar deep links de notificaciones push: worky://chat?sender=<contactId>
+  useEffect(() => {
+    const handleDeepLink = async (event: any) => {
+      const url = event.url;
+      if (!url) return;
+
+      // Parsear deep link: worky://chat?sender=<contactId>
+      const urlObj = new URL(url);
+      if (urlObj.protocol === 'worky:' && urlObj.hostname === 'chat') {
+        const contactId = urlObj.searchParams.get('sender');
+        if (contactId && isAuthenticated) {
+          // Abrir el chat del contacto
+          setSelectedContactId(contactId);
+          setMobileTab('home');
+          setShowNotifications(false);
+          setShowFinancials(false);
+        }
+      }
+    };
+
+    // Solo en la app nativa
+    if (typeof CapacitorApp !== 'undefined') {
+      const listener = CapacitorApp.addListener('appUrlOpen', handleDeepLink);
+      return () => {
+        listener.remove();
+      };
+    }
+  }, [isAuthenticated]);
 
   // Quien llega desde un catálogo trae consigo a quién se lo mandó. Se guarda
   // antes de nada, porque el registro puede pasar por confirmación de correo y
