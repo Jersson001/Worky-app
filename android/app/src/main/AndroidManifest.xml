@@ -27,6 +27,8 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="worky" android:host="chat" />
+                <!-- Vuelta del login con Google (ver LoginScreen.tsx). -->
+                <data android:scheme="worky" android:host="auth-callback" />
             </intent-filter>
         </activity>
 

@@ -1,4 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { Capacitor } from '@capacitor/core';
+import { Browser } from '@capacitor/browser';
 import { supabase } from '../services/supabaseConfig';
 import { setCurrentUserId } from '../services/messagingService';
 import { llegoInvitado, olvidarRegistroPedido, quiereRegistroConCorreo, vendedorPendiente, invitacionPendiente } from '../services/catalogShareService';
@@ -264,28 +266,65 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister, i
    * No hace falta ninguna clave aquí: el ID y el secreto viven en Supabase, que
    * es quien habla con Google. Esto solo abre el camino.
    *
-   * El destino es el origen actual y no la app publicada, al revés que en los
-   * enlaces que se comparten: aquí se vuelve al mismo navegador donde se
-   * empezó, así que mandarlo a otro sitio dejaría la sesión donde no está la
-   * persona —y en local, sin poder probarlo—. Cada origen tiene que estar en
-   * las Redirect URLs de Supabase.
+   * En el APK no sirve dejar que `signInWithOAuth` navegue el propio WebView:
+   * Google bloquea el login dentro de WebViews embebidos por seguridad, así
+   * que Android sacaba esa navegación a Chrome —de ahí que "se abriera en la
+   * web"— y el `redirectTo` de antes (`window.location.origin`) apuntaba a
+   * `https://localhost`, la dirección interna donde Capacitor sirve la app,
+   * que ese Chrome externo no podía alcanzar: la sesión se creaba allá y
+   * nunca volvía, y el botón se quedaba en "procesando" para siempre.
+   *
+   * Arreglo: en nativo se abre el link de Google en un navegador in-app
+   * (`@capacitor/browser`, Chrome Custom Tabs) con `skipBrowserRedirect`, y
+   * se le pide a Supabase que redirija a `worky://auth-callback` —un enlace
+   * propio que Android sabe devolver a esta app (ver AndroidManifest.xml y
+   * el listener de `appUrlOpen` en App.tsx, que entrega la sesión—.
+   *
+   * El destino en la web es el origen actual y no la app publicada, al revés
+   * que en los enlaces que se comparten: aquí se vuelve al mismo navegador
+   * donde se empezó, así que mandarlo a otro sitio dejaría la sesión donde no
+   * está la persona —y en local, sin poder probarlo—. Cada origen (y
+   * `worky://auth-callback`) tiene que estar en las Redirect URLs de Supabase.
    *
    * A quién le compró se conserva solo: `vendedorPendiente` vive en el
-   * localStorage del navegador, que sobrevive al viaje de ida y vuelta.
+   * localStorage del navegador, que sobrevive al viaje de ida y vuelta. En
+   * nativo no aplica: el navegador in-app comparte storage con la app.
    */
   const entrarConGoogle = async () => {
     setError('');
     setLoading(true);
     try {
+      const esNativo = Capacitor.isNativePlatform();
       const { protocol, origin } = window.location;
-      const destino = (protocol === 'http:' || protocol === 'https:') ? origin : WORKY_APP_URL;
-      const { error: e } = await supabase.auth.signInWithOAuth({
+      const destino = esNativo
+        ? 'worky://auth-callback'
+        : (protocol === 'http:' || protocol === 'https:') ? origin : WORKY_APP_URL;
+
+      const { data, error: e } = await supabase.auth.signInWithOAuth({
         provider: 'google',
-        options: { redirectTo: destino },
+        options: {
+          redirectTo: destino,
+          // En nativo el WebView de la app no puede completar el login de
+          // Google: se pide la URL sin que Supabase navegue por su cuenta, y
+          // se abre a mano en un navegador in-app aparte.
+          skipBrowserRedirect: esNativo,
+        },
       });
       if (e) throw e;
-      // Si no lanza, el navegador ya se está yendo a Google: no se apaga el
-      // «cargando», que apagarlo deja el botón como si no hubiera pasado nada.
+
+      if (esNativo && data?.url) {
+        // Si cierra el navegador sin terminar, esto apaga el "cargando";
+        // si termina, el listener de appUrlOpen en App.tsx llega primero,
+        // cierra este navegador y entrega la sesión.
+        const handle = await Browser.addListener('browserFinished', () => {
+          setLoading(false);
+          void handle.remove();
+        });
+        await Browser.open({ url: data.url, presentationStyle: 'popover' });
+        return;
+      }
+      // En la web, si no lanzó, el navegador ya se está yendo a Google: no se
+      // apaga el «cargando», que apagarlo deja el botón como si no hubiera pasado nada.
     } catch (err: any) {
       console.error('Entrada con Google:', err);
       // El caso que de verdad pasa: el proveedor no está configurado todavía.

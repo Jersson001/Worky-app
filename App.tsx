@@ -39,6 +39,7 @@ import { formatCurrency, parseAmount } from './utils/currency';
 import { normalizarContactoWhatsApp } from './utils/contactoWhatsApp';
 import { CurrencyInput } from './components/chat/modals/CurrencyInput';
 import { App as CapacitorApp } from '@capacitor/app';
+import { Browser } from '@capacitor/browser';
 
 // Mock Data (usado como fallback o inicial)
 const MOCK_CONTACTS: Contact[] = [
@@ -264,17 +265,50 @@ const App: React.FC = () => {
     } catch { /* URL inválida, se ignora */ }
   }, [isAuthenticated]);
 
+  // Vuelta del login con Google: worky://auth-callback#access_token=...
+  // (implícito) o ?code=... (PKCE) — se manejan los dos porque el flujo lo
+  // decide la config de Supabase, no este código. Cierra el navegador in-app
+  // que abrió LoginScreen y entrega la sesión; onAuthStateChange hace el
+  // resto. Devuelve si la URL era esta, para no procesarla también como chat.
+  const manejarCallbackGoogle = useCallback(async (url: string): Promise<boolean> => {
+    const urlObj = new URL(url);
+    if (urlObj.protocol !== 'worky:' || urlObj.hostname !== 'auth-callback') return false;
+
+    void Browser.close().catch(() => { /* ya estaba cerrado */ });
+    try {
+      const hashParams = new URLSearchParams(urlObj.hash.replace(/^#/, ''));
+      const accessToken = hashParams.get('access_token');
+      const refreshToken = hashParams.get('refresh_token');
+      const code = urlObj.searchParams.get('code');
+
+      if (accessToken && refreshToken) {
+        await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
+      } else if (code) {
+        await supabase.auth.exchangeCodeForSession(code);
+      }
+    } catch (e) {
+      console.error('Callback de Google:', e);
+    }
+    return true;
+  }, []);
+
   // appUrlOpen: cubre el caso en que Android abre la app desde un intent worky://
-  // (p.ej. un enlace en WhatsApp). addListener devuelve Promise, así que hay que
-  // esperarla antes de llamar .remove() en el cleanup.
+  // (p.ej. un enlace en WhatsApp, o la vuelta del login con Google). addListener
+  // devuelve Promise, así que hay que esperarla antes de llamar .remove() en
+  // el cleanup.
   useEffect(() => {
     if (typeof CapacitorApp === 'undefined') return;
     let handle: { remove: () => void } | undefined;
     CapacitorApp.addListener('appUrlOpen', (event: { url: string }) => {
-      abrirChatPorUrl(event.url);
+      void (async () => {
+        try {
+          const fueCallbackGoogle = await manejarCallbackGoogle(event.url);
+          if (!fueCallbackGoogle) abrirChatPorUrl(event.url);
+        } catch { /* URL inválida, se ignora */ }
+      })();
     }).then(h => { handle = h; });
     return () => { handle?.remove(); };
-  }, [abrirChatPorUrl]);
+  }, [abrirChatPorUrl, manejarCallbackGoogle]);
 
   // Quien llega desde un catálogo trae consigo a quién se lo mandó. Se guarda
   // antes de nada, porque el registro puede pasar por confirmación de correo y
