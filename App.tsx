@@ -943,6 +943,7 @@ const App: React.FC = () => {
   const [showTiendas, setShowTiendas] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileEditor, setShowProfileEditor] = useState(false);
+  const [showMenuPerfil, setShowMenuPerfil] = useState(false);
   const [showGanttChart, setShowGanttChart] = useState(false);
   const [showGroupsManager, setShowGroupsManager] = useState(false);
   const [selectedGanttProjectId, setSelectedGanttProjectId] = useState<string | undefined>(undefined);
@@ -2682,18 +2683,41 @@ ${describeError(error)}
                   <div className="text-xl font-bold text-slate-900">Inicio</div>
                   <div className="text-[12.5px] text-slate-500">{userProfile?.businessName || 'Tu negocio'}</div>
                 </div>
-                <button
-                  onClick={() => setShowProfileEditor(true)}
-                  className="flex items-center gap-2 bg-white border border-slate-200 rounded-full px-3 py-1.5 shadow-sm hover:shadow-md transition"
-                >
-                  {businessLogo
-                    ? <img src={businessLogo} alt="" className="w-6 h-6 rounded-full object-cover" />
-                    : <div className="w-6 h-6 rounded-full bg-gradient-to-br from-slate-600 to-slate-700 flex items-center justify-center">
-                        <i className="fa-solid fa-user text-white text-[10px]"></i>
+                <div className="relative">
+                  <button
+                    onClick={() => setShowMenuPerfil(v => !v)}
+                    className="flex items-center gap-2 bg-white border border-slate-200 rounded-full px-3 py-1.5 shadow-sm hover:shadow-md transition"
+                  >
+                    {businessLogo
+                      ? <img src={businessLogo} alt="" className="w-6 h-6 rounded-full object-cover" />
+                      : <div className="w-6 h-6 rounded-full bg-gradient-to-br from-slate-600 to-slate-700 flex items-center justify-center">
+                          <i className="fa-solid fa-user text-white text-[10px]"></i>
+                        </div>
+                    }
+                    <span className="text-[12px] font-semibold text-slate-700">Mi perfil</span>
+                    <i className={`fa-solid fa-chevron-down text-[9px] text-slate-400 transition-transform ${showMenuPerfil ? 'rotate-180' : ''}`}></i>
+                  </button>
+
+                  {showMenuPerfil && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setShowMenuPerfil(false)} />
+                      <div className="absolute right-0 top-10 bg-white shadow-lg py-2 w-48 rounded-xl z-50 border border-slate-200 animate-scale-in origin-top-right">
+                        <button
+                          onClick={() => { setShowProfileEditor(true); setShowMenuPerfil(false); }}
+                          className="w-full text-left px-4 py-2 text-slate-700 hover:bg-slate-50 text-sm transition flex items-center gap-2"
+                        >
+                          <i className="fa-solid fa-user-pen text-cyan-600 w-4"></i> Editar perfil
+                        </button>
+                        <button
+                          onClick={() => { setShowMenuPerfil(false); void handleLogout(); }}
+                          className="w-full text-left px-4 py-2 text-rose-600 hover:bg-rose-50 text-sm font-medium transition flex items-center gap-2"
+                        >
+                          <i className="fa-solid fa-right-from-bracket w-4"></i> Cerrar sesión
+                        </button>
                       </div>
-                  }
-                  <span className="text-[12px] font-semibold text-slate-700">Mi perfil</span>
-                </button>
+                    </>
+                  )}
+                </div>
               </div>
 
               {/* Dos columnas: lo que se hace a diario a la izquierda, lo que se
