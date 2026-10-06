@@ -7,6 +7,7 @@ import { llegoInvitado, olvidarRegistroPedido, quiereRegistroConCorreo, vendedor
 import { URL_PRIVACIDAD, URL_TERMINOS, constanciaDeAceptacion } from '../utils/legal';
 import { WORKY_APP_URL } from '../services/catalogShareService';
 import { avatarDeIniciales } from '../utils/avatar';
+import { CampoContrasena } from './CampoContrasena';
 
 interface LoginScreenProps {
   onLogin: () => void;
@@ -985,8 +986,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister, i
                   </div>
                   <div>
                     <label className="text-xs text-slate-700 font-bold uppercase mb-1.5 block tracking-wide">Contraseña *</label>
-                    <input
-                      type="password"
+                    <CampoContrasena
                       className="w-full p-3.5 bg-slate-50 border border-slate-200 text-slate-900 font-semibold rounded-xl outline-none focus:border-blue-600 focus:bg-white transition placeholder-slate-400 text-sm"
                       placeholder="Mínimo 6 caracteres"
                       value={password}
@@ -1012,8 +1012,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister, i
                   </div>
                   <div>
                     <label className="text-xs text-slate-700 font-bold uppercase mb-1.5 block tracking-wide">Contraseña</label>
-                    <input
-                      type="password"
+                    <CampoContrasena
                       className="w-full p-3.5 bg-slate-50 border border-slate-200 text-slate-900 font-semibold rounded-xl outline-none focus:border-blue-600 focus:bg-white transition placeholder-slate-400 text-sm"
                       placeholder="Tu contraseña"
                       value={password}

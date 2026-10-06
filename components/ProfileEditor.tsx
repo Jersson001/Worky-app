@@ -3,6 +3,7 @@ import { FAMILIAS, tiposDe } from '../utils/tiposDeNegocio';
 import { UserProfileData } from '../types';
 import { normalizarContactoWhatsApp } from '../utils/contactoWhatsApp';
 import { EMPRESA, URL_PRIVACIDAD, URL_TERMINOS, avisoDerechos } from '../utils/legal';
+import { CampoContrasena } from './CampoContrasena';
 
 interface ProfileEditorProps {
   userProfile: UserProfileData;
@@ -196,8 +197,7 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({
                       autoComplete="tel"
                       className="w-full p-3 bg-white border border-amber-300 rounded-xl outline-none focus:border-amber-500 text-slate-900 font-medium placeholder-slate-400"
                     />
-                    <input
-                      type="password"
+                    <CampoContrasena
                       value={claveNueva}
                       onChange={e => setClaveNueva(e.target.value)}
                       placeholder="Contraseña (mínimo 6 caracteres)"
