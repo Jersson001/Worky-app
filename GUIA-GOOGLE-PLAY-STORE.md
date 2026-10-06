@@ -4,12 +4,35 @@ Esta guía te llevará paso a paso para publicar tu aplicación Worky en Google 
 
 ---
 
-## 📌 Dónde va esto — al 5 de octubre de 2026
+## 📌 Dónde va esto — al 6 de octubre de 2026
 
-El siguiente envío va con el **`versionCode` 26100501 (versión 2.9.0)**,
+El siguiente envío va con el **`versionCode` 26100601 (versión 2.10.0)**,
 compilado y firmado, en el Escritorio. Ya se enviaron el 19, el 20, el 21, el
-26092201 (2.8.4) y el 26092702 (2.8.8); lo intermedio está compilado y nunca se
-subió por separado. La política y la
+26092201 (2.8.4), el 26092702 (2.8.8) y el 26100501 (2.9.0); lo intermedio está
+compilado y nunca se subió por separado.
+
+**Dos avisos de Play Console, y los dos se resuelven fuera del código:**
+
+1. **Credenciales incorrectas.** Google devolvió la 2.9.0 porque no pudo entrar
+   con la cuenta de demostración. Hay que cargar una cuenta con correo y
+   contraseña, confirmada y con el perfil completo, y probarla antes en una
+   instalación limpia. El atajo por alias no sirve: solo lo ve quien llega desde
+   un QR de catálogo.
+2. **API 36.** El proyecto ya apunta a 36. El aviso se refiere a la versión en
+   producción, que sigue en API 35: se cierra publicando una versión nueva.
+
+**Novedades de la 2.10.0 para la ficha de Play** (por debajo de 500 caracteres):
+
+```
+Novedades:
+• Cobro mensual y panel de suscripciones.
+• Cotizaciones: vista previa antes de crearlas, borrador que se guarda solo, calculadora de medidas (ML y m²), comentarios con viñetas y titulares editables.
+• Contactos: documento (cédula, NIT o RUT) que sale en cotización, factura, cuenta de cobro y recibo, y nombre editable.
+• Celular o usuario de WhatsApp en todos los formularios.
+• Correcciones: el logo y la firma ya no se mezclan entre cuentas.
+```
+
+La política y la
 página de eliminación de cuenta viven ahora en el dominio propio:
 `worky.ferryapp.co/privacidad.html` y `worky.ferryapp.co/eliminar-cuenta.html`.
 **En la ficha de Play siguen apuntando a `worky-app-khaki.vercel.app`, y hay que
@@ -100,7 +123,8 @@ intento fallido gasta un número:
 | 26092501 (2.8.6) | Arreglo de tocar un push con la app cerrada y el botón «Mi perfil» |
 | 26092701 (2.8.7) | Entrar con Google en el APK, con navegador dentro de la app |
 | 26092702 (2.8.8) | Menú «Editar perfil» / «Cerrar sesión» en «Mi perfil». **Subida a Play** |
-| **26100501 (2.9.0)** | Cobro mensual, calculadora de medidas y titulares editables en la cotización, celular o usuario de WhatsApp en todos los formularios, y logo, firma y documentos separados por cuenta. **La que va a Play** |
+| 26100501 (2.9.0) | Cobro mensual, calculadora de medidas y titulares editables en la cotización, celular o usuario de WhatsApp en todos los formularios, y logo, firma y documentos separados por cuenta. **Enviada y devuelta por las credenciales de demostración**: número gastado |
+| **26100601 (2.10.0)** | El documento del contacto en cotización, factura, cuenta de cobro y recibo; nombre del contacto editable; vista previa y borrador de la cotización. **La que va a Play** |
 
 **Play exige API 36** desde el 1 de septiembre de 2026. Está en
 `android/variables.gradle`.
@@ -153,9 +177,9 @@ fue por el contenido de la app:
 - ✅ **Política de privacidad y términos** escritos, en `public/`, empaquetados con la app
 - ✅ **Página de eliminación de cuenta** en `public/eliminar-cuenta.html`, que es
   la URL que pide el formulario de Seguridad de los datos
-- ✅ VersionCode 26100501 (2.9.0) compilado y firmado el 05/10/2026, con todo
-  lo anterior dentro. El 19, el 20, el 21, el 26092201 (2.8.4) y el 26092702
-  (2.8.8) ya se enviaron
+- ✅ VersionCode 26100601 (2.10.0) compilado y firmado el 06/10/2026, con todo
+  lo anterior dentro. El 19, el 20, el 21, el 26092201 (2.8.4), el 26092702
+  (2.8.8) y el 26100501 (2.9.0) ya se enviaron
 - ✅ **Notificaciones probadas en un teléfono de verdad** el 20/09/2026: llegan
   con la app cerrada, con la W en la barra de estado
 - ⏳ **Pendiente de subir.** Ver arriba lo que falta.
