@@ -126,7 +126,17 @@ android {
         //
         // El 26092702 (2.8.8): la píldora «Mi perfil» del inicio abre ahora un
         // menú con «Editar perfil» y «Cerrar sesión», en vez de ir directo al
-        // editor.
+        // editor. Subida a Play: su número está gastado.
+        //
+        // El 26100501 (2.9.0): el cobro pasa a ser mensual —Pro vale hasta la
+        // fecha de vencimiento y el panel de admin renueva +1 mes—; en la
+        // cotización, comentarios con viñetas y que crecen, cantidades que no se
+        // quedan pegadas al 0, titulares, capítulos y líneas de plantilla
+        // editables en todos los oficios, y en obra y carpintería la medida es
+        // una calculadora con ML / M² como botones; celular o usuario de WhatsApp
+        // en todos los formularios; el logo, la firma y los documentos del
+        // teléfono ya no pasan de una cuenta a otra; y la pregunta por un
+        // producto del catálogo llega dentro de la burbuja de la foto.
         /*
          * Son dos cosas distintas y solo una es libre.
          *
@@ -164,8 +174,8 @@ android {
          * número de en medio —2.4, 2.5 y 2.6 en tres días— y a ese paso la 3.0
          * llegaba sin que hubiera cambiado nada grande.
          */
-        versionCode 26092702
-        versionName "2.8.8"
+        versionCode 26100501
+        versionName "2.9.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'

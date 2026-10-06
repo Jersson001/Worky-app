@@ -4,11 +4,12 @@ Esta guía te llevará paso a paso para publicar tu aplicación Worky en Google 
 
 ---
 
-## 📌 Dónde va esto — al 22 de septiembre de 2026
+## 📌 Dónde va esto — al 5 de octubre de 2026
 
-El siguiente envío va con el **`versionCode` 26092202 (versión 2.8.5)**,
-compilado y firmado, en el Escritorio. El 19, el 20 y el 21 ya se enviaron a
-Play; del 26091601 en adelante están compiladas y sin enviar. La política y la
+El siguiente envío va con el **`versionCode` 26100501 (versión 2.9.0)**,
+compilado y firmado, en el Escritorio. Ya se enviaron el 19, el 20, el 21, el
+26092201 (2.8.4) y el 26092702 (2.8.8); lo intermedio está compilado y nunca se
+subió por separado. La política y la
 página de eliminación de cuenta viven ahora en el dominio propio:
 `worky.ferryapp.co/privacidad.html` y `worky.ferryapp.co/eliminar-cuenta.html`.
 **En la ficha de Play siguen apuntando a `worky-app-khaki.vercel.app`, y hay que
@@ -94,7 +95,12 @@ intento fallido gasta un número:
 | 26092003 (2.8.2) | Cerrar sesión suelta el teléfono de las notificaciones, y la política al 20/09 |
 | 26092004 (2.8.3) | El precio del producto con signo de pesos y la carpeta sin foto con su nombre |
 | 26092201 (2.8.4) | **Subida a Play.** Contactos por usuario de WhatsApp, correo opcional, el cliente manual que entra a su chat al registrarse. Recompilarla con el mismo número dio «version code has already been used» |
-| **26092202 (2.8.5)** | La 2.8.4 más el icono para volver al catálogo desde el chat. **La que va a Play** |
+| 26092202 (2.8.5) | La 2.8.4 más el icono para volver al catálogo desde el chat. Número gastado |
+| 26092204 (2.8.6) | Registro con usuario de WhatsApp, deep links en las notificaciones, «Saltar paso» y «← Volver» |
+| 26092501 (2.8.6) | Arreglo de tocar un push con la app cerrada y el botón «Mi perfil» |
+| 26092701 (2.8.7) | Entrar con Google en el APK, con navegador dentro de la app |
+| 26092702 (2.8.8) | Menú «Editar perfil» / «Cerrar sesión» en «Mi perfil». **Subida a Play** |
+| **26100501 (2.9.0)** | Cobro mensual, calculadora de medidas y titulares editables en la cotización, celular o usuario de WhatsApp en todos los formularios, y logo, firma y documentos separados por cuenta. **La que va a Play** |
 
 **Play exige API 36** desde el 1 de septiembre de 2026. Está en
 `android/variables.gradle`.
@@ -147,9 +153,9 @@ fue por el contenido de la app:
 - ✅ **Política de privacidad y términos** escritos, en `public/`, empaquetados con la app
 - ✅ **Página de eliminación de cuenta** en `public/eliminar-cuenta.html`, que es
   la URL que pide el formulario de Seguridad de los datos
-- ✅ VersionCode 26092202 (2.8.5) compilado y firmado el 22/09/2026, con todo
-  lo de esas dos semanas dentro. El 19, el 20, el 21 y el 26092201 (2.8.4) ya
-  se enviaron; las 2.6.0 a 2.8.3 están compiladas y sin enviar
+- ✅ VersionCode 26100501 (2.9.0) compilado y firmado el 05/10/2026, con todo
+  lo anterior dentro. El 19, el 20, el 21, el 26092201 (2.8.4) y el 26092702
+  (2.8.8) ya se enviaron
 - ✅ **Notificaciones probadas en un teléfono de verdad** el 20/09/2026: llegan
   con la app cerrada, con la W en la barra de estado
 - ⏳ **Pendiente de subir.** Ver arriba lo que falta.

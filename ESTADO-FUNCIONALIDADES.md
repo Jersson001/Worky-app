@@ -1011,13 +1011,32 @@ llegue a publicarse, así que cada intento fallido quema un número:
 | 26092003 (2.8.2) | Cerrar sesión suelta el teléfono de las notificaciones, y la política al 20/09 con el token |
 | 26092004 (2.8.3) | El precio del producto con signo de pesos, y la carpeta sin foto presentada con su nombre |
 | 26092201 (2.8.4) | **Subida a Play**, y su número gastado. Contactos por su usuario de WhatsApp y con el correo opcional, compartir sin número, el cliente manual que al registrarse entra a su propio chat, y el catálogo que ya no pierde la ubicación al compartir |
-| **26092202 (2.8.5)** | La 2.8.4 más el icono para volver al catálogo de la tienda desde el chat. **Es la que va a Play** |
+| 26092202 (2.8.5) | La 2.8.4 más el icono para volver al catálogo de la tienda desde el chat. Compilada, número gastado |
+| 26092204 (2.8.6) | El registro acepta usuario de WhatsApp, los deep links de las notificaciones para abrir el chat directo, «Saltar paso» en el onboarding y «← Volver» en el catálogo público. Número gastado |
+| 26092501 (2.8.6) | Arreglo del evento al tocar un push con la app cerrada y el botón «Mi perfil» en la esquina del inicio. Número gastado |
+| 26092701 (2.8.7) | **Entrar con Google en el APK**: se abre en un navegador dentro de la app y vuelve por `worky://auth-callback`. Probado en el teléfono. Número gastado |
+| 26092702 (2.8.8) | «Mi perfil» abre un menú con «Editar perfil» y «Cerrar sesión». **Subida a Play**, número gastado |
+| **26100501 (2.9.0)** | Cobro mensual, mejoras de la cotización por oficios (calculadora de medidas, titulares editables, viñetas), celular o usuario de WhatsApp en todos los formularios, y el logo, la firma y los documentos separados por cuenta. **Es la que va a Play** |
 
 Play exige **API 36** desde el 1 de septiembre de 2026.
 
-**La que va a Play es la 26092202 (2.8.5)**, compilada y firmada el 22/09/2026.
-Del 14 al 21 son números gastados —enviados o rechazados—, y también el 26092201
-(2.8.4), que se subió. Del 26091601 al 26092004 están compiladas pero sin enviar.
+**La que va a Play es la 26100501 (2.9.0)**, compilada y firmada el 05/10/2026.
+Del 14 al 21 son números gastados —enviados o rechazados—, y también todos hasta
+el 26092702 (2.8.8), que se subió. Las 2.6.0 a 2.8.7 están compiladas y nunca se
+enviaron por separado: sus cambios entraron en la 2.8.8 y la 2.9.0.
+
+**Cobro mensual (05/10/2026).** La prueba gratuita dura 30 días desde el
+registro (`trial_ends_at`). Pasada, las herramientas con `ProFeatureGuard` se
+bloquean hasta que el usuario pague por Nequi y el administrador lo marque Pro.
+Pro vale hasta `subscription_ends_at`: sin fecha no vence; con fecha, deja de
+valer al pasar. «Marcar como Pro» en el Panel de Suscripciones fija el
+vencimiento a un mes y «Renovar +1 mes» lo extiende desde la fecha vigente, o
+desde hoy si ya venció. La regla vive en una sola función, `tieneAcceso`, que
+usan el guardián y el panel. El 05/10/2026 se reinició el conteo de los 44
+usuarios: la prueba de todos termina el 05/11/2026. El trigger
+`trg_protect_subscription_fields` impide que un usuario normal toque esos
+campos, así que cualquier cambio masivo hay que hacerlo desactivándolo un
+instante y volviéndolo a activar.
 
 **Un número entregado no se vuelve a usar, aunque cambie el contenido.** La 2.8.4
 se compiló a las 9:14 y se subió; a las 9:21 se recompiló con el mismo número
