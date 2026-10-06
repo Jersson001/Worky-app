@@ -7,8 +7,8 @@ Esta guía te llevará paso a paso para publicar tu aplicación Worky en Google 
 ## 📌 Dónde va esto — al 6 de octubre de 2026
 
 La 2.10.0 (`versionCode` 26100601) ya se subió, así que su número está gastado. El
-siguiente envío va con el **`versionCode` 26100602 (versión 2.10.1)**, que
-todavía no está compilado; el último `.aab` en el Escritorio es el de la 2.10.0. Ya se enviaron el 19, el 20, el 21, el
+siguiente envío va con el **`versionCode` 26100602 (versión 2.10.1)**,
+compilado y firmado, en el Escritorio como `Worky-2.10.1.aab`. Ya se enviaron el 19, el 20, el 21, el
 26092201 (2.8.4), el 26092702 (2.8.8) y el 26100501 (2.9.0); lo intermedio está
 compilado y nunca se subió por separado.
 
@@ -126,7 +126,7 @@ intento fallido gasta un número:
 | 26092702 (2.8.8) | Menú «Editar perfil» / «Cerrar sesión» en «Mi perfil». **Subida a Play** |
 | 26100501 (2.9.0) | Cobro mensual, calculadora de medidas y titulares editables en la cotización, celular o usuario de WhatsApp en todos los formularios, y logo, firma y documentos separados por cuenta. **Enviada y devuelta por las credenciales de demostración**: número gastado |
 | 26100601 (2.10.0) | El documento del contacto en cotización, factura, cuenta de cobro y recibo; nombre del contacto editable; vista previa y borrador de la cotización. **Subida a Play**: número gastado |
-| **26100602 (2.10.1)** | El ojito para ver la contraseña. **La que va a Play; sin compilar** |
+| **26100602 (2.10.1)** | El ojito para ver la contraseña. **La que va a Play** |
 
 **Play exige API 36** desde el 1 de septiembre de 2026. Está en
 `android/variables.gradle`.
