@@ -416,7 +416,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister, i
         const fullName = formularioCorto ? firstName.trim() : `${firstName} ${lastName}`;
         // E.164 estricto para números; si es @usuario de WhatsApp se guarda tal cual.
         const rawPhone = phone.trim();
-        const fullPhone = (formularioCorto && rawPhone.startsWith('@'))
+        const fullPhone = rawPhone.startsWith('@')
           ? rawPhone
           : `${countryCode}${rawPhone.replace(/\s+/g, '')}`;
         const normalizedEmail = email.trim().toLowerCase();
@@ -841,12 +841,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister, i
                         className="w-full p-3 bg-slate-50 border border-slate-200 text-slate-900 font-medium rounded-xl outline-none focus:border-blue-600 focus:bg-white transition placeholder-slate-400 text-sm"
                       />
                       <input
-                        type="tel"
+                        type="text"
                         value={celularInvitado}
                         onChange={e => setCelularInvitado(e.target.value)}
-                        placeholder="Celular (opcional)"
+                        placeholder="Celular o usuario de WhatsApp (opcional)"
                         autoComplete="tel"
-                        inputMode="tel"
                         className="w-full p-3 bg-slate-50 border border-slate-200 text-slate-900 font-medium rounded-xl outline-none focus:border-blue-600 focus:bg-white transition placeholder-slate-400 text-sm"
                       />
                     </div>
@@ -972,13 +971,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister, i
                     )}
                     <div className={formularioCorto ? 'w-full' : 'w-2/3'}>
                       <label className="text-xs text-slate-700 font-bold uppercase mb-1.5 block tracking-wide">
-                        {formularioCorto ? 'Celular o usuario de WhatsApp *' : 'Celular *'}
+                        Celular o usuario de WhatsApp *
                       </label>
                       <input
-                        type={formularioCorto ? 'text' : 'tel'}
-                        inputMode={formularioCorto ? undefined : 'tel'}
+                        type="text"
                         className="w-full p-3.5 bg-slate-50 border border-slate-200 text-slate-900 font-semibold rounded-xl outline-none focus:border-blue-600 focus:bg-white transition placeholder-slate-400 text-sm"
-                        placeholder={formularioCorto ? `${countryCode} 300 123 4567 o @usuario` : '3001234567'}
+                        placeholder={formularioCorto ? `${countryCode} 300 123 4567 o @usuario` : '3001234567 o @usuario'}
                         value={phone}
                         onChange={e => setPhone(e.target.value)}
                         required

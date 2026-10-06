@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { AdminProfileRow, adminSetPro, adminSetSubscriptionEndsAt, listAllUserProfiles } from '../services/adminService';
+import { AdminProfileRow, adminSetPro, adminSetSubscriptionEndsAt, listAllUserProfiles, mesDespuesDe } from '../services/adminService';
+import { tieneAcceso } from './ProFeatureGuard';
 
 interface AdminPanelProps {
   onClose: () => void;
@@ -7,12 +8,7 @@ interface AdminPanelProps {
 
 const toDateInputValue = (iso: string | null): string => (iso ? iso.slice(0, 10) : '');
 
-const isActive = (row: AdminProfileRow): boolean => {
-  if (row.isPro) return true;
-  const trialActive = row.trialEndsAt ? new Date(row.trialEndsAt).getTime() > Date.now() : true;
-  const subActive = row.subscriptionEndsAt ? new Date(row.subscriptionEndsAt).getTime() > Date.now() : false;
-  return trialActive || subActive;
-};
+const isActive = (row: AdminProfileRow): boolean => tieneAcceso(row.isPro, row.trialEndsAt, row.subscriptionEndsAt);
 
 export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
   const [rows, setRows] = useState<AdminProfileRow[]>([]);
@@ -50,10 +46,25 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
   const handleTogglePro = async (row: AdminProfileRow) => {
     setSavingId(row.id);
     try {
-      await adminSetPro(row.id, !row.isPro);
-      setRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, isPro: !r.isPro } : r)));
+      const activar = !row.isPro;
+      const fin = activar ? mesDespuesDe(null) : null;
+      await adminSetPro(row.id, activar, fin);
+      setRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, isPro: activar, subscriptionEndsAt: fin } : r)));
     } catch (e: any) {
       alert(e.message || 'Error actualizando');
+    } finally {
+      setSavingId(null);
+    }
+  };
+
+  const handleRenovar = async (row: AdminProfileRow) => {
+    setSavingId(row.id);
+    try {
+      const fin = mesDespuesDe(row.subscriptionEndsAt);
+      await adminSetPro(row.id, true, fin);
+      setRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, isPro: true, subscriptionEndsAt: fin } : r)));
+    } catch (e: any) {
+      alert(e.message || 'Error renovando');
     } finally {
       setSavingId(null);
     }
@@ -146,10 +157,21 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                         {row.isPro ? 'Pro activo (clic para quitar)' : 'Marcar como Pro'}
                       </button>
 
+                      {row.isPro && (
+                        <button
+                          onClick={() => handleRenovar(row)}
+                          disabled={savingId === row.id}
+                          className="text-xs font-bold px-3 py-2 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-800 transition disabled:opacity-50"
+                        >
+                          Renovar +1 mes
+                        </button>
+                      )}
+
                       <div className="flex items-end gap-2">
                         <div>
                           <label className="block text-[10px] text-slate-500 mb-1">Suscripción vence</label>
                           <input
+                            key={row.subscriptionEndsAt}
                             type="date"
                             defaultValue={toDateInputValue(row.subscriptionEndsAt)}
                             onChange={(e) => setDateDrafts((prev) => ({ ...prev, [row.id]: e.target.value }))}

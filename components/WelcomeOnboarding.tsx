@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { FAMILIAS, tiposDe } from '../utils/tiposDeNegocio';
 import { UserProfileData } from '../types';
+import { normalizarContactoWhatsApp } from '../utils/contactoWhatsApp';
 
 interface WelcomeOnboardingProps {
   onComplete: (userData: UserProfileData) => Promise<void>;
@@ -55,7 +56,7 @@ export const WelcomeOnboarding: React.FC<WelcomeOnboardingProps> = ({ onComplete
     const userData: UserProfileData = {
       businessName: nombre,
       ownerName: nombre,
-      phone: phone || initialPhone,
+      phone: normalizarContactoWhatsApp(phone || initialPhone),
       businessType: '',
       businessLogo: '',
       username: '',
@@ -85,7 +86,7 @@ export const WelcomeOnboarding: React.FC<WelcomeOnboardingProps> = ({ onComplete
     const userData: UserProfileData = {
       businessName,
       ownerName,
-      phone,
+      phone: normalizarContactoWhatsApp(phone),
       businessType,
       businessLogo,
       username: '',
@@ -218,14 +219,14 @@ export const WelcomeOnboarding: React.FC<WelcomeOnboardingProps> = ({ onComplete
 
               <div>
                 <label className="block text-sm font-bold text-slate-700 mb-2">
-                  Teléfono de Contacto *
+                  Celular o usuario de WhatsApp *
                 </label>
-                <input 
-                  type="tel" 
+                <input
+                  type="text"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition font-medium text-slate-800"
-                  placeholder="+57 300 123 4567"
+                  placeholder="+57 300 123 4567 o @usuario"
                 />
               </div>
 

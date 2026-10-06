@@ -473,6 +473,12 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
                 </div>
               )}
 
+              {/* Leyenda: el texto del pedido del catálogo, dentro de la misma
+                  burbuja y debajo de la foto. */}
+              {msg.type === 'image' && msg.metadata?.leyenda && msg.text && (
+                <div className="whitespace-pre-wrap leading-relaxed px-1 mt-1 break-words">{msg.text}</div>
+              )}
+
               {/* File Content */}
               {((msg.type === 'file' && msg.metadata) || (msg.mediaUrl && !msg.mediaType?.startsWith('image/'))) && (
                 <FileBubble msg={msg} />

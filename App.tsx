@@ -381,21 +381,27 @@ const App: React.FC = () => {
     // que el cliente abra la app.
     olvidarPedidoPendiente();
 
-    const lista = pedido.productos.map(p => `• ${p.nombre}`).join('\n');
-    const texto = ['Hola, me interesan estos productos:', lista, pedido.nota]
-      .filter(Boolean)
-      .join('\n\n');
+    // El texto va dentro de la burbuja de la foto, como leyenda debajo de ella.
+    // Con un solo producto la leyenda es la pregunta; con varios, cada foto
+    // lleva su nombre y la nota del cliente cierra la última.
+    const varios = pedido.productos.length > 1;
+    const ultimo = pedido.productos.length - 1;
+    const leyendaDe = (nombre: string, i: number): string => {
+      if (!varios) return pedido.nota || `Hola, me interesa ${nombre}`;
+      return i === ultimo && pedido.nota ? `${nombre}\n\n${pedido.nota}` : nombre;
+    };
+
+    // Lo que no pudo ir con foto sale como texto: el vendedor no se queda sin
+    // saber qué le piden ni sin leer la nota.
+    const sinFoto: string[] = [];
+    let notaEntregada = false;
 
     try {
-      await sendMessageToFirebase(vendedor, {
-        text: texto,
-        sender: 'me',
-        timestamp: new Date(),
-        type: 'text',
-      });
-
-      for (const producto of pedido.productos) {
-        if (!producto.imagen) continue;
+      for (const [i, producto] of pedido.productos.entries()) {
+        if (!producto.imagen) {
+          sinFoto.push(producto.nombre);
+          continue;
+        }
         try {
           // La foto viene como data URL dentro de la instantánea; para mandarla
           // por el chat hay que subirla como archivo, igual que cualquier otra.
@@ -404,17 +410,35 @@ const App: React.FC = () => {
           const subida = await uploadFileForChat(archivo, vendedor);
 
           await sendMessageToFirebase(vendedor, {
-            text: producto.nombre,
+            text: leyendaDe(producto.nombre, i),
             sender: 'me',
             timestamp: new Date(),
             type: 'image',
             mediaUrl: subida.url,
             mediaType: subida.fileType,
+            metadata: { leyenda: true },
           });
+          if (!varios || i === ultimo) notaEntregada = true;
         } catch (e) {
           // Una foto que no sube no debe tumbar el resto del pedido.
           console.warn(`No se pudo mandar la foto de ${producto.nombre}:`, e);
+          sinFoto.push(producto.nombre);
         }
+      }
+
+      if (sinFoto.length || (pedido.nota && !notaEntregada)) {
+        const texto = [
+          sinFoto.length ? ['Hola, me interesan estos productos:', ...sinFoto.map(n => `• ${n}`)].join('\n') : '',
+          notaEntregada ? '' : pedido.nota,
+        ]
+          .filter(Boolean)
+          .join('\n\n');
+        await sendMessageToFirebase(vendedor, {
+          text: texto,
+          sender: 'me',
+          timestamp: new Date(),
+          type: 'text',
+        });
       }
     } catch (e) {
       console.error('No se pudo mandar el pedido del catálogo:', e);
@@ -1211,51 +1235,71 @@ const App: React.FC = () => {
   const [digitalSignature, setDigitalSignature] = useState<string>('');
   const [showSignaturePad, setShowSignaturePad] = useState(false);
 
-  // Cargar documentos, logo y firma digital de localStorage al montar
+  // Documentos, logo y firma viven en el teléfono, y un teléfono lo usan varias
+  // cuentas. Con una clave única, lo que una guardaba lo heredaba la siguiente
+  // que entrara —el logo de un perfil aparecía en todos—. Cada cuenta tiene sus
+  // propias claves.
+  const claveLocal = (base: string, uid: string) => `${base}:${uid}`;
+  const CLAVES_LOCALES = ['worky_saved_documents', 'worky_business_logo', 'worky_digital_signature'] as const;
+  /** Cuenta de la que ya se cargó lo local; hasta entonces no se escribe nada. */
+  const [localCargadoDe, setLocalCargadoDe] = useState<string | null>(null);
+
   useEffect(() => {
-    const storedDocs = localStorage.getItem('worky_saved_documents');
-    if (storedDocs) {
-      try {
-        const parsed = JSON.parse(storedDocs);
-        const formatted = parsed.map((doc: any) => ({
-          ...doc,
-          uploadDate: new Date(doc.uploadDate)
-        }));
-        setDocuments(formatted);
-      } catch (err) {
-        console.error('Error parsing documents from localStorage:', err);
+    if (!uidSesion) {
+      setDocuments([]);
+      setBusinessLogo('');
+      setDigitalSignature('');
+      setLocalCargadoDe(null);
+      return;
+    }
+
+    // Lo guardado antes de separar por cuenta pasa a la primera que entre y la
+    // clave vieja se borra: así no vuelve a heredarlo nadie más.
+    for (const base of CLAVES_LOCALES) {
+      const vieja = localStorage.getItem(base);
+      if (vieja === null) continue;
+      if (localStorage.getItem(claveLocal(base, uidSesion)) === null) {
+        localStorage.setItem(claveLocal(base, uidSesion), vieja);
       }
+      localStorage.removeItem(base);
     }
-    const storedLogo = localStorage.getItem('worky_business_logo');
-    if (storedLogo) {
-      setBusinessLogo(storedLogo);
-    }
-    const storedSig = localStorage.getItem('worky_digital_signature');
-    if (storedSig) {
-      setDigitalSignature(storedSig);
-    }
-  }, []);
 
-  // Guardar documentos, logo y firma digital en localStorage al cambiar
-  useEffect(() => {
-    localStorage.setItem('worky_saved_documents', JSON.stringify(documents));
-  }, [documents]);
+    let docs: any[] = [];
+    try {
+      docs = JSON.parse(localStorage.getItem(claveLocal('worky_saved_documents', uidSesion)) || '[]');
+    } catch (err) {
+      console.error('Error parsing documents from localStorage:', err);
+    }
+    setDocuments(docs.map((doc: any) => ({ ...doc, uploadDate: new Date(doc.uploadDate) })));
+    setBusinessLogo(localStorage.getItem(claveLocal('worky_business_logo', uidSesion)) || '');
+    setDigitalSignature(localStorage.getItem(claveLocal('worky_digital_signature', uidSesion)) || '');
+    setLocalCargadoDe(uidSesion);
+  }, [uidSesion]);
 
   useEffect(() => {
+    if (!uidSesion || localCargadoDe !== uidSesion) return;
+    localStorage.setItem(claveLocal('worky_saved_documents', uidSesion), JSON.stringify(documents));
+  }, [documents, uidSesion, localCargadoDe]);
+
+  useEffect(() => {
+    if (!uidSesion || localCargadoDe !== uidSesion) return;
+    const clave = claveLocal('worky_business_logo', uidSesion);
     if (businessLogo) {
-      localStorage.setItem('worky_business_logo', businessLogo);
+      localStorage.setItem(clave, businessLogo);
     } else {
-      localStorage.removeItem('worky_business_logo');
+      localStorage.removeItem(clave);
     }
-  }, [businessLogo]);
+  }, [businessLogo, uidSesion, localCargadoDe]);
 
   useEffect(() => {
+    if (!uidSesion || localCargadoDe !== uidSesion) return;
+    const clave = claveLocal('worky_digital_signature', uidSesion);
     if (digitalSignature) {
-      localStorage.setItem('worky_digital_signature', digitalSignature);
+      localStorage.setItem(clave, digitalSignature);
     } else {
-      localStorage.removeItem('worky_digital_signature');
+      localStorage.removeItem(clave);
     }
-  }, [digitalSignature]);
+  }, [digitalSignature, uidSesion, localCargadoDe]);
 
   // Solicitar permisos de notificación nativa
   const requestNotificationPermission = useCallback(async () => {
@@ -2771,7 +2815,7 @@ ${describeError(error)}
                     </button>
                     <div className="relative group">
                       <Tip text="Genera contratos con firma digital" />
-                      <ProFeatureGuard isPro={userProfile?.isPro} trialEndsAt={userProfile?.trialEndsAt}>
+                      <ProFeatureGuard isPro={userProfile?.isPro} trialEndsAt={userProfile?.trialEndsAt} subscriptionEndsAt={userProfile?.subscriptionEndsAt}>
                         <ContractGenerator
                           defaultContractorName={userProfile?.ownerName || userProfile?.businessName || ''}
                           defaultContractorId={userProfile?.nit || ''}

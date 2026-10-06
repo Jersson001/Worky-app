@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom';
 import { QuoteData, InvoiceData, ReceiptData, CollectionAccountData, UserProfileData } from '../types';
 import { formatCurrency } from '../utils/currency';
 import { describeError } from '../utils/errorMessage';
+import { esUsuarioDeWhatsApp } from '../utils/contactoWhatsApp';
 import { shareQuoteViaWhatsApp, shareInvoiceViaWhatsApp, openWhatsApp, generateDocumentId, saveSharedDocument, generateDocumentViewLink } from '../services/whatsappService';
 import { publishCatalogForCurrentUser, catalogPageUrl, qrImageUrl, WORKY_APP_URL, crearInvitacionContacto } from '../services/catalogShareService';
 import { getCurrentUserId } from '../services/messagingService';
@@ -375,7 +376,7 @@ const QuoteTemplate = ({ data, businessLogo, userProfile, catalogoUrl, signature
                                 <p className="text-xs text-gray-600 mt-1">{data.clientAddress}</p>
                             )}
                             {data.clientPhone && (
-                                <p className="text-xs text-gray-600 mt-0.5">{data.clientPhone}</p>
+                                <p className="text-xs text-gray-600 mt-0.5">{esUsuarioDeWhatsApp(data.clientPhone) ? 'WhatsApp: ' : ''}{data.clientPhone}</p>
                             )}
                         </div>
                         <div className="bg-gray-50 p-3 rounded-lg border-l-4 border-blue-600">

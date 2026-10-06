@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { FAMILIAS, tiposDe } from '../utils/tiposDeNegocio';
 import { UserProfileData } from '../types';
+import { normalizarContactoWhatsApp } from '../utils/contactoWhatsApp';
 import { EMPRESA, URL_PRIVACIDAD, URL_TERMINOS, avisoDerechos } from '../utils/legal';
 
 interface ProfileEditorProps {
@@ -34,7 +35,7 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({
       return;
     }
     if (!celularNuevo.trim()) {
-      setErrorRegistro('Escribe tu celular: es por donde te buscan si se pierde el chat.');
+      setErrorRegistro('Escribe tu celular o usuario de WhatsApp: es por donde te buscan si se pierde el chat.');
       return;
     }
     if (claveNueva.length < 6) {
@@ -43,7 +44,7 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({
     }
     setRegistrando(true);
     try {
-      await onCompletarRegistro!(correoNuevo, claveNueva, celularNuevo.trim());
+      await onCompletarRegistro!(correoNuevo, claveNueva, normalizarContactoWhatsApp(celularNuevo));
       setRegistroHecho(true);
       setClaveNueva('');
     } catch (e: any) {
@@ -107,7 +108,7 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({
       ...userProfile,
       businessName,
       ownerName,
-      phone,
+      phone: normalizarContactoWhatsApp(phone),
       businessType,
       businessLogo,
       email,
@@ -188,12 +189,11 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({
                       className="w-full p-3 bg-white border border-amber-300 rounded-xl outline-none focus:border-amber-500 text-slate-900 font-medium placeholder-slate-400"
                     />
                     <input
-                      type="tel"
+                      type="text"
                       value={celularNuevo}
                       onChange={e => setCelularNuevo(e.target.value)}
-                      placeholder="Celular"
+                      placeholder="Celular o usuario de WhatsApp"
                       autoComplete="tel"
-                      inputMode="tel"
                       className="w-full p-3 bg-white border border-amber-300 rounded-xl outline-none focus:border-amber-500 text-slate-900 font-medium placeholder-slate-400"
                     />
                     <input
@@ -283,13 +283,13 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Teléfono</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Celular o usuario de WhatsApp</label>
               <input
-                type="tel"
+                type="text"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition text-slate-900 font-medium placeholder-slate-400 disabled:bg-slate-100 disabled:text-slate-600 read-only:bg-slate-100 read-only:text-slate-600"
-                placeholder="+57 300 123 4567"
+                placeholder="+57 300 123 4567 o @usuario"
               />
             </div>
           </div>

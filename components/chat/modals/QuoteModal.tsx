@@ -6,11 +6,13 @@
 import React, { useState } from 'react';
 import { ModalWrapper } from './ModalWrapper';
 import { DecimalInput } from './DecimalInput';
+import { CalculadoraInput, UnidadBotones } from './CalculadoraInput';
 import { CurrencyInput } from './CurrencyInput';
 import ProFeatureGuard from '../../ProFeatureGuard';
 import { CatalogPickerOverlay } from './CatalogPicker';
 import { FormaDePagoCampos, CondicionesEditor } from './CondicionesCotizacion';
 import { CuadroDeTallasCampos } from './CuadroDeTallasCampos';
+import { ComentariosConVinetas } from './ComentariosConVinetas';
 import { REJILLAS, TIPOS_DE_TALLA, TIPOS_DEPORTIVA, tipoPorNombre, esNombreDePrenda, cuadroEnBlanco } from '../../../utils/tallas';
 import { QuoteItem, Product, ProductCategory, ContactRole, QuoteMode, CarpentrySection, CarpentryCategoryKey, CarpentryLineItem, CarpentryMaterial, CarpentryUnit, MaterialUnit, PaymentAccount, CondicionesCotizacion, BloqueCondiciones } from '../../../types';
 import { formatCurrency } from '../../../utils/currency';
@@ -77,6 +79,7 @@ interface QuoteModalProps {
   // Personalizada (carpintería) — función Pro
   isPro?: boolean;
   trialEndsAt?: string | null;
+  subscriptionEndsAt?: string | null;
   /** El oficio del usuario. Decide qué capítulos de cotización ve. */
   businessType?: string;
   mode: QuoteMode;
@@ -87,7 +90,36 @@ interface QuoteModalProps {
   onAddCarpentryItem: (sectionId: string, groupId: string) => void;
   onUpdateCarpentryItem: (sectionId: string, groupId: string, itemId: string, field: keyof CarpentryLineItem, value: any) => void;
   onRemoveCarpentryItem: (sectionId: string, groupId: string, itemId: string) => void;
+  onUpdateGroupLabel: (sectionId: string, groupId: string, label: string) => void;
+  onUpdateSectionName: (sectionId: string, name: string) => void;
 }
+
+/**
+ * Titular de un grupo que se puede renombrar en el sitio.
+ *
+ * Vacío no vale: un titular sin nombre deja el documento con un hueco, así que
+ * al salir del campo en blanco vuelve el nombre que tenía al entrar.
+ */
+const TitularEditable: React.FC<{
+  value: string;
+  onChange: (v: string) => void;
+  className?: string;
+  stopClick?: boolean;
+}> = ({ value, onChange, className = '', stopClick }) => {
+  const alEntrar = React.useRef(value);
+  return (
+    <input
+      type="text"
+      value={value}
+      placeholder="Nombre del titular"
+      onFocus={() => { alEntrar.current = value; }}
+      onChange={e => onChange(e.target.value)}
+      onBlur={() => { if (!value.trim()) onChange(alEntrar.current); }}
+      onClick={stopClick ? (e => e.stopPropagation()) : undefined}
+      className={`min-w-0 bg-transparent outline-none border-b border-transparent focus:border-current ${className}`}
+    />
+  );
+};
 
 /** En qué se compran los materiales. Del más común al más raro. */
 const MATERIAL_UNITS: MaterialUnit[] = ['UND', 'GALON', 'CUÑETE', 'BULTO', 'CAJA', 'LAMINA', 'ROLLO', 'M2', 'ML', 'KG', 'LITRO'];
@@ -181,10 +213,10 @@ const MaterialDeLaLinea: React.FC<{
             )}
             <div className="w-16">
               <label className="text-[9px] text-slate-400 font-semibold uppercase block mb-0.5">Cant.</label>
-              <input
-                type="number"
-                value={m?.quantity ?? 1}
-                onChange={e => set('quantity', Number(e.target.value))}
+              <DecimalInput
+                value={(m?.quantity ?? 1) || undefined}
+                placeholder="0"
+                onCommit={v => set('quantity', v ?? 0)}
                 className="w-full bg-white p-1.5 rounded-lg text-[11px] text-slate-900 text-center font-bold outline-none border border-emerald-200 focus:border-emerald-500 transition"
               />
             </div>
@@ -312,24 +344,48 @@ const CarpentryItemRow: React.FC<{
                 escribir directa: en obra el maestro suele llegar con «son 45
                 m² de pintura» y obligarle a inventarse dos lados para que
                 salga esa cifra es trabajo de más. */}
-            <div className="w-16">
-              <label className="text-[9px] text-slate-400 font-semibold uppercase block mb-0.5">M²</label>
-              <DecimalInput
-                value={item.measure}
-                onCommit={value => onUpdate('measure', value)}
-                className="w-full bg-slate-50 p-1.5 rounded-lg text-[11px] text-slate-900 font-bold text-center outline-none border border-slate-200 focus:border-blue-500 focus:bg-white transition"
-              />
+            <div className={esConfeccion ? 'w-16' : 'w-24'}>
+              {esConfeccion ? (
+                <label className="text-[9px] text-slate-400 font-semibold uppercase block mb-0.5">M²</label>
+              ) : (
+                <UnidadBotones unit={item.unit} onChange={u => onUpdate('unit', u)} />
+              )}
+              {esConfeccion ? (
+                <DecimalInput
+                  value={item.measure}
+                  onCommit={value => onUpdate('measure', value)}
+                  className="w-full bg-slate-50 p-1.5 rounded-lg text-[11px] text-slate-900 font-bold text-center outline-none border border-slate-200 focus:border-blue-500 focus:bg-white transition"
+                />
+              ) : (
+                <CalculadoraInput
+                  value={item.measure}
+                  onCommit={value => onUpdate('measure', value)}
+                  className="w-full bg-slate-50 p-1.5 rounded-lg text-[11px] text-slate-900 font-bold text-center outline-none border border-slate-200 focus:border-blue-500 focus:bg-white transition"
+                />
+              )}
             </div>
           </>
         )}
         {(item.unit === 'ML' || item.unit === 'M3') && (
-          <div className="w-16">
-            <label className="text-[9px] text-slate-400 font-semibold uppercase block mb-0.5">{item.unit}</label>
-            <DecimalInput
-              value={item.measure}
-              onCommit={value => onUpdate('measure', value)}
-              className="w-full bg-slate-50 p-1.5 rounded-lg text-[11px] text-slate-900 outline-none border border-slate-200 focus:border-blue-500 focus:bg-white transition"
-            />
+          <div className={esConfeccion ? 'w-16' : 'w-24'}>
+            {!esConfeccion && item.unit === 'ML' ? (
+              <UnidadBotones unit={item.unit} onChange={u => onUpdate('unit', u)} />
+            ) : (
+              <label className="text-[9px] text-slate-400 font-semibold uppercase block mb-0.5">{item.unit}</label>
+            )}
+            {esConfeccion ? (
+              <DecimalInput
+                value={item.measure}
+                onCommit={value => onUpdate('measure', value)}
+                className="w-full bg-slate-50 p-1.5 rounded-lg text-[11px] text-slate-900 outline-none border border-slate-200 focus:border-blue-500 focus:bg-white transition"
+              />
+            ) : (
+              <CalculadoraInput
+                value={item.measure}
+                onCommit={value => onUpdate('measure', value)}
+                className="w-full bg-slate-50 p-1.5 rounded-lg text-[11px] text-slate-900 outline-none border border-slate-200 focus:border-blue-500 focus:bg-white transition"
+              />
+            )}
           </div>
         )}
         {/* Con tallas no hay casilla de cantidad: el mismo número se estaría
@@ -338,10 +394,10 @@ const CarpentryItemRow: React.FC<{
         {!item.tallas?.activo && !esConfeccion && (
           <div className="w-14">
             <label className="text-[9px] text-slate-400 font-semibold uppercase block mb-0.5">Cant.</label>
-            <input
-              type="number"
-              value={item.quantity}
-              onChange={e => onUpdate('quantity', Number(e.target.value))}
+            <DecimalInput
+              value={item.quantity || undefined}
+              placeholder="0"
+              onCommit={v => onUpdate('quantity', v ?? 0)}
               className="w-full bg-slate-50 p-1.5 rounded-lg text-[11px] text-slate-900 text-center outline-none border border-slate-200 focus:border-blue-500 focus:bg-white transition"
             />
           </div>
@@ -454,9 +510,9 @@ const CarpentryItemRow: React.FC<{
 
       <div className="mt-2.5">
         <label className="text-[9px] text-slate-400 font-semibold uppercase block mb-1">Comentarios (Opcional)</label>
-        <textarea
+        <ComentariosConVinetas
           value={item.comments || ''}
-          onChange={e => onUpdate('comments', e.target.value)}
+          onChange={v => onUpdate('comments', v)}
           placeholder="Notas o especificaciones adicionales..."
           className="w-full bg-slate-50 p-2 rounded-lg text-xs text-slate-900 placeholder-slate-400 outline-none border border-slate-200 focus:border-blue-500 focus:bg-white transition resize-none"
           rows={3}
@@ -480,8 +536,8 @@ export const QuoteModal: React.FC<QuoteModalProps> = React.memo(({
   paymentAccounts, anticipoPorcentaje, cuentaCobroId, condiciones,
   onSetAnticipo, onSetCuentaCobro, onSetCondicion,
   onGuardarPlantilla, guardandoPlantilla, plantillaGuardada,
-  isPro, trialEndsAt, businessType, mode, sections, onSetMode, onAddSection, onRemoveSection,
-  onAddCarpentryItem, onUpdateCarpentryItem, onRemoveCarpentryItem,
+  isPro, trialEndsAt, subscriptionEndsAt, businessType, mode, sections, onSetMode, onAddSection, onRemoveSection,
+  onAddCarpentryItem, onUpdateCarpentryItem, onRemoveCarpentryItem, onUpdateGroupLabel, onUpdateSectionName,
 }) => {
   /**
    * Qué línea del modo personalizado pidió el catálogo.
@@ -583,9 +639,14 @@ export const QuoteModal: React.FC<QuoteModalProps> = React.memo(({
                                         isActive ? 'translate-x-4 bg-white' : 'translate-x-0 bg-white'
                                       }`} />
                                     </div>
-                                    <span className={`flex-1 text-xs font-bold uppercase tracking-wide ${
-                                      isActive ? 'text-white' : 'text-slate-600'
-                                    }`}>{group.label}</span>
+                                    <TitularEditable
+                                      value={group.label}
+                                      onChange={v => onUpdateGroupLabel(section.id, group.id, v)}
+                                      stopClick
+                                      className={`flex-1 text-xs font-bold uppercase tracking-wide ${
+                                        isActive ? 'text-white placeholder-white/60' : 'text-slate-600'
+                                      }`}
+                                    />
                                     {isActive && groupSubtotal > 0 && (
                                       <span className="text-[10px] font-semibold text-white/80">{formatCurrency(groupSubtotal)}</span>
                                     )}
@@ -616,8 +677,8 @@ export const QuoteModal: React.FC<QuoteModalProps> = React.memo(({
                                             {/* Description */}
                                             <input
                                               type="text"
-                                              value={isTemplate ? '' : item.description}
-                                              placeholder={isTemplate ? item.description : 'Nombre del ítem...'}
+                                              value={item.description}
+                                              placeholder="Nombre del ítem..."
                                               onChange={e => {
                                                 if (isTemplate) onUpdateCarpentryItem(section.id, group.id, item.id, 'isTemplate', false);
                                                 onUpdateCarpentryItem(section.id, group.id, item.id, 'description', e.target.value);
@@ -632,19 +693,43 @@ export const QuoteModal: React.FC<QuoteModalProps> = React.memo(({
                                                   bastaba. Obra civil es casi toda m², y sin este campo no
                                                   había dónde escribir el área. */}
                                               {usaMedida(item.unit) && (
-                                                <div className="w-16">
-                                                  <label className="text-[9px] text-slate-400 font-semibold uppercase block mb-0.5">{item.unit}</label>
-                                                  <DecimalInput
-                                                    value={isTemplate ? undefined : item.measure}
-                                                    placeholder={isTemplate ? String(item.measure ?? '') : undefined}
-                                                    onCommit={value => {
-                                                      onUpdateCarpentryItem(section.id, group.id, item.id, 'isTemplate', false);
-                                                      onUpdateCarpentryItem(section.id, group.id, item.id, 'measure', value);
-                                                    }}
-                                                    className={`w-full bg-slate-50 p-1.5 rounded-lg text-[11px] outline-none border border-slate-200 ${
-                                                      isTemplate ? 'text-slate-300 placeholder-slate-300' : 'text-slate-900'
-                                                    }`}
-                                                  />
+                                                <div className={config.gremio === 'confeccion' ? 'w-16' : 'w-24'}>
+                                                  {config.gremio !== 'confeccion' && (item.unit === 'ML' || item.unit === 'M2') ? (
+                                                    <UnidadBotones
+                                                      unit={item.unit}
+                                                      onChange={u => {
+                                                        onUpdateCarpentryItem(section.id, group.id, item.id, 'isTemplate', false);
+                                                        onUpdateCarpentryItem(section.id, group.id, item.id, 'unit', u);
+                                                      }}
+                                                    />
+                                                  ) : (
+                                                    <label className="text-[9px] text-slate-400 font-semibold uppercase block mb-0.5">{item.unit}</label>
+                                                  )}
+                                                  {config.gremio === 'confeccion' ? (
+                                                    <DecimalInput
+                                                      value={isTemplate ? undefined : item.measure}
+                                                      placeholder={isTemplate ? String(item.measure ?? '') : undefined}
+                                                      onCommit={value => {
+                                                        onUpdateCarpentryItem(section.id, group.id, item.id, 'isTemplate', false);
+                                                        onUpdateCarpentryItem(section.id, group.id, item.id, 'measure', value);
+                                                      }}
+                                                      className={`w-full bg-slate-50 p-1.5 rounded-lg text-[11px] outline-none border border-slate-200 ${
+                                                        isTemplate ? 'text-slate-300 placeholder-slate-300' : 'text-slate-900'
+                                                      }`}
+                                                    />
+                                                  ) : (
+                                                    <CalculadoraInput
+                                                      value={isTemplate ? undefined : item.measure}
+                                                      placeholder={isTemplate ? String(item.measure ?? '') : undefined}
+                                                      onCommit={value => {
+                                                        onUpdateCarpentryItem(section.id, group.id, item.id, 'isTemplate', false);
+                                                        onUpdateCarpentryItem(section.id, group.id, item.id, 'measure', value);
+                                                      }}
+                                                      className={`w-full bg-slate-50 p-1.5 rounded-lg text-[11px] outline-none border border-slate-200 ${
+                                                        isTemplate ? 'text-slate-300 placeholder-slate-300' : 'text-slate-900'
+                                                      }`}
+                                                    />
+                                                  )}
                                                 </div>
                                               )}
                                               {/* Con tallas encendidas la cantidad se cuenta, no se
@@ -653,13 +738,12 @@ export const QuoteModal: React.FC<QuoteModalProps> = React.memo(({
                                                   documento. */}
                                               <div className={`w-14 ${item.tallas?.activo ? 'hidden' : ''}`}>
                                                 <label className="text-[9px] text-slate-400 font-semibold uppercase block mb-0.5">Cant.</label>
-                                                <input
-                                                  type="number"
-                                                  value={isTemplate ? '' : item.quantity}
-                                                  placeholder={isTemplate ? String(item.quantity) : undefined}
-                                                  onChange={e => {
+                                                <DecimalInput
+                                                  value={isTemplate ? undefined : (item.quantity || undefined)}
+                                                  placeholder={isTemplate ? String(item.quantity) : '0'}
+                                                  onCommit={v => {
                                                     onUpdateCarpentryItem(section.id, group.id, item.id, 'isTemplate', false);
-                                                    onUpdateCarpentryItem(section.id, group.id, item.id, 'quantity', Number(e.target.value));
+                                                    onUpdateCarpentryItem(section.id, group.id, item.id, 'quantity', v ?? 0);
                                                   }}
                                                   className={`w-full bg-slate-50 p-1.5 rounded-lg text-[11px] text-center outline-none border border-slate-200 ${
                                                     isTemplate ? 'text-slate-300 placeholder-slate-300' : 'text-slate-900'
@@ -776,9 +860,9 @@ export const QuoteModal: React.FC<QuoteModalProps> = React.memo(({
 
                                               <div className="mt-2.5">
                                                 <label className="text-[9px] text-slate-400 font-semibold uppercase block mb-1">Comentarios</label>
-                                                <textarea
+                                                <ComentariosConVinetas
                                                   value={item.comments || ''}
-                                                  onChange={e => onUpdateCarpentryItem(section.id, group.id, item.id, 'comments', e.target.value)}
+                                                  onChange={v => onUpdateCarpentryItem(section.id, group.id, item.id, 'comments', v)}
                                                   placeholder="Notas o especificaciones..."
                                                   className="w-full bg-slate-50 p-2 rounded-lg text-xs text-slate-900 placeholder-slate-400 outline-none border border-slate-200 focus:border-blue-500 focus:bg-white transition resize-none"
                                                   rows={2}
@@ -814,7 +898,11 @@ export const QuoteModal: React.FC<QuoteModalProps> = React.memo(({
                             return (
                               <div key={group.id}>
                                 <div className="flex items-center justify-between mb-1.5">
-                                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">{group.label}</span>
+                                  <TitularEditable
+                                    value={group.label}
+                                    onChange={v => onUpdateGroupLabel(section.id, group.id, v)}
+                                    className="flex-1 text-[10px] font-bold text-slate-500 uppercase tracking-wide"
+                                  />
                                   <span className="text-[10px] font-semibold text-slate-600">{formatCurrency(groupSubtotal)}</span>
                                 </div>
                                 <div className="space-y-1.5">
@@ -855,7 +943,11 @@ export const QuoteModal: React.FC<QuoteModalProps> = React.memo(({
             <i className={`${config.icon} text-xs text-white`}></i>
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-xs font-bold truncate text-white">{editingSection.name}</div>
+            <TitularEditable
+              value={editingSection.name}
+              onChange={v => onUpdateSectionName(editingSection.id, v)}
+              className="w-full text-xs font-bold text-white placeholder-white/60"
+            />
             <div className="text-[10px] font-semibold text-white/70">{formatCurrency(computeSectionSubtotal(editingSection))}</div>
           </div>
           <button
@@ -983,10 +1075,10 @@ export const QuoteModal: React.FC<QuoteModalProps> = React.memo(({
             className="w-full bg-slate-50 p-3 rounded-xl border border-slate-200 text-sm font-semibold text-slate-900 placeholder-slate-400 mb-2 outline-none focus:border-blue-500 focus:bg-white transition"
           />
           <input
-            type="tel"
+            type="text"
             value={clientPhone}
             onChange={(e) => onSetClientPhone(e.target.value)}
-            placeholder="Teléfono del cliente"
+            placeholder="Celular o usuario de WhatsApp del cliente"
             className="w-full bg-slate-50 p-3 rounded-xl border border-slate-200 text-sm font-semibold text-slate-900 placeholder-slate-400 outline-none focus:border-blue-500 focus:bg-white transition"
           />
         </div>
@@ -1015,18 +1107,21 @@ export const QuoteModal: React.FC<QuoteModalProps> = React.memo(({
                       {/* Con tallas la cantidad no se escribe: sale de sumarlas,
                           y dejarla editable permitía que dijeran cosas
                           distintas en el mismo documento. */}
-                      <input
-                        type="number"
-                        placeholder="Cant."
-                        value={item.tallas?.activo ? totalDeTallas(item.tallas) : item.quantity}
-                        readOnly={!!item.tallas?.activo}
-                        onChange={e => onUpdateItem(idx, 'quantity', Number(e.target.value))}
-                        className={`w-full p-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-center placeholder-slate-400 outline-none focus:border-blue-500 transition ${
-                          item.tallas?.activo
-                            ? 'bg-indigo-50 text-indigo-700 cursor-default'
-                            : 'bg-white text-slate-900'
-                        }`}
-                      />
+                      {item.tallas?.activo ? (
+                        <input
+                          type="number"
+                          value={totalDeTallas(item.tallas)}
+                          readOnly
+                          className="w-full p-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-center outline-none bg-indigo-50 text-indigo-700 cursor-default"
+                        />
+                      ) : (
+                        <DecimalInput
+                          placeholder="Cant."
+                          value={item.quantity || undefined}
+                          onCommit={v => onUpdateItem(idx, 'quantity', v ?? 0)}
+                          className="w-full p-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-center placeholder-slate-400 outline-none focus:border-blue-500 transition bg-white text-slate-900"
+                        />
+                      )}
                     </div>
                     <div className="flex-1 relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm font-semibold">$</span>
@@ -1096,9 +1191,9 @@ export const QuoteModal: React.FC<QuoteModalProps> = React.memo(({
                     )}
                     <div className="mt-2.5">
                       <label className="text-[9px] text-slate-400 font-semibold uppercase block mb-1">Comentarios (Opcional)</label>
-                      <textarea
+                      <ComentariosConVinetas
                         value={item.comments || ''}
-                        onChange={e => onUpdateItem(idx, 'comments', e.target.value)}
+                        onChange={v => onUpdateItem(idx, 'comments', v)}
                         placeholder="Notas o especificaciones..."
                         className="w-full bg-white p-2 rounded-lg text-xs text-slate-900 placeholder-slate-400 outline-none border border-slate-200 focus:border-blue-500 transition resize-none"
                         rows={2}
@@ -1129,7 +1224,7 @@ export const QuoteModal: React.FC<QuoteModalProps> = React.memo(({
 
           </>
         ) : (
-          <ProFeatureGuard isPro={isPro} trialEndsAt={trialEndsAt}>
+          <ProFeatureGuard isPro={isPro} trialEndsAt={trialEndsAt} subscriptionEndsAt={subscriptionEndsAt}>
             <div className="mb-4">
               {/* Selector de capítulos, agrupado por oficio.
                   Van los dos juntos y no en pantallas separadas porque una

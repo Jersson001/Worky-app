@@ -12,6 +12,7 @@ import { formatCurrency } from '../utils/currency';
 import { computeLineSubtotal, computeMaterialSubtotal, computeManoDeObraTotal, computeMaterialesTotal, esLineaUsada, describeCantidad, describeMaterial } from '../utils/carpentryCalculations';
 import { ORDEN_CONDICIONES, lineasDe, hayCondiciones, repartoDePago } from '../utils/condicionesCotizacion';
 import { hayTallas, resumenDeTallas, subtotalDeItem } from '../utils/tallas';
+import { esUsuarioDeWhatsApp } from '../utils/contactoWhatsApp';
 
 type DocType = 'quote' | 'invoice' | 'receipt' | 'collection_account' | 'expense_receipt';
 
@@ -212,7 +213,7 @@ const cuerpo = (type: DocType, d: any): string => {
       return `
         ${fila('Cliente', d.clientName)}
         ${fila('Dirección', d.clientAddress)}
-        ${fila('Teléfono', d.clientPhone)}
+        ${fila(esUsuarioDeWhatsApp(d.clientPhone) ? 'WhatsApp' : 'Teléfono', d.clientPhone)}
         ${fila('Válida hasta', fecha(d.validUntil))}
         ${d.sections?.length ? tablaSecciones(d.sections) : tablaItems(d.items || [])}
         ${totales(d)}

@@ -7,13 +7,23 @@ const WHATSAPP_MESSAGE = 'Hola, ya realicé el pago por Nequi para seguir usando
 interface ProFeatureGuardProps {
   isPro?: boolean;
   trialEndsAt?: string | null;
+  subscriptionEndsAt?: string | null;
   children: React.ReactNode;
 }
 
-export default function ProFeatureGuard({ isPro, trialEndsAt, children }: ProFeatureGuardProps) {
+// El cobro es mensual: Pro vale hasta subscription_ends_at. Sin fecha, Pro no vence.
+export const tieneAcceso = (
+  isPro?: boolean,
+  trialEndsAt?: string | null,
+  subscriptionEndsAt?: string | null,
+): boolean => {
   const trialActive = trialEndsAt ? new Date(trialEndsAt).getTime() > Date.now() : true;
+  const proActive = !!isPro && (subscriptionEndsAt ? new Date(subscriptionEndsAt).getTime() > Date.now() : true);
+  return trialActive || proActive;
+};
 
-  if (isPro || trialActive) {
+export default function ProFeatureGuard({ isPro, trialEndsAt, subscriptionEndsAt, children }: ProFeatureGuardProps) {
+  if (tieneAcceso(isPro, trialEndsAt, subscriptionEndsAt)) {
     return <>{children}</>;
   }
 
@@ -26,7 +36,7 @@ export default function ProFeatureGuard({ isPro, trialEndsAt, children }: ProFea
           <i className="fa-solid fa-lock text-lg"></i>
         </div>
         <div>
-          <p className="text-slate-900 text-xs font-bold">Tu periodo de prueba finalizó</p>
+          <p className="text-slate-900 text-xs font-bold">Tu periodo de uso finalizó</p>
           <p className="text-slate-500 text-[11px] mt-1">
             Para seguir usando esta herramienta, transfiere a Nequi a la llave{' '}
             <span className="font-mono text-slate-700">{NEQUI_KEY}</span>, a nombre de{' '}

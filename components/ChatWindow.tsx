@@ -6,7 +6,6 @@
  */
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { tieneCatalogo } from '../services/catalogShareService';
-import { telefonoDe } from '../utils/contactoWhatsApp';
 import { Contact, Message, ProjectStage, Product, ProductCategory, PaymentAccount, UserProfileData, Project } from '../types';
 import { DocumentViewer } from './QuoteDocument';
 import { formatCurrency } from '../utils/currency';
@@ -20,6 +19,7 @@ import { hayCondiciones, repartoDePago } from '../utils/condicionesCotizacion';
 import { subtotalDeItem } from '../utils/tallas';
 
 // Sub-components
+import { normalizarContactoWhatsApp } from '../utils/contactoWhatsApp';
 import { ChatHeader } from './chat/ChatHeader';
 import { ChatFooter } from './chat/ChatFooter';
 import { MessageList } from './chat/MessageList';
@@ -128,9 +128,9 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
   // ── Hooks ──
   const forms = useChatFormState(
     contact.clientName,
-    // Al documento solo pasa un número: un usuario de WhatsApp saldría impreso
-    // como «Tel: @andres.23».
-    telefonoDe(contact.phone),
+    // El contacto del cliente, sea número o usuario de WhatsApp: el documento
+    // lo rotula según cuál sea.
+    contact.phone || '',
     contact.projects[0]?.id || '',
     // Las condiciones del negocio y su anticipo de costumbre, para que cada
     // cotización nueva salga ya con ellos puestos.
@@ -201,7 +201,7 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
       forms.setExpenseField('targetProjectId', contact.projects[0].id);
     }
     if (contact.phone) {
-      forms.setQuoteField('clientPhone', telefonoDe(contact.phone));
+      forms.setQuoteField('clientPhone', (contact.phone || ''));
     }
   }, [contact]);
 
@@ -216,8 +216,8 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
       };
       const modal = actionMap[activeAction];
       if (modal) {
-        if (activeAction === 'quote') forms.setQuoteField('clientPhone', telefonoDe(contact.phone));
-        forms.openModal(modal);
+        if (activeAction === 'quote') forms.setQuoteField('clientPhone', contact.phone || '');
+  forms.openModal(modal);
       }
       onClearAction?.();
     }
@@ -352,7 +352,7 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
       number: `COT-${Math.floor(Math.random() * 10000)}`,
       clientName: contact.clientName,
       clientAddress: clientAddress.trim() || undefined,
-      clientPhone: clientPhone.trim() || undefined,
+      clientPhone: normalizarContactoWhatsApp(clientPhone) || undefined,
       items: validItems, subtotal, total: result.total,
       mode, sections: isPersonalizada ? sectionsSubidas : undefined,
       // La cuenta se copia entera, no por referencia: si mañana se borra de la
@@ -383,7 +383,7 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
       date: new Date(), validUntil: validDate, status: 'pending',
     });
 
-    forms.resetQuote(telefonoDe(contact.phone));
+    forms.resetQuote((contact.phone || ''));
     forms.closeModal('quote');
   }, [forms.quote, contact, onSendMessage, enviandoCotizacion, paymentAccounts]);
 
@@ -489,7 +489,7 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
    * nuevo y volver a subirla, que es lo que hacía hasta ahora.
    */
   const handleQuoteImage = useCallback((imageUrl: string, texto?: string) => {
-    forms.setQuoteField('clientPhone', telefonoDe(contact.phone));
+    forms.setQuoteField('clientPhone', (contact.phone || ''));
     forms.addPhotoToQuote(imageUrl, texto);
     forms.openModal('quote');
   }, [forms, contact.phone]);
@@ -608,7 +608,7 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
           esCliente={esCliente}
           contactPhone={contact.phone}
           onSendMessage={handleSendTextMessage}
-          onOpenQuote={() => { forms.setQuoteField('clientPhone', telefonoDe(contact.phone)); forms.openModal('quote'); }}
+          onOpenQuote={() => { forms.setQuoteField('clientPhone', (contact.phone || '')); forms.openModal('quote'); }}
           onOpenCollection={() => forms.openModal('collection')}
           onOpenInvoice={() => forms.openModal('invoice')}
           onOpenReceipt={() => forms.openModal('receipt')}
@@ -635,7 +635,7 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
           onSend={handleSendInvoice}
         />
         <QuoteModal
-          show={forms.modals.quote} onClose={() => { forms.resetQuote(telefonoDe(contact.phone)); forms.closeModal('quote'); }}
+          show={forms.modals.quote} onClose={() => { forms.resetQuote((contact.phone || '')); forms.closeModal('quote'); }}
           contactRole={contact.role} items={forms.quote.items}
           validDays={forms.quote.validDays} taxType={forms.quote.taxType} taxPercentage={forms.quote.taxPercentage}
           aiuAdmin={forms.quote.aiuAdmin} aiuImprevistos={forms.quote.aiuImprevistos} aiuUtilidad={forms.quote.aiuUtilidad} aiuIva={forms.quote.aiuIva}
@@ -659,11 +659,11 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
           plantillaGuardada={plantillaGuardada}
           onSend={handleSendQuote}
           enviando={enviandoCotizacion}
-          isPro={userProfile?.isPro} trialEndsAt={userProfile?.trialEndsAt}
+          isPro={userProfile?.isPro} trialEndsAt={userProfile?.trialEndsAt} subscriptionEndsAt={userProfile?.subscriptionEndsAt}
           businessType={userProfile?.businessType}
           mode={forms.quote.mode} sections={forms.quote.sections}
           onSetMode={forms.setQuoteMode} onAddSection={forms.addCarpentrySection} onRemoveSection={forms.removeCarpentrySection}
-          onAddCarpentryItem={forms.addCarpentryItem} onUpdateCarpentryItem={forms.updateCarpentryItem} onRemoveCarpentryItem={forms.removeCarpentryItem}
+          onAddCarpentryItem={forms.addCarpentryItem} onUpdateCarpentryItem={forms.updateCarpentryItem} onRemoveCarpentryItem={forms.removeCarpentryItem} onUpdateGroupLabel={forms.updateCarpentryGroupLabel} onUpdateSectionName={forms.updateCarpentrySectionName}
         />
         <CollectionModal
           show={forms.modals.collection} onClose={() => forms.closeModal('collection')}

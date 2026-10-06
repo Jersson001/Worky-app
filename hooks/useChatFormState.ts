@@ -124,6 +124,8 @@ export interface ChatFormActions {
   addCarpentryItem: (sectionId: string, groupId: string) => void;
   updateCarpentryItem: (sectionId: string, groupId: string, itemId: string, field: keyof CarpentryLineItem, value: any) => void;
   removeCarpentryItem: (sectionId: string, groupId: string, itemId: string) => void;
+  updateCarpentryGroupLabel: (sectionId: string, groupId: string, label: string) => void;
+  updateCarpentrySectionName: (sectionId: string, name: string) => void;
 
   // Collection
   collection: CollectionFormState;
@@ -397,6 +399,40 @@ export const useChatFormState = (
       }),
     }));
   }, []);
+  // Un capítulo sin grupos propios nace con el grupo llamado igual que él, y el
+  // documento los junta en un solo titular cuando coinciden: al renombrar uno
+  // se renombran los dos, o saldría «Capítulo · Titular» donde antes salía solo
+  // el titular.
+  const updateCarpentryGroupLabel = useCallback((sectionId: string, groupId: string, label: string) => {
+    setQuote(prev => ({
+      ...prev,
+      sections: prev.sections.map(section => {
+        if (section.id !== sectionId) return section;
+        const grupo = section.groups.find(g => g.id === groupId);
+        const iguales = !!grupo && grupo.label === section.name;
+        return {
+          ...section,
+          name: iguales ? label : section.name,
+          groups: section.groups.map(g => (g.id === groupId ? { ...g, label } : g)),
+        };
+      }),
+    }));
+  }, []);
+  // Lo contrario del anterior: el grupo que se llamaba igual que el capítulo
+  // lo acompaña en el cambio de nombre.
+  const updateCarpentrySectionName = useCallback((sectionId: string, name: string) => {
+    setQuote(prev => ({
+      ...prev,
+      sections: prev.sections.map(section => {
+        if (section.id !== sectionId) return section;
+        return {
+          ...section,
+          name,
+          groups: section.groups.map(g => (g.label === section.name ? { ...g, label: name } : g)),
+        };
+      }),
+    }));
+  }, []);
   const removeCarpentryItem = useCallback((sectionId: string, groupId: string, itemId: string) => {
     setQuote(prev => ({
       ...prev,
@@ -454,7 +490,7 @@ export const useChatFormState = (
     invoice, addInvoiceItem, updateInvoiceItem, deleteInvoiceItem, setInvoiceField, resetInvoice,
     quote, addQuoteItem, addProductToQuote, updateQuoteItem, updateQuoteItemPrice,
     deleteQuoteItem, addQuoteItemImages, addPhotoToQuote, removeQuoteItemImage, updateQuoteItemImage, setQuoteField, resetQuote, setCondicion,
-    setQuoteMode, addCarpentrySection, removeCarpentrySection, addCarpentryItem, updateCarpentryItem, removeCarpentryItem,
+    setQuoteMode, addCarpentrySection, removeCarpentrySection, addCarpentryItem, updateCarpentryItem, removeCarpentryItem, updateCarpentryGroupLabel, updateCarpentrySectionName,
     collection, setCollectionField, resetCollection,
     receipt, setReceiptField, resetReceipt,
     modals, openModal, closeModal,

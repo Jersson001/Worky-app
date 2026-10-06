@@ -29,7 +29,7 @@ export const UserSearchModal: React.FC<UserSearchModalProps> = ({
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) {
-      setError('Por favor ingresa un teléfono o email');
+      setError('Por favor ingresa un celular, usuario de WhatsApp o email');
       return;
     }
 
@@ -42,7 +42,7 @@ export const UserSearchModal: React.FC<UserSearchModalProps> = ({
       if (result) {
         setSearchResult(result);
       } else {
-        setError('Usuario no encontrado. Asegúrate de que el teléfono o email sea correcto y que el usuario esté registrado en Worky.');
+        setError('Usuario no encontrado. Asegúrate de que el celular, usuario de WhatsApp o email sea correcto y que el usuario esté registrado en Worky.');
       }
     } catch (err: any) {
       setError(err.message || 'Error al buscar usuario');
@@ -93,7 +93,7 @@ export const UserSearchModal: React.FC<UserSearchModalProps> = ({
         <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 px-6 py-4 flex justify-between items-center">
           <div>
             <h3 className="text-white font-bold text-lg">Buscar Usuarios</h3>
-            <p className="text-indigo-100 text-sm mt-1">Encuentra usuarios por teléfono o email</p>
+            <p className="text-indigo-100 text-sm mt-1">Encuentra usuarios por celular, usuario de WhatsApp o email</p>
           </div>
           <button
             onClick={handleClose}
@@ -108,7 +108,7 @@ export const UserSearchModal: React.FC<UserSearchModalProps> = ({
           {/* Search Input */}
           <div className="mb-4">
             <label className="block text-slate-700 text-sm font-medium mb-2">
-              Teléfono o Email
+              Celular, usuario de WhatsApp o Email
             </label>
             <div className="flex gap-2">
               <div className="flex-1 relative">
@@ -117,7 +117,7 @@ export const UserSearchModal: React.FC<UserSearchModalProps> = ({
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onKeyPress={handleKeyPress}
-                  placeholder="+57 300 123 4567 o usuario@email.com"
+                  placeholder="+57 300 123 4567, @usuario o usuario@email.com"
                   className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition text-slate-900 font-medium placeholder-slate-400 disabled:bg-slate-100 disabled:text-slate-600"
                   disabled={isSearching || isAdding}
                 />
@@ -202,7 +202,7 @@ export const UserSearchModal: React.FC<UserSearchModalProps> = ({
             <p className="text-blue-800 text-xs flex items-start gap-2">
               <i className="fa-solid fa-info-circle mt-0.5"></i>
               <span>
-                <strong>Tip:</strong> El usuario debe estar registrado en Worky con el mismo teléfono o email que ingreses.
+                <strong>Tip:</strong> El usuario debe estar registrado en Worky con el mismo celular, usuario de WhatsApp o email que ingreses.
               </span>
             </p>
           </div>

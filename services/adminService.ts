@@ -34,8 +34,18 @@ export const listAllUserProfiles = async (): Promise<AdminProfileRow[]> => {
   }));
 };
 
-export const adminSetPro = async (userId: string, isPro: boolean): Promise<void> => {
-  const { error } = await supabase.from('user_profiles').update({ is_pro: isPro }).eq('id', userId);
+// Suma un mes a la fecha actual de vencimiento, o a hoy si ya venció o no hay.
+export const mesDespuesDe = (actualIso: string | null): string => {
+  const base = actualIso && new Date(actualIso).getTime() > Date.now() ? new Date(actualIso) : new Date();
+  base.setMonth(base.getMonth() + 1);
+  return base.toISOString();
+};
+
+export const adminSetPro = async (userId: string, isPro: boolean, subscriptionEndsAt: string | null): Promise<void> => {
+  const { error } = await supabase
+    .from('user_profiles')
+    .update({ is_pro: isPro, subscription_ends_at: isPro ? subscriptionEndsAt : null })
+    .eq('id', userId);
   if (error) throw new Error(`No se pudo actualizar el estado Pro: ${error.message}`);
 };
 
