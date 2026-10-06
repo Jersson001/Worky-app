@@ -492,6 +492,7 @@ const rowToContact = (row: any): Contact => ({
   avatar: fotoOIniciales(row.avatar, row.client_name || row.alias),
   phone: row.phone || '',
   email: row.email ?? undefined,
+  documento: row.documento ?? undefined,
   status: row.status || UserStatus.Lead,
   role: row.role || 'client',
   projects: [],
@@ -547,7 +548,19 @@ export const addContact = async (contact: Contact): Promise<Contact> => {
       p_alias: contact.alias ?? null,
     });
 
-    if (!rpcError) return contact;
+    if (!rpcError) {
+      // La función del servidor no conoce el documento: se anota aparte. Que
+      // falle no deshace el contacto, que ya está creado por los dos lados.
+      if (contact.documento && userId) {
+        const { error: docError } = await supabase
+          .from('contacts')
+          .update({ documento: contact.documento })
+          .eq('user_id', userId)
+          .eq('contact_user_id', contact.id);
+        if (docError) console.warn('No se pudo guardar el documento del contacto:', docError.message);
+      }
+      return contact;
+    }
 
     console.warn('[addContact] RPC add_contact_mutual falló. Ejecutando fallback a inserción directa:', rpcError.message);
   }
@@ -566,6 +579,7 @@ export const addContact = async (contact: Contact): Promise<Contact> => {
     avatar: contact.avatar || null,
     phone: contact.phone || null,
     email: contact.email || null,
+    documento: contact.documento || null,
     status: contact.status,
     role: contact.role,
     last_message: '',
@@ -584,9 +598,10 @@ export const addContact = async (contact: Contact): Promise<Contact> => {
   // Si falla porque 'alias' o 'email' no se han creado todavía en la tabla
   // contacts de Supabase (ver supabase_contacts_email.sql). Se reintenta sin
   // ellas para no perder el contacto por una columna que falta.
-  if (insertError && (insertError.message.includes('alias') || insertError.message.includes('email') || insertError.code === '42703')) {
+  if (insertError && (insertError.message.includes('alias') || insertError.message.includes('email') || insertError.message.includes('documento') || insertError.code === '42703')) {
     delete contactRow.alias;
     delete contactRow.email;
+    delete contactRow.documento;
     const fallbackRes = await supabase
       .from('contacts')
       .insert(contactRow)
@@ -686,6 +701,61 @@ export const listenToContacts = (
     cancelled = true;
     void supabase.removeChannel(channel);
   };
+};
+
+/**
+ * Cambia el nombre con el que se guardó un contacto.
+ *
+ * El alias se borra con él: es lo que se muestra en el encabezado antes que el
+ * nombre, así que dejarlo haría que el cambio no se viera. Y las iniciales del
+ * avatar se dibujan con el nombre, de modo que si el avatar es uno de esos
+ * —no una foto— se vuelve a dibujar con el nuevo.
+ */
+export const renameContact = async (
+  contactId: string,
+  nombre: string,
+  avatarActual?: string
+): Promise<{ avatar?: string }> => {
+  const userId = getCurrentUserId();
+  const limpio = nombre.trim();
+  if (!limpio) throw new Error('El nombre no puede quedar vacío.');
+
+  const isUuid = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(contactId);
+  const filterQuery = isUuid
+    ? `contact_user_id.eq.${contactId},id.eq.${contactId}`
+    : `id.eq.${contactId}`;
+
+  const avatar = avatarActual?.startsWith('data:image/svg+xml') ? avatarDeIniciales(limpio) : undefined;
+
+  const { data, error } = await supabase
+    .from('contacts')
+    .update({ client_name: limpio, alias: null, ...(avatar ? { avatar } : {}) })
+    .eq('user_id', userId)
+    .or(filterQuery)
+    .select('id');
+
+  if (error) throw new Error(`No se pudo cambiar el nombre: ${error.message}`);
+  if (!data?.length) throw new Error('No se encontró el contacto para cambiarle el nombre.');
+  return { avatar };
+};
+
+/** Anota (o corrige) la cédula, NIT o RUT de un contacto. */
+export const setContactDocumento = async (contactId: string, documento: string): Promise<void> => {
+  const userId = getCurrentUserId();
+  const isUuid = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(contactId);
+  const filterQuery = isUuid
+    ? `contact_user_id.eq.${contactId},id.eq.${contactId}`
+    : `id.eq.${contactId}`;
+
+  const { data, error } = await supabase
+    .from('contacts')
+    .update({ documento: documento.trim() || null })
+    .eq('user_id', userId)
+    .or(filterQuery)
+    .select('id');
+
+  if (error) throw new Error(`No se pudo guardar el documento: ${error.message}`);
+  if (!data?.length) throw new Error('No se encontró el contacto para guardarle el documento.');
 };
 
 export const deleteContact = async (contactId: string): Promise<void> => {

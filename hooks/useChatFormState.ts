@@ -45,6 +45,8 @@ export interface QuoteFormState {
   aiuIva: string;
   clientAddress: string;
   clientPhone: string;
+  /** Cédula, NIT o RUT del cliente. Arranca con el del contacto y se puede retocar. */
+  clientDocumento: string;
   showProductPicker: boolean;
   mode: QuoteMode;
   sections: CarpentrySection[];
@@ -115,7 +117,9 @@ export interface ChatFormActions {
   removeQuoteItemImage: (itemIndex: number, imageIndex: number) => void;
   updateQuoteItemImage: (index: number, url: string) => void;
   setQuoteField: <K extends keyof QuoteFormState>(field: K, value: QuoteFormState[K]) => void;
-  resetQuote: (contactPhone?: string) => void;
+  resetQuote: (contactPhone?: string, contactDocumento?: string) => void;
+  /** Pone encima de lo que haya lo que se guardó como borrador. */
+  restoreQuote: (guardado: Partial<QuoteFormState>) => void;
   setQuoteMode: (mode: QuoteMode) => void;
   /** Enciende, apaga o reescribe un apartado de las condiciones. */
   setCondicion: (clave: keyof CondicionesCotizacion, campo: keyof BloqueCondiciones, valor: boolean | string) => void;
@@ -130,7 +134,7 @@ export interface ChatFormActions {
   // Collection
   collection: CollectionFormState;
   setCollectionField: <K extends keyof CollectionFormState>(field: K, value: CollectionFormState[K]) => void;
-  resetCollection: (clientName: string) => void;
+  resetCollection: (clientName: string, nit?: string) => void;
 
   // Receipt
   receipt: ReceiptFormState;
@@ -167,7 +171,7 @@ const DEFAULT_INVOICE: InvoiceFormState = { items: [{ description: '', quantity:
  * cambiara las demás. Y porque arrancan de la plantilla del negocio, que no se
  * conoce hasta que carga el perfil.
  */
-const quoteEnBlanco = (plantilla?: PlantillaDelNegocio): Omit<QuoteFormState, 'clientPhone'> => ({
+const quoteEnBlanco = (plantilla?: PlantillaDelNegocio): Omit<QuoteFormState, 'clientPhone' | 'clientDocumento'> => ({
   items: [{ description: '', quantity: 1, price: 0 }],
   validDays: '15',
   taxType: 'none',
@@ -228,7 +232,7 @@ export const useChatFormState = (
   const resetInvoice = useCallback(() => setInvoice({ ...DEFAULT_INVOICE, items: [{ description: '', quantity: 1, price: 0 }] }), []);
 
   // ── Quote ──
-  const [quote, setQuote] = useState<QuoteFormState>({ ...quoteEnBlanco(plantilla), clientPhone: initialPhone });
+  const [quote, setQuote] = useState<QuoteFormState>({ ...quoteEnBlanco(plantilla), clientPhone: initialPhone, clientDocumento: '' });
   const addQuoteItem = useCallback(() => {
     setQuote(prev => ({ ...prev, items: [...prev.items, { description: '', quantity: 1, price: 0 }] }));
   }, []);
@@ -329,9 +333,13 @@ export const useChatFormState = (
   const setQuoteField = useCallback(<K extends keyof QuoteFormState>(field: K, value: QuoteFormState[K]) => {
     setQuote(prev => ({ ...prev, [field]: value }));
   }, []);
-  const resetQuote = useCallback((contactPhone?: string) => {
-    setQuote({ ...quoteEnBlanco(plantilla), clientPhone: contactPhone || initialPhone });
+  const resetQuote = useCallback((contactPhone?: string, contactDocumento?: string) => {
+    setQuote({ ...quoteEnBlanco(plantilla), clientPhone: contactPhone || initialPhone, clientDocumento: contactDocumento || '' });
   }, [initialPhone, plantilla]);
+
+  const restoreQuote = useCallback((guardado: Partial<QuoteFormState>) => {
+    setQuote(prev => ({ ...prev, ...guardado }));
+  }, []);
 
   const setQuoteMode = useCallback((mode: QuoteMode) => {
     setQuote(prev => ({ ...prev, mode }));
@@ -456,8 +464,8 @@ export const useChatFormState = (
   const setCollectionField = useCallback(<K extends keyof CollectionFormState>(field: K, value: CollectionFormState[K]) => {
     setCollection(prev => ({ ...prev, [field]: value }));
   }, []);
-  const resetCollection = useCallback((clientName: string) => {
-    setCollection({ amount: '', concept: '', directedTo: clientName, nit: '', selectedAccount: '', selectedProject: '' });
+  const resetCollection = useCallback((clientName: string, nit?: string) => {
+    setCollection({ amount: '', concept: '', directedTo: clientName, nit: nit || '', selectedAccount: '', selectedProject: '' });
   }, []);
 
   // ── Receipt ──
@@ -489,7 +497,7 @@ export const useChatFormState = (
     expense, setExpenseField, resetExpense,
     invoice, addInvoiceItem, updateInvoiceItem, deleteInvoiceItem, setInvoiceField, resetInvoice,
     quote, addQuoteItem, addProductToQuote, updateQuoteItem, updateQuoteItemPrice,
-    deleteQuoteItem, addQuoteItemImages, addPhotoToQuote, removeQuoteItemImage, updateQuoteItemImage, setQuoteField, resetQuote, setCondicion,
+    deleteQuoteItem, addQuoteItemImages, addPhotoToQuote, removeQuoteItemImage, updateQuoteItemImage, setQuoteField, resetQuote, restoreQuote, setCondicion,
     setQuoteMode, addCarpentrySection, removeCarpentrySection, addCarpentryItem, updateCarpentryItem, removeCarpentryItem, updateCarpentryGroupLabel, updateCarpentrySectionName,
     collection, setCollectionField, resetCollection,
     receipt, setReceiptField, resetReceipt,

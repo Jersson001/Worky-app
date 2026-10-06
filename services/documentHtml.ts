@@ -214,6 +214,7 @@ const cuerpo = (type: DocType, d: any): string => {
         ${fila('Cliente', d.clientName)}
         ${fila('Dirección', d.clientAddress)}
         ${fila(esUsuarioDeWhatsApp(d.clientPhone) ? 'WhatsApp' : 'Teléfono', d.clientPhone)}
+        ${fila('Documento', d.clientDocumento)}
         ${fila('Válida hasta', fecha(d.validUntil))}
         ${d.sections?.length ? tablaSecciones(d.sections) : tablaItems(d.items || [])}
         ${totales(d)}
@@ -223,6 +224,7 @@ const cuerpo = (type: DocType, d: any): string => {
     case 'invoice':
       return `
         ${fila('Cliente', d.clientName)}
+        ${fila('Documento', d.clientDocumento)}
         ${fila('Fecha', fecha(d.date))}
         ${fila('Estado', d.status === 'Paid' ? 'Pagada' : 'Pendiente')}
         ${tablaItems(d.items || [])}
@@ -253,6 +255,8 @@ const cuerpo = (type: DocType, d: any): string => {
     case 'receipt':
     case 'expense_receipt':
       return `
+        ${type === 'receipt' && !d.fromSupplier ? fila('Recibí de', d.clientName) : ''}
+        ${type === 'receipt' && !d.fromSupplier ? fila('Documento', d.clientDocumento) : ''}
         ${fila('Concepto', d.concept)}
         ${fila('Forma de pago', d.paymentMethod)}
         ${fila('Fecha', fecha(d.date))}

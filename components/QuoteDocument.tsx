@@ -378,6 +378,9 @@ const QuoteTemplate = ({ data, businessLogo, userProfile, catalogoUrl, signature
                             {data.clientPhone && (
                                 <p className="text-xs text-gray-600 mt-0.5">{esUsuarioDeWhatsApp(data.clientPhone) ? 'WhatsApp: ' : ''}{data.clientPhone}</p>
                             )}
+                            {data.clientDocumento && (
+                                <p className="text-xs text-gray-600 mt-0.5">Documento: {data.clientDocumento}</p>
+                            )}
                         </div>
                         <div className="bg-gray-50 p-3 rounded-lg border-l-4 border-blue-600">
                             <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Fecha</p>
@@ -776,6 +779,9 @@ const InvoiceTemplate = ({ data, businessLogo, userProfile, signature, scale, po
             <div className="bg-gray-50 p-6 rounded-lg border-l-4 border-purple-600">
                 <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Facturado a</p>
                 <p className="text-xl font-bold text-gray-900">{data.clientName}</p>
+                {data.clientDocumento && (
+                    <p className="text-sm text-gray-600 mt-1">Documento: {data.clientDocumento}</p>
+                )}
             </div>
             <div className="bg-gray-50 p-6 rounded-lg border-l-4 border-purple-600">
                 <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Fecha de Emisión</p>
@@ -1006,7 +1012,13 @@ const ReceiptTemplate = ({ data, businessLogo, userProfile, signature, scale, po
 
             <div className="bg-gray-50 p-5 rounded-lg border-l-4 border-emerald-600">
                 <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Recibí de</p>
-                <p className="text-lg font-semibold text-gray-900">Cliente / Pagador</p>
+                {/* Los recibos de antes no traen el nombre y siguen diciendo
+                    «Cliente / Pagador». En un pago a un proveedor el contacto es
+                    quien cobra, no quien paga, así que ahí tampoco se usa. */}
+                <p className="text-lg font-semibold text-gray-900">{(!data.fromSupplier && data.clientName) || 'Cliente / Pagador'}</p>
+                {!data.fromSupplier && data.clientDocumento && (
+                    <p className="text-sm text-gray-600 mt-1">Documento: {data.clientDocumento}</p>
+                )}
             </div>
 
             <div className="bg-gray-50 p-5 rounded-lg border-l-4 border-emerald-600">

@@ -71,6 +71,7 @@ export const NotificationsPanel: React.FC<NotificationsPanelProps> = ({ contacts
               number: selectedDetail.message.metadata?.number || 'N/A',
               clientName: selectedDetail.contact.clientName,
               clientPhone: selectedDetail.contact.phone,
+              clientDocumento: selectedDetail.contact.documento,
               contact_id: selectedDetail.contact.id,
               quote_id: selectedDetail.message.id,
               payment_id: selectedDetail.message.id,

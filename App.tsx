@@ -32,7 +32,7 @@ import { avatarDeIniciales, fotoOIniciales } from './utils/avatar';
 import { NuevaContrasena } from './components/NuevaContrasena';
 import { engancharNotificaciones, soltarNotificaciones } from './services/pushService';
 import { WelcomeOnboarding } from './components/WelcomeOnboarding';
-import { sendMessage as sendMessageToFirebase, listenToMessages, listenToContacts, addContact, deleteContact, saveUserProfile, getUserProfile, initializeUserId, setCurrentUserId, getCurrentUserId, searchUserByPhoneOrEmail, addContactFromSearch, deleteMessage, updateMessage, listenToGlobalIncomingMessages, markChatAsRead, markMessagesAsDelivered, markMessagesAsRead, getPublicInfoById } from './services/messagingService';
+import { sendMessage as sendMessageToFirebase, listenToMessages, listenToContacts, addContact, deleteContact, renameContact, setContactDocumento, saveUserProfile, getUserProfile, initializeUserId, setCurrentUserId, getCurrentUserId, searchUserByPhoneOrEmail, addContactFromSearch, deleteMessage, updateMessage, listenToGlobalIncomingMessages, markChatAsRead, markMessagesAsDelivered, markMessagesAsRead, getPublicInfoById } from './services/messagingService';
 import { saveProduct, deleteProduct, listenToProducts, saveCategory, deleteCategory, listenToCategories, saveProject, deleteProject, updateProject, addExpenseToProject, updateContactWithProjects, listenToPaymentAccounts, savePaymentAccount, deletePaymentAccount, PaymentAccountData, listenToThirdPartyAccounts, saveThirdPartyAccount, deleteThirdPartyAccount, fetchProjectsForContact, listenToProjects } from './services/dataService';
 import { supabase } from './services/supabaseConfig';
 import { formatCurrency, parseAmount } from './utils/currency';
@@ -984,9 +984,9 @@ const App: React.FC = () => {
   const [showNewContactModal, setShowNewContactModal] = useState(false);
   const [showUserSearchModal, setShowUserSearchModal] = useState(false);
   const [newContactName, setNewContactName] = useState('');
-  const [newContactAlias, setNewContactAlias] = useState('');
   const [newContactPhone, setNewContactPhone] = useState('');
   const [newContactEmail, setNewContactEmail] = useState('');
+  const [newContactDocumento, setNewContactDocumento] = useState('');
   const [newContactRole, setNewContactRole] = useState<ContactRole>('client');
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [messages, setMessages] = useState<Record<string, Message[]>>({});
@@ -2387,6 +2387,21 @@ ${describeError(error)}
     }
   };
 
+  const handleRenameContact = async (contactId: string, nombre: string) => {
+    const actual = contacts.find(c => c.id === contactId);
+    const { avatar } = await renameContact(contactId, nombre, actual?.avatar);
+    setContacts(prev => prev.map(c =>
+      c.id === contactId
+        ? { ...c, clientName: nombre.trim(), alias: undefined, ...(avatar ? { avatar } : {}) }
+        : c
+    ));
+  };
+
+  const handleSetContactDocumento = async (contactId: string, documento: string) => {
+    await setContactDocumento(contactId, documento);
+    setContacts(prev => prev.map(c => (c.id === contactId ? { ...c, documento: documento.trim() || undefined } : c)));
+  };
+
   const handleDeleteContact = async (contactId: string) => {
     try {
       await deleteContact(contactId);
@@ -2453,13 +2468,13 @@ ${describeError(error)}
     const newContact: Contact = {
       id: registrado ? registrado.userId : `lead_${crypto.randomUUID()}`,
       clientName: newContactName.trim(),
-      alias: newContactAlias.trim() || undefined,
       // Si ya tiene cuenta, su foto real; el nombre se respeta el que escribió
       // quien lo agrega, que es como lo tiene guardado.
       avatar: registrado?.avatar
         || avatarDeIniciales(newContactName.trim()),
       phone: normalizarContactoWhatsApp(newContactPhone),
       email: email || undefined,
+      documento: newContactDocumento.trim() || undefined,
       status: UserStatus.Lead,
       role: newContactRole,
       // Agregar a alguien no crea proyecto: un proyecto nace al aceptar una
@@ -2486,9 +2501,9 @@ ${describeError(error)}
 
       // Limpiar campos del formulario
       setNewContactName('');
-      setNewContactAlias('');
       setNewContactPhone('');
       setNewContactEmail('');
+      setNewContactDocumento('');
       setNewContactRole('client');
     } catch (error: any) {
       console.error('Error creando contacto en Supabase:', error);
@@ -2699,6 +2714,8 @@ ${describeError(error)}
             onUpdateProjectInfo={handleUpdateProjectInfo}
             onAddProject={handleAddProject}
             onDeleteProject={handleDeleteProject}
+            onRenameContact={handleRenameContact}
+            onSetContactDocumento={handleSetContactDocumento}
             products={products}
             categories={categories}
             paymentAccounts={paymentAccounts}
@@ -2897,7 +2914,6 @@ ${describeError(error)}
                     </button>
                     <button onClick={() => {
                       setNewContactName('');
-                      setNewContactAlias('');
                       setNewContactPhone('');
                       setNewContactRole('client');
                       setShowNewContactModal(true);
@@ -3019,7 +3035,6 @@ ${describeError(error)}
               onClick={() => {
                 setShowNewContactModal(false);
                 setNewContactName('');
-                setNewContactAlias('');
                 setNewContactPhone('');
                 setNewContactRole('client');
               }}
@@ -3060,16 +3075,6 @@ ${describeError(error)}
                 />
               </div>
               <div>
-                <label className="text-xs text-slate-700 font-bold uppercase mb-1 block tracking-wide">Alias (Opcional)</label>
-                <input
-                  type="text"
-                  placeholder="Solo visible para ti"
-                  value={newContactAlias}
-                  onChange={e => setNewContactAlias(e.target.value)}
-                  className="w-full bg-slate-50 text-slate-900 font-semibold p-3 rounded-xl outline-none border border-slate-200 focus:border-blue-500 focus:bg-white transition text-sm placeholder-slate-400"
-                />
-              </div>
-              <div>
                 <label className="text-xs text-slate-700 font-bold uppercase mb-1 block tracking-wide">Celular o usuario de WhatsApp *</label>
                 {/* Texto y no `tel`: el teclado de números no tiene @, y un
                     usuario de WhatsApp lo lleva. */}
@@ -3098,6 +3103,19 @@ ${describeError(error)}
                 <p className="text-[11px] text-slate-500 mt-1">
                   Si ya tiene cuenta en Worky, con su correo queda vinculado al guardarlo. Si no lo tienes, déjalo vacío.
                 </p>
+              </div>
+              <div>
+                <label className="text-xs text-slate-700 font-bold uppercase mb-1 block tracking-wide">Documento (opcional)</label>
+                {/* Texto libre: un NIT lleva guion y dígito de verificación. */}
+                <input
+                  type="text"
+                  placeholder="Cédula, NIT o RUT"
+                  value={newContactDocumento}
+                  onChange={e => setNewContactDocumento(e.target.value)}
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  className="w-full bg-slate-50 text-slate-900 font-semibold p-3 rounded-xl outline-none border border-slate-200 focus:border-blue-500 focus:bg-white transition text-sm placeholder-slate-400"
+                />
               </div>
               <button
                 onClick={handleCreateContact}

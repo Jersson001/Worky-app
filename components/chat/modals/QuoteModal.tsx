@@ -35,6 +35,7 @@ interface QuoteModalProps {
   aiuIva: string;
   clientAddress: string;
   clientPhone: string;
+  clientDocumento: string;
   showProductPicker: boolean;
   products: Product[];
   /** Carpetas del catálogo: el buscador de productos entra por ellas. */
@@ -60,6 +61,7 @@ interface QuoteModalProps {
   onSetAIUIva: (value: string) => void;
   onSetClientAddress: (value: string) => void;
   onSetClientPhone: (value: string) => void;
+  onSetClientDocumento: (value: string) => void;
   // Forma de pago y condiciones
   /** Las cuentas de la libreta, para adjuntar uno donde consignar. */
   paymentAccounts: PaymentAccount[];
@@ -74,6 +76,10 @@ interface QuoteModalProps {
   guardandoPlantilla?: boolean;
   plantillaGuardada?: boolean;
   onSend: () => void;
+  /** Enseña la cotización como quedaría, sin crearla todavía. */
+  onPreview: () => void;
+  /** Un aviso arriba del formulario, como el del borrador retomado. */
+  aviso?: React.ReactNode;
   /** Subiendo las fotos antes de mandar: el botón lo dice y no deja repetir. */
   enviando?: boolean;
   // Personalizada (carpintería) — función Pro
@@ -526,13 +532,13 @@ export const QuoteModal: React.FC<QuoteModalProps> = React.memo(({
   show, onClose, contactRole,
   items, validDays, taxType, taxPercentage,
   aiuAdmin, aiuImprevistos, aiuUtilidad, aiuIva,
-  clientAddress, clientPhone, showProductPicker, products, categories,
+  clientAddress, clientPhone, clientDocumento, showProductPicker, products, categories,
   onAddItem, onDeleteItem, onUpdateItem, onUpdateItemPrice,
   onAddProductToQuote, onShowProductPicker,
   onImageUpload, onRemoveImage, onUpdateItemImage,
   onSetValidDays, onSetTaxType, onSetTaxPercentage,
   onSetAIUAdmin, onSetAIUImprevistos, onSetAIUUtilidad, onSetAIUIva,
-  onSetClientAddress, onSetClientPhone, onSend, enviando,
+  onSetClientAddress, onSetClientPhone, onSetClientDocumento, onSend, onPreview, aviso, enviando,
   paymentAccounts, anticipoPorcentaje, cuentaCobroId, condiciones,
   onSetAnticipo, onSetCuentaCobro, onSetCondicion,
   onGuardarPlantilla, guardandoPlantilla, plantillaGuardada,
@@ -1027,6 +1033,7 @@ export const QuoteModal: React.FC<QuoteModalProps> = React.memo(({
       iconColor="text-blue-600"
       overlay={sectionEditor || catalogPicker}
     >
+      {aviso}
       {/* Las pestañas solo tienen sentido si hay capítulos que enseñar. Para un
           abogado o un sastre, la cotización básica es toda la cotización. */}
       {gremios.length > 0 && (
@@ -1079,6 +1086,17 @@ export const QuoteModal: React.FC<QuoteModalProps> = React.memo(({
             value={clientPhone}
             onChange={(e) => onSetClientPhone(e.target.value)}
             placeholder="Celular o usuario de WhatsApp del cliente"
+            className="w-full bg-slate-50 p-3 rounded-xl border border-slate-200 text-sm font-semibold text-slate-900 placeholder-slate-400 outline-none focus:border-blue-500 focus:bg-white transition mb-2"
+          />
+          {/* Si el contacto ya tiene documento, viene puesto; lo que se cambie
+              aquí vale para esta cotización y se guarda en su ficha al enviar. */}
+          <input
+            type="text"
+            value={clientDocumento}
+            onChange={(e) => onSetClientDocumento(e.target.value)}
+            placeholder="Documento del cliente (cédula, NIT o RUT)"
+            autoCapitalize="none"
+            autoCorrect="off"
             className="w-full bg-slate-50 p-3 rounded-xl border border-slate-200 text-sm font-semibold text-slate-900 placeholder-slate-400 outline-none focus:border-blue-500 focus:bg-white transition"
           />
         </div>
@@ -1376,6 +1394,15 @@ export const QuoteModal: React.FC<QuoteModalProps> = React.memo(({
             plantillaGuardada={plantillaGuardada}
           />
         )}
+
+        <button
+          type="button"
+          onClick={onPreview}
+          disabled={!canSend || enviando}
+          className="w-full bg-white text-blue-700 py-3 rounded-xl font-bold border border-blue-200 hover:bg-blue-50 transition active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        >
+          <i className="fa-solid fa-eye"></i> Vista previa
+        </button>
 
         <button
           onClick={onSend}

@@ -125,6 +125,8 @@ export interface InvoiceData {
   id: string;
   number: string;
   clientName: string;
+  /** Cédula, NIT o RUT del cliente, si el contacto lo tiene. */
+  clientDocumento?: string;
   items: InvoiceItem[];
   total: number;
   date: Date;
@@ -140,6 +142,11 @@ export interface ReceiptData {
   paymentMethod: string;
   /** QR de cobro de la cuenta usada, copiado al enviar. Ver PaymentAccount. */
   qrImage?: string;
+  /** De quién se recibió el pago, y su documento si el contacto lo tiene. */
+  clientName?: string;
+  clientDocumento?: string;
+  /** El pago es a un proveedor: ahí «Recibí de» no es el contacto. */
+  fromSupplier?: boolean;
 }
 
 export interface QuoteItem {
@@ -218,6 +225,8 @@ export interface QuoteData {
   clientName: string;
   clientAddress?: string;
   clientPhone?: string;
+  /** Cédula, NIT o RUT del cliente, si el contacto lo tiene. */
+  clientDocumento?: string;
   items: QuoteItem[];
   total: number;
   subtotal?: number;
@@ -508,6 +517,8 @@ export interface Contact {
    * puede reconocer a un contacto manual cuando resulta que ya tiene cuenta.
    */
   email?: string;
+  /** Cédula, NIT o RUT del cliente, tal como lo escribió quien lo agregó. */
+  documento?: string;
   status: UserStatus;
   role: ContactRole;
   projects: Project[]; // Array of projects per client

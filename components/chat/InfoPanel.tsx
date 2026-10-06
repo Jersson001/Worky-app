@@ -17,6 +17,8 @@ interface InfoPanelProps {
   onUpdateProjectInfo: (value: number, name: string, projectId: string) => void;
   onAddProject: (name: string) => void;
   onDeleteProject: (projectId: string) => void;
+  /** Cambia el nombre con el que se guardó este contacto. */
+  onRenameContact: (contactId: string, nombre: string) => Promise<void>;
   /**
    * Quien mira es el cliente, no quien vende.
    *
@@ -43,8 +45,35 @@ const getUniqueApprovedProjects = (contact: Contact): Project[] => {
 
 export const InfoPanel: React.FC<InfoPanelProps> = React.memo(({
   show, onClose, contact, messages, showSystemMessages, onViewDocument, onUpdateProjectInfo,
-  onAddProject, onDeleteProject, esCliente = false,
+  onAddProject, onDeleteProject, onRenameContact, esCliente = false,
 }) => {
+  const [editandoNombre, setEditandoNombre] = useState(false);
+  const [nombreNuevo, setNombreNuevo] = useState('');
+  const [guardandoNombre, setGuardandoNombre] = useState(false);
+
+  const empezarARenombrar = () => {
+    setNombreNuevo(contact.clientName);
+    setEditandoNombre(true);
+  };
+
+  const guardarNombre = async () => {
+    const limpio = nombreNuevo.trim();
+    if (!limpio) return;
+    if (limpio === contact.clientName) { setEditandoNombre(false); return; }
+    setGuardandoNombre(true);
+    try {
+      await onRenameContact(contact.id, limpio);
+      setEditandoNombre(false);
+    } catch (e: any) {
+      alert(e?.message || 'No se pudo cambiar el nombre.');
+    } finally {
+      setGuardandoNombre(false);
+    }
+  };
+
+  // Al abrir la ficha de otro contacto no se arrastra una edición a medias.
+  useEffect(() => { setEditandoNombre(false); }, [contact.id]);
+
   const [infoTab, setInfoTab] = useState<'overview' | 'costs' | 'documents'>('overview');
   const [selectedProjectForCosts, setSelectedProjectForCosts] = useState<string | null>(null);
   const [selectedProjectForDocuments, setSelectedProjectForDocuments] = useState<string>('all');
@@ -131,12 +160,58 @@ export const InfoPanel: React.FC<InfoPanelProps> = React.memo(({
       {/* Profile */}
       <div className="p-8 flex flex-col items-center bg-slate-50 border-b border-slate-100 mb-2">
         <img src={contact.avatar} className="w-24 h-24 rounded-full object-cover mb-4 shadow-md border-4 border-white" />
-        <h2 className="text-slate-800 text-xl font-bold">{contact.clientName}</h2>
+        {editandoNombre ? (
+          <div className="flex items-center gap-1.5 w-full">
+            <input
+              type="text"
+              value={nombreNuevo}
+              onChange={e => setNombreNuevo(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') void guardarNombre();
+                if (e.key === 'Escape') setEditandoNombre(false);
+              }}
+              autoFocus
+              disabled={guardandoNombre}
+              className="flex-1 min-w-0 text-center text-slate-800 text-lg font-bold bg-white p-1.5 rounded-lg border border-slate-300 outline-none focus:border-indigo-500"
+            />
+            <button
+              type="button"
+              onClick={() => void guardarNombre()}
+              disabled={guardandoNombre || !nombreNuevo.trim()}
+              aria-label="Guardar nombre"
+              className="w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center disabled:opacity-50"
+            >
+              <i className="fa-solid fa-check text-xs"></i>
+            </button>
+            <button
+              type="button"
+              onClick={() => setEditandoNombre(false)}
+              disabled={guardandoNombre}
+              aria-label="Cancelar"
+              className="w-8 h-8 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center"
+            >
+              <i className="fa-solid fa-xmark text-xs"></i>
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 max-w-full">
+            <h2 className="text-slate-800 text-xl font-bold truncate">{contact.clientName}</h2>
+            <button
+              type="button"
+              onClick={empezarARenombrar}
+              aria-label="Editar nombre"
+              title="Editar nombre"
+              className="text-slate-400 hover:text-indigo-600 transition flex-shrink-0"
+            >
+              <i className="fa-solid fa-pen text-xs"></i>
+            </button>
+          </div>
+        )}
         {/* Con qué se registró. Es lo que se busca al abrir esta ficha para
             escribirle por fuera de Worky, y hasta ahora había que salir a
             buscarlo a otro sitio. Cada línea sale solo si hay dato: un contacto
             manual no tiene cuenta y no debe enseñar huecos. */}
-        {(correoVisible || celularVisible) && (
+        {(correoVisible || celularVisible || contact.documento) && (
           <div className="mt-2 space-y-1 text-center">
             {correoVisible && (
               <p className="text-slate-500 text-sm flex items-center justify-center gap-2 break-all">
@@ -150,6 +225,12 @@ export const InfoPanel: React.FC<InfoPanelProps> = React.memo(({
                     teléfono se leía como un número raro. */}
                 <i className={`${esUsuarioDeWhatsApp(celularVisible) ? 'fa-brands fa-whatsapp' : 'fa-solid fa-phone'} text-[11px] text-slate-400`}></i>
                 {celularVisible}
+              </p>
+            )}
+            {contact.documento && (
+              <p className="text-slate-500 text-sm flex items-center justify-center gap-2 break-all">
+                <i className="fa-solid fa-id-card text-[11px] text-slate-400"></i>
+                {contact.documento}
               </p>
             )}
           </div>

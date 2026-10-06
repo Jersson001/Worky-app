@@ -4,7 +4,7 @@
  *
  * Original: 2393 lines → Now: ~250 lines.
  */
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { tieneCatalogo } from '../services/catalogShareService';
 import { Contact, Message, ProjectStage, Product, ProductCategory, PaymentAccount, UserProfileData, Project } from '../types';
 import { DocumentViewer } from './QuoteDocument';
@@ -14,7 +14,8 @@ import { flattenSectionsToQuoteItems, computeGrandTotal, gremiosVisibles } from 
 import { useChatFormState } from '../hooks/useChatFormState';
 import { useFileUpload } from '../hooks/useFileUpload';
 import { uploadQuotePhotos } from '../services/storageService';
-import { saveUserProfile } from '../services/messagingService';
+import { saveUserProfile, getCurrentUserId } from '../services/messagingService';
+import { Borrador, borrarBorrador, claveBorrador, guardarBorrador, leerBorrador, quoteVacia } from '../utils/borradorCotizacion';
 import { hayCondiciones, repartoDePago } from '../utils/condicionesCotizacion';
 import { subtotalDeItem } from '../utils/tallas';
 
@@ -47,6 +48,8 @@ interface ChatWindowProps {
   onUpdateProjectInfo: (value: number, name: string, projectId: string) => void;
   onAddProject: (name: string) => void;
   onDeleteProject: (projectId: string) => void;
+  onRenameContact: (contactId: string, nombre: string) => Promise<void>;
+  onSetContactDocumento: (contactId: string, documento: string) => Promise<void>;
   products: Product[];
   /** Carpetas del catálogo, para buscar productos por carpeta. */
   categories: ProductCategory[];
@@ -90,7 +93,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = (props) => {
 
 const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
   contact, allContacts, messages, onSendMessage, onUpdateStage, onAddExpense,
-  onUpdateProjectInfo, onAddProject, onDeleteProject, products, categories, paymentAccounts, onBack, activeAction, onClearAction,
+  onUpdateProjectInfo, onAddProject, onDeleteProject, onRenameContact, onSetContactDocumento, products, categories, paymentAccounts, onBack, activeAction, onClearAction,
   onUpdateMessage, businessLogo, digitalSignature, userProfile, onOpenGantt, onDeleteMessage,
   avisoSobreElInput,
   esCliente = false,
@@ -197,12 +200,14 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
   // ── Sync contact changes ──
   useEffect(() => {
     forms.setCollectionField('directedTo', contact.clientName);
+    forms.setCollectionField('nit', contact.documento || '');
     if (contact.projects.length > 0) {
       forms.setExpenseField('targetProjectId', contact.projects[0].id);
     }
     if (contact.phone) {
       forms.setQuoteField('clientPhone', (contact.phone || ''));
     }
+    forms.setQuoteField('clientDocumento', contact.documento || '');
   }, [contact]);
 
   // ── Handle active action from parent ──
@@ -216,7 +221,10 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
       };
       const modal = actionMap[activeAction];
       if (modal) {
-        if (activeAction === 'quote') forms.setQuoteField('clientPhone', contact.phone || '');
+        if (activeAction === 'quote') {
+          forms.setQuoteField('clientPhone', contact.phone || '');
+          forms.setQuoteField('clientDocumento', contact.documento || '');
+        }
   forms.openModal(modal);
       }
       onClearAction?.();
@@ -274,6 +282,7 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
       id: Date.now().toString(),
       number: `FAC-${Math.floor(Math.random() * 10000)}`,
       clientName: contact.clientName,
+      clientDocumento: contact.documento?.trim() || undefined,
       items: validItems, subtotal, taxDetails,
       total: result.total,
       projectName: selectedProject?.name || '',
@@ -284,9 +293,147 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
     forms.closeModal('invoice');
   }, [forms.invoice, contact, onSendMessage]);
 
+  // ── Borrador de la cotización ──
+  // Se guarda en el teléfono mientras se escribe, uno por contacto, y se retoma
+  // al volver a abrir la cotización. Ver utils/borradorCotizacion.ts.
+  const claveDelBorrador = useMemo(() => {
+    try { return claveBorrador(getCurrentUserId(), contact.id); } catch { return null; }
+  }, [contact.id]);
+  const [borrador, setBorrador] = useState<Borrador | null>(() => (claveDelBorrador ? leerBorrador(claveDelBorrador) : null));
+  /** El formulario abierto trae lo que quedó a medias, y se le avisa. */
+  const [borradorRetomado, setBorradorRetomado] = useState(false);
+  const quoteRef = useRef(forms.quote);
+  quoteRef.current = forms.quote;
+  const yaRestauradoAlAbrir = useRef(false);
+
+  useEffect(() => {
+    setBorrador(claveDelBorrador ? leerBorrador(claveDelBorrador) : null);
+    setBorradorRetomado(false);
+  }, [claveDelBorrador]);
+
+  // Se guarda con un respiro de medio segundo, para no escribir en cada tecla.
+  useEffect(() => {
+    if (!claveDelBorrador || !forms.modals.quote) return;
+    const t = setTimeout(() => setBorrador(guardarBorrador(claveDelBorrador, forms.quote)), 500);
+    return () => clearTimeout(t);
+  }, [forms.quote, forms.modals.quote, claveDelBorrador]);
+
+  // Cerrar la app no avisa: al pasar a segundo plano se guarda lo último, sin
+  // esperar al respiro.
+  useEffect(() => {
+    if (!claveDelBorrador || !forms.modals.quote) return;
+    const volcar = () => { guardarBorrador(claveDelBorrador, quoteRef.current); };
+    const alOcultar = () => { if (document.visibilityState === 'hidden') volcar(); };
+    document.addEventListener('visibilitychange', alOcultar);
+    window.addEventListener('pagehide', volcar);
+    return () => {
+      document.removeEventListener('visibilitychange', alOcultar);
+      window.removeEventListener('pagehide', volcar);
+    };
+  }, [claveDelBorrador, forms.modals.quote]);
+
+  // Al abrir la cotización con el formulario en blanco, vuelve lo que había.
+  // Si llega con contenido —desde una foto del chat— no se pisa.
+  useEffect(() => {
+    if (!forms.modals.quote) { yaRestauradoAlAbrir.current = false; return; }
+    if (yaRestauradoAlAbrir.current) return;
+    yaRestauradoAlAbrir.current = true;
+    if (!claveDelBorrador) return;
+    const guardado = leerBorrador(claveDelBorrador);
+    if (guardado && quoteVacia(quoteRef.current)) {
+      forms.restoreQuote(guardado.quote);
+      setBorradorRetomado(true);
+    }
+  }, [forms.modals.quote, claveDelBorrador]);
+
+  const descartarBorrador = () => {
+    if (claveDelBorrador) borrarBorrador(claveDelBorrador);
+    setBorrador(null);
+    setBorradorRetomado(false);
+    forms.resetQuote((contact.phone || ''), contact.documento || '');
+  };
+
+  const cerrarCotizacion = () => {
+    if (claveDelBorrador) setBorrador(guardarBorrador(claveDelBorrador, forms.quote));
+    setBorradorRetomado(false);
+    forms.resetQuote((contact.phone || ''), contact.documento || '');
+    forms.closeModal('quote');
+  };
+
+  /**
+   * La cotización tal como saldría, con las líneas y secciones que se le pasen.
+   *
+   * La usan el envío —con las fotos ya subidas— y la vista previa —con las que
+   * están en el teléfono—: así lo que se ve antes de crearla es lo que llega.
+   */
+  const armarCotizacion = useCallback((validItems: any[], sectionsFinales: any[], numero: string) => {
+    const { taxType, taxPercentage, aiuAdmin, aiuImprevistos, aiuUtilidad, aiuIva, clientAddress, clientPhone, clientDocumento, validDays, mode, sections, anticipoPorcentaje, cuentaCobroId, condiciones } = forms.quote;
+    const isPersonalizada = mode === 'personalizada';
+    const subtotal = isPersonalizada ? computeGrandTotal(sections) : validItems.reduce((acc, item) => acc + subtotalDeItem(item), 0);
+    const result = calculateTax(subtotal, taxType, {
+      percentage: parseFloat(taxPercentage) || 19,
+      aiu: { adminPercent: parseFloat(aiuAdmin) || 5, imprevistosPercent: parseFloat(aiuImprevistos) || 5, utilidadPercent: parseFloat(aiuUtilidad) || 5, ivaPercent: parseFloat(aiuIva) || 19 },
+    });
+
+    const cuentaSeleccionada = paymentAccounts.find(c => c.id === cuentaCobroId);
+
+    const validDate = new Date();
+    validDate.setDate(validDate.getDate() + parseInt(validDays || '15'));
+
+    return {
+      id: Date.now().toString(),
+      number: numero,
+      clientName: contact.clientName,
+      clientAddress: clientAddress.trim() || undefined,
+      clientPhone: normalizarContactoWhatsApp(clientPhone) || undefined,
+      clientDocumento: clientDocumento.trim() || undefined,
+      items: validItems, subtotal, total: result.total,
+      mode, sections: isPersonalizada ? sectionsFinales : undefined,
+      // La cuenta se copia entera, no por referencia: si mañana se borra de la
+      // libreta, la cotización que ya se mandó tiene que seguir diciendo a
+      // dónde consignar. Mismo criterio que el QR de los recibos.
+      formaPago: {
+        anticipoPorcentaje: Number(anticipoPorcentaje) || 0,
+        ...(cuentaSeleccionada ? {
+          cuenta: {
+            bankName: cuentaSeleccionada.bankName,
+            accountType: cuentaSeleccionada.accountType,
+            accountNumber: cuentaSeleccionada.accountNumber,
+            holderName: cuentaSeleccionada.holderName,
+            documentId: cuentaSeleccionada.documentId,
+            qrImage: cuentaSeleccionada.qrImage,
+          },
+        } : {}),
+      },
+      // Solo si hay algo que decir: un pie de condiciones vacío es una raya y
+      // un título en medio del documento.
+      ...(hayCondiciones(condiciones) ? { condiciones } : {}),
+      taxType, taxPercentage: taxType === 'percentage' ? parseFloat(taxPercentage) : undefined,
+      taxAmount: (taxType !== 'none') ? result.taxAmount : undefined,
+      aiuAdmin: taxType === 'aiu' ? parseFloat(aiuAdmin) : undefined,
+      aiuImprevistos: taxType === 'aiu' ? parseFloat(aiuImprevistos) : undefined,
+      aiuUtilidad: taxType === 'aiu' ? parseFloat(aiuUtilidad) : undefined,
+      aiuIva: taxType === 'aiu' ? parseFloat(aiuIva) : undefined,
+      date: new Date(), validUntil: validDate, status: 'pending',
+    };
+  }, [forms.quote, contact, paymentAccounts]);
+
+  /** La cotización en pantalla, antes de crearla. Null = cerrada. */
+  const [vistaPrevia, setVistaPrevia] = useState<any | null>(null);
+
+  const abrirVistaPrevia = () => {
+    const { items, mode, sections } = forms.quote;
+    const lineas = mode === 'personalizada' ? flattenSectionsToQuoteItems(sections) : items.filter(i => i.description && i.price > 0);
+    if (lineas.length === 0) {
+      alert('Todavía no hay ninguna línea con precio para mostrar. Agrega al menos un ítem con cantidad y costo unitario.');
+      return;
+    }
+    setVistaPrevia(armarCotizacion(lineas, sections, 'VISTA PREVIA'));
+  };
+
   const handleSendQuote = useCallback(async () => {
     if (enviandoCotizacion) return;
-    const { items, taxType, taxPercentage, aiuAdmin, aiuImprevistos, aiuUtilidad, aiuIva, clientAddress, clientPhone, validDays, mode, sections, anticipoPorcentaje, cuentaCobroId, condiciones } = forms.quote;
+    const { items, clientDocumento, mode, sections } = forms.quote;
 
     const isPersonalizada = mode === 'personalizada';
     const validItemsSinSubir = isPersonalizada ? flattenSectionsToQuoteItems(sections) : items.filter(i => i.description && i.price > 0);
@@ -336,56 +483,22 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
       setEnviandoCotizacion(false);
     }
 
-    const subtotal = isPersonalizada ? computeGrandTotal(sections) : validItems.reduce((acc, item) => acc + subtotalDeItem(item), 0);
-    const result = calculateTax(subtotal, taxType, {
-      percentage: parseFloat(taxPercentage) || 19,
-      aiu: { adminPercent: parseFloat(aiuAdmin) || 5, imprevistosPercent: parseFloat(aiuImprevistos) || 5, utilidadPercent: parseFloat(aiuUtilidad) || 5, ivaPercent: parseFloat(aiuIva) || 19 },
-    });
+    onSendMessage('📋 Cotización enviada', 'quote', armarCotizacion(validItems, sectionsSubidas, `COT-${Math.floor(Math.random() * 10000)}`));
 
-    const cuentaSeleccionada = paymentAccounts.find(c => c.id === cuentaCobroId);
+    // Lo que se escribió aquí queda en la ficha: la próxima cotización a este
+    // cliente ya sale con su documento. Si falla no se pierde la cotización.
+    const documentoFinal = clientDocumento.trim();
+    if (documentoFinal && documentoFinal !== (contact.documento || '')) {
+      onSetContactDocumento(contact.id, documentoFinal).catch(e =>
+        console.warn('No se pudo guardar el documento en el contacto:', e));
+    }
 
-    const validDate = new Date();
-    validDate.setDate(validDate.getDate() + parseInt(validDays || '15'));
-
-    onSendMessage('📋 Cotización enviada', 'quote', {
-      id: Date.now().toString(),
-      number: `COT-${Math.floor(Math.random() * 10000)}`,
-      clientName: contact.clientName,
-      clientAddress: clientAddress.trim() || undefined,
-      clientPhone: normalizarContactoWhatsApp(clientPhone) || undefined,
-      items: validItems, subtotal, total: result.total,
-      mode, sections: isPersonalizada ? sectionsSubidas : undefined,
-      // La cuenta se copia entera, no por referencia: si mañana se borra de la
-      // libreta, la cotización que ya se mandó tiene que seguir diciendo a
-      // dónde consignar. Mismo criterio que el QR de los recibos.
-      formaPago: {
-        anticipoPorcentaje: Number(anticipoPorcentaje) || 0,
-        ...(cuentaSeleccionada ? {
-          cuenta: {
-            bankName: cuentaSeleccionada.bankName,
-            accountType: cuentaSeleccionada.accountType,
-            accountNumber: cuentaSeleccionada.accountNumber,
-            holderName: cuentaSeleccionada.holderName,
-            documentId: cuentaSeleccionada.documentId,
-            qrImage: cuentaSeleccionada.qrImage,
-          },
-        } : {}),
-      },
-      // Solo si hay algo que decir: un pie de condiciones vacío es una raya y
-      // un título en medio del documento.
-      ...(hayCondiciones(condiciones) ? { condiciones } : {}),
-      taxType, taxPercentage: taxType === 'percentage' ? parseFloat(taxPercentage) : undefined,
-      taxAmount: (taxType !== 'none') ? result.taxAmount : undefined,
-      aiuAdmin: taxType === 'aiu' ? parseFloat(aiuAdmin) : undefined,
-      aiuImprevistos: taxType === 'aiu' ? parseFloat(aiuImprevistos) : undefined,
-      aiuUtilidad: taxType === 'aiu' ? parseFloat(aiuUtilidad) : undefined,
-      aiuIva: taxType === 'aiu' ? parseFloat(aiuIva) : undefined,
-      date: new Date(), validUntil: validDate, status: 'pending',
-    });
-
-    forms.resetQuote((contact.phone || ''));
+    if (claveDelBorrador) borrarBorrador(claveDelBorrador);
+    setBorrador(null);
+    setBorradorRetomado(false);
+    forms.resetQuote((contact.phone || ''), documentoFinal || contact.documento || '');
     forms.closeModal('quote');
-  }, [forms.quote, contact, onSendMessage, enviandoCotizacion, paymentAccounts]);
+  }, [forms.quote, contact, onSendMessage, enviandoCotizacion, armarCotizacion, onSetContactDocumento, claveDelBorrador]);
 
   const handleSendCollection = useCallback(() => {
     const { amount, concept, directedTo, nit, selectedAccount, selectedProject } = forms.collection;
@@ -409,7 +522,7 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
       projectName: project?.name || '', date: new Date(),
     });
 
-    forms.resetCollection(contact.clientName);
+    forms.resetCollection(contact.clientName, contact.documento);
     forms.closeModal('collection');
   }, [forms.collection, contact, paymentAccounts, onSendMessage]);
 
@@ -444,6 +557,9 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
     if (contact.role === 'supplier') {
       receiptMetadata.clientName = contact.clientName;
       receiptMetadata.fromSupplier = true;
+    } else {
+      receiptMetadata.clientName = contact.clientName;
+      receiptMetadata.clientDocumento = contact.documento?.trim() || undefined;
     }
 
     onSendMessage(
@@ -490,9 +606,10 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
    */
   const handleQuoteImage = useCallback((imageUrl: string, texto?: string) => {
     forms.setQuoteField('clientPhone', (contact.phone || ''));
+    forms.setQuoteField('clientDocumento', contact.documento || '');
     forms.addPhotoToQuote(imageUrl, texto);
     forms.openModal('quote');
-  }, [forms, contact.phone]);
+  }, [forms, contact.phone, contact.documento]);
 
   const handleShowQR = useCallback((qrUrl: string, metadata: any) => {
     forms.setQrPreviewData({ qrUrl, metadata });
@@ -535,6 +652,29 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
   return (
     <div className="flex-1 flex h-full relative">
       {/* Document Viewer */}
+      {vistaPrevia && (
+        <DocumentViewer
+          type="quote"
+          data={vistaPrevia}
+          onClose={() => setVistaPrevia(null)}
+          businessLogo={businessLogo}
+          digitalSignature={digitalSignature}
+          contactPhone={contact.phone}
+          contactId={contact.id}
+          userProfile={userProfile}
+          soloLectura
+          acciones={
+            <button
+              type="button"
+              onClick={() => { setVistaPrevia(null); void handleSendQuote(); }}
+              className="bg-[#00a884] text-[#111b21] px-6 py-2 rounded-full font-bold shadow-lg hover:bg-[#00c298] transition flex items-center gap-2"
+            >
+              <i className="fa-solid fa-paper-plane"></i> {contact.role === 'supplier' ? 'Enviar cotización' : 'Crear cotización'}
+            </button>
+          }
+        />
+      )}
+
       {viewingDocument && (
         <DocumentViewer
           type={viewingDocument.type}
@@ -603,12 +743,25 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
 
         {avisoSobreElInput}
 
+        {borrador && !forms.modals.quote && !esCliente && (
+          <div className="mx-3 mb-2 flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 text-xs text-amber-900">
+            <i className="fa-solid fa-file-pen text-amber-600"></i>
+            <span className="flex-1 min-w-0 truncate">
+              <b>Borrador de cotización</b>
+              {' · '}
+              {new Date(borrador.guardado).toLocaleString('es-CO', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+            </span>
+            <button type="button" onClick={() => forms.openModal('quote')} className="font-bold text-blue-700 hover:underline">Continuar</button>
+            <button type="button" onClick={descartarBorrador} className="font-bold text-slate-500 hover:underline">Descartar</button>
+          </div>
+        )}
+
         <ChatFooter
           contactRole={contact.role}
           esCliente={esCliente}
           contactPhone={contact.phone}
           onSendMessage={handleSendTextMessage}
-          onOpenQuote={() => { forms.setQuoteField('clientPhone', (contact.phone || '')); forms.openModal('quote'); }}
+          onOpenQuote={() => { forms.setQuoteField('clientPhone', (contact.phone || '')); forms.setQuoteField('clientDocumento', contact.documento || ''); forms.openModal('quote'); }}
           onOpenCollection={() => forms.openModal('collection')}
           onOpenInvoice={() => forms.openModal('invoice')}
           onOpenReceipt={() => forms.openModal('receipt')}
@@ -635,18 +788,30 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
           onSend={handleSendInvoice}
         />
         <QuoteModal
-          show={forms.modals.quote} onClose={() => { forms.resetQuote((contact.phone || '')); forms.closeModal('quote'); }}
+          show={forms.modals.quote} onClose={cerrarCotizacion}
           contactRole={contact.role} items={forms.quote.items}
           validDays={forms.quote.validDays} taxType={forms.quote.taxType} taxPercentage={forms.quote.taxPercentage}
           aiuAdmin={forms.quote.aiuAdmin} aiuImprevistos={forms.quote.aiuImprevistos} aiuUtilidad={forms.quote.aiuUtilidad} aiuIva={forms.quote.aiuIva}
-          clientAddress={forms.quote.clientAddress} clientPhone={forms.quote.clientPhone}
+          clientAddress={forms.quote.clientAddress} clientPhone={forms.quote.clientPhone} clientDocumento={forms.quote.clientDocumento}
           showProductPicker={forms.quote.showProductPicker} products={products} categories={categories}
           onAddItem={forms.addQuoteItem} onDeleteItem={forms.deleteQuoteItem} onUpdateItem={forms.updateQuoteItem} onUpdateItemPrice={forms.updateQuoteItemPrice}
           onAddProductToQuote={forms.addProductToQuote} onShowProductPicker={(v) => forms.setQuoteField('showProductPicker', v)}
           onImageUpload={(e, idx) => fileUpload.handleQuoteImageUpload(e, idx, forms.addQuoteItemImages)} onRemoveImage={forms.removeQuoteItemImage} onUpdateItemImage={forms.updateQuoteItemImage}
           onSetValidDays={(v) => forms.setQuoteField('validDays', v)} onSetTaxType={(v) => forms.setQuoteField('taxType', v as any)} onSetTaxPercentage={(v) => forms.setQuoteField('taxPercentage', v)}
           onSetAIUAdmin={(v) => forms.setQuoteField('aiuAdmin', v)} onSetAIUImprevistos={(v) => forms.setQuoteField('aiuImprevistos', v)} onSetAIUUtilidad={(v) => forms.setQuoteField('aiuUtilidad', v)} onSetAIUIva={(v) => forms.setQuoteField('aiuIva', v)}
-          onSetClientAddress={(v) => forms.setQuoteField('clientAddress', v)} onSetClientPhone={(v) => forms.setQuoteField('clientPhone', v)}
+          onSetClientAddress={(v) => forms.setQuoteField('clientAddress', v)} onSetClientPhone={(v) => forms.setQuoteField('clientPhone', v)} onSetClientDocumento={(v) => forms.setQuoteField('clientDocumento', v)} onPreview={abrirVistaPrevia}
+          aviso={borradorRetomado ? (
+            <div className="mb-4 bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-900">
+              <p className="font-bold mb-0.5"><i className="fa-solid fa-clock-rotate-left mr-1.5"></i>Retomaste tu borrador</p>
+              <p className="leading-snug">
+                Quedó guardado lo que escribiste.
+                {borrador && borrador.fotosOmitidas > 0 && ` Las fotos no se guardan en el borrador: vuelve a agregar las ${borrador.fotosOmitidas}.`}
+              </p>
+              <button type="button" onClick={descartarBorrador} className="mt-1.5 font-bold text-amber-800 underline">
+                Empezar de cero
+              </button>
+            </div>
+          ) : undefined}
           paymentAccounts={paymentAccounts}
           anticipoPorcentaje={forms.quote.anticipoPorcentaje}
           cuentaCobroId={forms.quote.cuentaCobroId}
@@ -708,6 +873,7 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
         onUpdateProjectInfo={onUpdateProjectInfo}
         onAddProject={onAddProject}
         onDeleteProject={onDeleteProject}
+        onRenameContact={onRenameContact}
         esCliente={esCliente}
       />
 
