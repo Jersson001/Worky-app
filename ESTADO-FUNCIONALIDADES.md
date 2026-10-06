@@ -1017,17 +1017,18 @@ llegue a publicarse, así que cada intento fallido quema un número:
 | 26092701 (2.8.7) | **Entrar con Google en el APK**: se abre en un navegador dentro de la app y vuelve por `worky://auth-callback`. Probado en el teléfono. Número gastado |
 | 26092702 (2.8.8) | «Mi perfil» abre un menú con «Editar perfil» y «Cerrar sesión». **Subida a Play**, número gastado |
 | 26100501 (2.9.0) | Cobro mensual, mejoras de la cotización por oficios (calculadora de medidas, titulares editables, viñetas), celular o usuario de WhatsApp en todos los formularios, y el logo, la firma y los documentos separados por cuenta. **Enviada a Play y devuelta por las credenciales de demostración**, número gastado |
-| **26100601 (2.10.0)** | El documento del contacto (cédula, NIT o RUT) al crearlo y en cotización, factura, cuenta de cobro y recibo; nombre del contacto editable y sin alias; vista previa de la cotización y borrador que se guarda solo; celular o usuario de WhatsApp en la cotización. **Es la que va a Play** |
+| 26100601 (2.10.0) | El documento del contacto (cédula, NIT o RUT) al crearlo y en cotización, factura, cuenta de cobro y recibo; nombre del contacto editable y sin alias; vista previa de la cotización y borrador que se guarda solo; celular o usuario de WhatsApp en la cotización. **Subida a Play el 06/10/2026**, número gastado |
+| **26100602 (2.10.1)** | El ojito para ver la contraseña al iniciar sesión, al registrarse y al completar el registro. **Todavía sin compilar** |
 
 Play exige **API 36** desde el 1 de septiembre de 2026. El proyecto ya apunta a
 36 (`android/variables.gradle`); el aviso de Play Console habla de la versión
 que está en producción, que se subió antes y sigue en API 35. Se cierra
 publicando en producción una versión nueva.
 
-**La que va a Play es la 26100601 (2.10.0)**, compilada y firmada el 06/10/2026.
+**La 2.10.0 (26100601) se subió a Play el 06/10/2026**; la siguiente es la 26100602 (2.10.1), todavía sin compilar.
 Del 14 al 21 son números gastados —enviados o rechazados—, y también todos hasta
 el 26100501 (2.9.0). Las 2.6.0 a 2.8.7 están compiladas y nunca se enviaron por
-separado: sus cambios entraron en la 2.8.8, la 2.9.0 y la 2.10.0.
+separado: sus cambios entraron en la 2.8.8, la 2.9.0 y la 2.10.0. Tampoco hay `.aab` de la 2.10.1.
 
 **La 2.9.0 la devolvió Google por la cuenta de demostración**, no por el
 paquete: «Las credenciales de inicio de sesión son incorrectas». El atajo por

@@ -145,7 +145,12 @@ android {
         // el nombre del contacto editable y sin alias al crearlo; vista previa de
         // la cotización antes de crearla y borrador que se guarda solo en el
         // teléfono; y celular o usuario de WhatsApp en la cotización. Apunta a
-        // API 36, que es lo que Play pide.
+        // API 36, que es lo que Play pide. Subida a Play: su número está gastado.
+        //
+        // El 26100602 (2.10.1): el ojito para ver la contraseña al iniciar
+        // sesión, al registrarse y al completar el registro. Una contraseña
+        // escrita a ciegas y una sola vez se equivocaba sin que nadie se
+        // enterara, y el login fallaba después.
         /*
          * Son dos cosas distintas y solo una es libre.
          *
@@ -183,8 +188,8 @@ android {
          * número de en medio —2.4, 2.5 y 2.6 en tres días— y a ese paso la 3.0
          * llegaba sin que hubiera cambiado nada grande.
          */
-        versionCode 26100601
-        versionName "2.10.0"
+        versionCode 26100602
+        versionName "2.10.1"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'

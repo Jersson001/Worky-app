@@ -6,8 +6,9 @@ Esta guía te llevará paso a paso para publicar tu aplicación Worky en Google 
 
 ## 📌 Dónde va esto — al 6 de octubre de 2026
 
-El siguiente envío va con el **`versionCode` 26100601 (versión 2.10.0)**,
-compilado y firmado, en el Escritorio. Ya se enviaron el 19, el 20, el 21, el
+La 2.10.0 (`versionCode` 26100601) ya se subió, así que su número está gastado. El
+siguiente envío va con el **`versionCode` 26100602 (versión 2.10.1)**, que
+todavía no está compilado; el último `.aab` en el Escritorio es el de la 2.10.0. Ya se enviaron el 19, el 20, el 21, el
 26092201 (2.8.4), el 26092702 (2.8.8) y el 26100501 (2.9.0); lo intermedio está
 compilado y nunca se subió por separado.
 
@@ -29,7 +30,7 @@ Novedades:
 • Cotizaciones: vista previa antes de crearlas, borrador que se guarda solo, calculadora de medidas (ML y m²), comentarios con viñetas y titulares editables.
 • Contactos: documento (cédula, NIT o RUT) que sale en cotización, factura, cuenta de cobro y recibo, y nombre editable.
 • Celular o usuario de WhatsApp en todos los formularios.
-• Correcciones: el logo y la firma ya no se mezclan entre cuentas.
+• Correcciones: el logo y la firma ya no se mezclan entre cuentas, y la contraseña se puede ver al escribirla.
 ```
 
 La política y la
@@ -124,7 +125,8 @@ intento fallido gasta un número:
 | 26092701 (2.8.7) | Entrar con Google en el APK, con navegador dentro de la app |
 | 26092702 (2.8.8) | Menú «Editar perfil» / «Cerrar sesión» en «Mi perfil». **Subida a Play** |
 | 26100501 (2.9.0) | Cobro mensual, calculadora de medidas y titulares editables en la cotización, celular o usuario de WhatsApp en todos los formularios, y logo, firma y documentos separados por cuenta. **Enviada y devuelta por las credenciales de demostración**: número gastado |
-| **26100601 (2.10.0)** | El documento del contacto en cotización, factura, cuenta de cobro y recibo; nombre del contacto editable; vista previa y borrador de la cotización. **La que va a Play** |
+| 26100601 (2.10.0) | El documento del contacto en cotización, factura, cuenta de cobro y recibo; nombre del contacto editable; vista previa y borrador de la cotización. **Subida a Play**: número gastado |
+| **26100602 (2.10.1)** | El ojito para ver la contraseña. **La que va a Play; sin compilar** |
 
 **Play exige API 36** desde el 1 de septiembre de 2026. Está en
 `android/variables.gradle`.
@@ -177,7 +179,7 @@ fue por el contenido de la app:
 - ✅ **Política de privacidad y términos** escritos, en `public/`, empaquetados con la app
 - ✅ **Página de eliminación de cuenta** en `public/eliminar-cuenta.html`, que es
   la URL que pide el formulario de Seguridad de los datos
-- ✅ VersionCode 26100601 (2.10.0) compilado y firmado el 06/10/2026, con todo
+- ✅ VersionCode 26100601 (2.10.0) compilado, firmado y subido el 06/10/2026, con todo
   lo anterior dentro. El 19, el 20, el 21, el 26092201 (2.8.4), el 26092702
   (2.8.8) y el 26100501 (2.9.0) ya se enviaron
 - ✅ **Notificaciones probadas en un teléfono de verdad** el 20/09/2026: llegan
