@@ -467,9 +467,9 @@ guardada y esto no es un peaje—.
 hombre» y «Jean mujer». Un solo nivel: una subcarpeta cuelga de una principal y
 no tiene otras dentro; una carpeta con subcarpetas no puede meterse en otra. Se
 guarda en `categories.parent_id` (`ON DELETE SET NULL`: al borrar la madre, las
-hijas suben al primer nivel y los productos nunca se pierden). **Falta aplicar**
-[supabase_categories_subcarpetas.sql](supabase_categories_subcarpetas.sql) en el
-Editor SQL. El helper está en `utils/carpetas.ts`; el catálogo publicado y el
+hijas suben al primer nivel y los productos nunca se pierden). **Ya aplicado en
+producción** ([supabase_categories_subcarpetas.sql](supabase_categories_subcarpetas.sql)):
+comprobado el 12/10/2026 que existen la columna, la clave foránea y el índice. El helper está en `utils/carpetas.ts`; el catálogo publicado y el
 visor las pintan, y las fichas ya no muestran cuántos productos hay.
 
 **El visor del catálogo escapa todo lo que pinta (12/10/2026).** Ver
