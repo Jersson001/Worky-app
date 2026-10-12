@@ -30,6 +30,20 @@
                 <!-- Vuelta del login con Google (ver LoginScreen.tsx). -->
                 <data android:scheme="worky" android:host="auth-callback" />
             </intent-filter>
+            <!-- Enlaces de la web: el QR de una tienda, un documento compartido, una
+                 invitación. Con la app instalada se abren aquí y no en el navegador.
+                 `autoVerify` hace que Android compruebe el archivo
+                 /.well-known/assetlinks.json de cada dominio al instalar; si no
+                 coincide la huella de la firma, vuelve a abrirse el navegador.
+                 Solo la raíz: la política y la página de eliminar cuenta no. Los dos
+                 dominios, porque hay QR impresos con el viejo. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="worky.ferryapp.co" android:path="/" />
+                <data android:scheme="https" android:host="worky-app-khaki.vercel.app" android:path="/" />
+            </intent-filter>
         </activity>
 
         <provider

@@ -4,6 +4,7 @@ import { ChatList } from './components/ChatList';
 import { ChatWindow } from './components/ChatWindow';
 import { FinancialReport } from './components/FinancialReport';
 import { TiendasGuardadas } from './components/TiendasGuardadas';
+import { rutaInternaDe, yaSeAbrioHace, recordarEnlaceAbierto } from './utils/enlacesDeLaApp';
 import { carpetasPrincipales, carpetasEnOrden, esPrincipal, etiquetaDeCarpeta, idsDeCarpeta, subcarpetasDe } from './utils/carpetas';
 import ContractGenerator from './components/ContractGenerator';
 import ProFeatureGuard from './components/ProFeatureGuard';
@@ -294,13 +295,24 @@ const App: React.FC = () => {
   }, []);
 
   // appUrlOpen: cubre el caso en que Android abre la app desde un intent worky://
-  // (p.ej. un enlace en WhatsApp, o la vuelta del login con Google). addListener
+  // (p.ej. la vuelta del login con Google) o desde un enlace verificado de
+  // worky.ferryapp.co (el QR de una tienda). addListener
   // devuelve Promise, así que hay que esperarla antes de llamar .remove() en
   // el cleanup.
   useEffect(() => {
     if (typeof CapacitorApp === 'undefined') return;
     let handle: { remove: () => void } | undefined;
     CapacitorApp.addListener('appUrlOpen', (event: { url: string }) => {
+      // Un enlace de worky.ferryapp.co (el QR de una tienda, un documento, una
+      // invitación): se abre el mismo dentro de la app. Ver utils/enlacesDeLaApp.ts.
+      const ruta = rutaInternaDe(event.url);
+      if (ruta) {
+        if (!yaSeAbrioHace(event.url)) {
+          recordarEnlaceAbierto(event.url);
+          window.location.assign(ruta);
+        }
+        return;
+      }
       void (async () => {
         try {
           const fueCallbackGoogle = await manejarCallbackGoogle(event.url);
