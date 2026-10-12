@@ -277,6 +277,33 @@ comprobado desde fuera con la clave pública: listar documentos o fotos devuelve
 cero, el catálogo se sigue listando, y un documento se sigue abriendo por su
 enlace.
 
+### Un catálogo podía ejecutar código en el navegador de quien lo abría — 12 de octubre de 2026
+
+El visor del catálogo (`?catalogo=`) lee el HTML publicado con `DOMParser` y saca
+los textos con `.textContent`, que ya vienen decodificados: un nombre de negocio
+`<img src=x onerror=…>` quedaba como texto crudo con `<`. Después varios sitios
+lo volvían a meter con `innerHTML` y plantillas `${…}` sin escapar. Como
+registrarse es abierto, **cualquier vendedor podía publicar un catálogo con un
+nombre malicioso** (negocio, carpeta, producto, ubicación o ciudad) y ejecutar
+código en el origen de la app, que guarda la sesión de Supabase en
+`localStorage`.
+
+Arreglo en [components/catalogoPublico.ts](components/catalogoPublico.ts): todo
+dato que viene del catálogo o de `localStorage` y entra por `innerHTML` pasa por
+`escaparHtml`, atributos `src`/`alt` incluidos; la tarjeta de producto usa
+`textContent`. Comprobado en el navegador con un catálogo hostil: los textos se
+ven literales, se abren carpetas y subcarpetas y los diálogos, y el `onerror` no
+corre.
+
+Del mismo tipo, en [components/SharedDocumentViewer.tsx](components/SharedDocumentViewer.tsx):
+el botón «Ver catálogo» usaba como `href` la dirección guardada **dentro del
+documento público**, y un `javascript:` ahí corría al tocarlo. Ahora solo se
+acepta `http` o `https`.
+
+**Regla para lo que venga:** el HTML de un catálogo publicado es entrada de un
+extraño. Texto de ahí, o de `localStorage`, nunca va a `innerHTML` sin
+`escaparHtml`; mejor `textContent`.
+
 ---
 
 ## Restos conocidos

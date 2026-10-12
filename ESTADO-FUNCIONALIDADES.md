@@ -455,13 +455,26 @@ En el HTML publicado van en su propio `<p class="ubicacion">` y la ciudad en
 sin clase, y por eso el visor lo lee con un respaldo: `p.ciudad` y, si no,
 el primer `<p>` que no sea la ubicación.
 
-**Guardar la tienda.** Un botón en la barra de abajo guarda el catálogo en el
-teléfono de quien lo mira, y arriba aparece «Mis tiendas guardadas (n)» con la
-lista, para abrirlas o quitarlas. Vive en `localStorage` y no sale de ese
+**Seguir la tienda.** Un botón en la barra de abajo («🤍 Seguir tienda») guarda
+el catálogo en el teléfono de quien lo mira, y arriba aparece «Tiendas que sigo
+(n)» con la lista, para abrirlas o dejar de seguirlas. Vive en `localStorage` y no sale de ese
 teléfono: pedirle cuenta a quien acaba de escanear un QR es perderlo en la
 puerta. Como eso se pierde al cambiar de teléfono, la primera vez que guarda se
 le ofrece crear cuenta —con «Ahora no» al lado, porque la tienda ya quedó
 guardada y esto no es un peaje—.
+
+**Subcarpetas (12/10/2026).** Una carpeta grande, «Jean», se parte en «Jean
+hombre» y «Jean mujer». Un solo nivel: una subcarpeta cuelga de una principal y
+no tiene otras dentro; una carpeta con subcarpetas no puede meterse en otra. Se
+guarda en `categories.parent_id` (`ON DELETE SET NULL`: al borrar la madre, las
+hijas suben al primer nivel y los productos nunca se pierden). **Falta aplicar**
+[supabase_categories_subcarpetas.sql](supabase_categories_subcarpetas.sql) en el
+Editor SQL. El helper está en `utils/carpetas.ts`; el catálogo publicado y el
+visor las pintan, y las fichas ya no muestran cuántos productos hay.
+
+**El visor del catálogo escapa todo lo que pinta (12/10/2026).** Ver
+[SEGURIDAD.md](SEGURIDAD.md): un nombre malicioso en un catálogo publicado
+ejecutaba código al abrirlo.
 
 **«Crear mi cuenta» lleva al registro con correo, no al atajo del alias.** Lo
 que se le prometió es una cuenta que no se pierda al cambiar de teléfono, y un
