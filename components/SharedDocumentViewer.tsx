@@ -100,6 +100,14 @@ export const SharedDocumentViewer: React.FC<SharedDocumentViewerProps> = ({ docu
   const invitacion = (() => {
     try { return new URLSearchParams(window.location.search).get('invita'); } catch { return null; }
   })();
+  // El documento es público y lo escribe quien lo comparte: un `javascript:` en
+  // la dirección del catálogo correría en nuestro origen al tocar el botón.
+  const catalogoUrl = (() => {
+    try {
+      const u = new URL(String(documento?.catalogoUrl ?? ''), window.location.origin);
+      return u.protocol === 'https:' || u.protocol === 'http:' ? u.href : undefined;
+    } catch { return undefined; }
+  })();
   const enlaceAlChat = documento?.vendedorId
     ? chatInviteUrl(documento.vendedorId, documento.documentId || documentId, invitacion)
     : null;
@@ -113,7 +121,7 @@ export const SharedDocumentViewer: React.FC<SharedDocumentViewerProps> = ({ docu
       userProfile={userProfile}
       // El QR del documento lleva al catálogo de su vendedor. Aquí no hay
       // sesión de la que deducirlo, pero el documento lo trae guardado.
-      catalogoUrl={documento.catalogoUrl}
+      catalogoUrl={catalogoUrl}
       // Lo abre el cliente: sin mover la firma ajena y sin volver a compartir.
       soloLectura
       // El documento ES la página: no hay chat al que volver.
@@ -154,14 +162,14 @@ export const SharedDocumentViewer: React.FC<SharedDocumentViewerProps> = ({ docu
 
           {/* El catálogo, después de lo suyo. Se le ofrece cuando ya vio el
               precio, no compitiendo con él, y solo si de verdad hay catálogo. */}
-          {documento?.catalogoUrl && (
+          {catalogoUrl && (
             <div className="bg-white border border-slate-200 rounded-3xl p-6 text-center shadow-lg">
               <h3 className="text-base font-extrabold text-slate-900 mb-1">Conoce todo nuestro catálogo</h3>
               <p className="text-slate-500 text-sm mb-4">
                 Mira todo lo que hacemos. Tampoco necesitas registrarte.
               </p>
               <a
-                href={documento.catalogoUrl}
+                href={catalogoUrl}
                 className="inline-flex items-center justify-center gap-2.5 w-full sm:w-auto bg-slate-50 text-slate-700 px-7 py-3.5 rounded-2xl font-bold text-sm hover:bg-slate-100 transition border border-slate-300"
               >
                 <i className="fa-solid fa-store text-slate-500"></i>

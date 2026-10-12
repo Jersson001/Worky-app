@@ -20,6 +20,8 @@ import { guardarTienda, leerTiendas, quitarTienda } from '../utils/tiendasGuarda
 
 interface ProductoDelCatalogo {
   nombre: string;
+  /** El comentario que se escribió al crear el producto. */
+  descripcion?: string;
   precio: string;
   /** Todas sus fotos. La primera es la principal. */
   fotos: string[];
@@ -28,7 +30,10 @@ interface ProductoDelCatalogo {
 interface CarpetaDelCatalogo {
   nombre: string;
   portada?: string;
+  /** Los productos que cuelgan directamente de ella, sin los de sus subcarpetas. */
   productos: ProductoDelCatalogo[];
+  /** Un nivel: las subcarpetas no tienen otras dentro. */
+  subcarpetas?: CarpetaDelCatalogo[];
 }
 
 interface Catalogo {
@@ -62,7 +67,7 @@ const MAX_ELEGIDAS = 6;
 
 const aviso = (texto: string) => {
   document.body.innerHTML =
-    `<p style="font-family:${FUENTE};color:#64748b;text-align:center;padding:48px 24px">${texto}</p>`;
+    `<p style="font-family:${FUENTE};color:#64748b;text-align:center;padding:48px 24px">${escaparHtml(texto)}</p>`;
 };
 
 const boton = (texto: string, fondo: string, alPulsar: () => void): HTMLButtonElement => {
@@ -74,6 +79,14 @@ const boton = (texto: string, fondo: string, alPulsar: () => void): HTMLButtonEl
   b.onclick = alPulsar;
   return b;
 };
+
+/** Para comparar nombres sin que importen mayúsculas, tildes ni espacios de más. */
+const sinAdornos = (texto: string): string =>
+  texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+
+/** El texto de un vendedor, listo para ir dentro de un atributo o de un `innerHTML`. */
+const escaparHtml = (texto: string): string =>
+  texto.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string));
 
 /**
  * El precio de una tarjeta, o vacío si no lo tiene.
@@ -111,7 +124,7 @@ const portadaDeNombre = (nombre: string, alto = 110): string =>
   '<span style="width:26px;height:2px;background:rgba(255,255,255,.55);flex:none"></span>' +
   `<span style="font-family:${SERIF};font-size:.98rem;font-weight:600;line-height:1.25;` +
   `letter-spacing:.01em;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;` +
-  `overflow:hidden">${nombre}</span></span>`;
+  `overflow:hidden">${escaparHtml(nombre)}</span></span>`;
 
 /** Etiqueta de una foto dentro de su producto: la 1ª lleva el nombre a secas. */
 const etiquetaDe = (producto: string, i: number): string =>
@@ -125,22 +138,39 @@ const etiquetaDe = (producto: string, i: number): string =>
  * catálogos publicados antes, sin republicarlos: de esos sale una sola foto por
  * producto y ninguna carpeta, que es justo lo que tenían.
  */
-const leerCatalogo = (html: string): Catalogo => {
+export const leerCatalogo = (html: string): Catalogo => {
   const doc = new DOMParser().parseFromString(html, 'text/html');
 
   const leerProducto = (card: Element): ProductoDelCatalogo => ({
     nombre: card.querySelector('h3')?.textContent?.trim() || 'Producto',
+    // El HTML publicado ya la lleva en `.desc`; el visor no la leía.
+    descripcion: card.querySelector('.desc')?.textContent?.trim() || undefined,
     precio: precioDe(card),
     // Todas las <img> de la tarjeta: en el catálogo nuevo son la principal y sus
     // miniaturas; en los publicados antes, la única que había.
     fotos: [...card.querySelectorAll('img')].map(i => i.getAttribute('src') || '').filter(Boolean),
   });
 
-  const carpetas: CarpetaDelCatalogo[] = [...doc.querySelectorAll('.carpeta')].map(c => ({
-    nombre: c.querySelector('.pie .nombre')?.textContent?.trim() || 'Carpeta',
-    portada: c.querySelector('img.portada')?.getAttribute('src') || undefined,
-    productos: [...c.querySelectorAll('.card')].map(leerProducto),
-  }));
+  // Nombre y portada se buscan en la cabecera de la propia carpeta: con
+  // subcarpetas dentro, buscar en todo el elemento le daría a una carpeta sin
+  // foto la de su primera subcarpeta. Los catálogos publicados antes no traen
+  // cabecera y se leen entero, como siempre.
+  const leerCarpeta = (c: Element): CarpetaDelCatalogo => {
+    const cabecera = c.querySelector(':scope > summary') ?? c;
+    const esSub = c.classList.contains('subcarpeta');
+    return {
+      nombre: cabecera.querySelector('.pie .nombre')?.textContent?.trim() || 'Carpeta',
+      portada: cabecera.querySelector('img.portada')?.getAttribute('src') || undefined,
+      // Los productos de la carpeta, sin los que están dentro de una subcarpeta
+      // suya; en una subcarpeta, los que cuelgan de ella misma.
+      productos: [...c.querySelectorAll('.card')]
+        .filter(card => card.closest('.subcarpeta') === (esSub ? c : null))
+        .map(leerProducto),
+      subcarpetas: esSub ? [] : [...c.querySelectorAll('.subcarpeta')].map(leerCarpeta),
+    };
+  };
+
+  const carpetas: CarpetaDelCatalogo[] = [...doc.querySelectorAll('.carpeta')].map(leerCarpeta);
 
   // Las tarjetas que no cuelgan de ninguna carpeta. En un catálogo plano son
   // todas; en uno con carpetas, normalmente ninguna.
@@ -191,6 +221,8 @@ export const mostrarCatalogo = async (userId: string): Promise<void> => {
   // ── Estado ────────────────────────────────────────────────────────────────
   const meGustan: FotoElegida[] = [];
   let carpetaAbierta: CarpetaDelCatalogo | null = null;
+  /** La subcarpeta abierta dentro de `carpetaAbierta`, si hay una. */
+  let subcarpetaAbierta: CarpetaDelCatalogo | null = null;
 
   const gusta = (src: string) => meGustan.some(f => f.imagen === src);
 
@@ -206,13 +238,13 @@ export const mostrarCatalogo = async (userId: string): Promise<void> => {
     'background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;padding:24px 16px;text-align:center';
   cabecera.innerHTML =
     (cat.logo
-      ? `<img src="${cat.logo}" alt="" style="width:64px;height:64px;border-radius:16px;object-fit:cover;background:#fff;margin-bottom:10px">`
+      ? `<img src="${escaparHtml(cat.logo)}" alt="" style="width:64px;height:64px;border-radius:16px;object-fit:cover;background:#fff;margin-bottom:10px">`
       : '') +
-    `<h1 style="font-size:1.4rem;font-weight:700;margin:0">${cat.negocio}</h1>` +
+    `<h1 style="font-size:1.4rem;font-weight:700;margin:0">${escaparHtml(cat.negocio)}</h1>` +
     (cat.ubicacion
-      ? `<p style="font-size:.9rem;font-weight:600;margin:6px 0 0">📍 ${cat.ubicacion}</p>`
+      ? `<p style="font-size:.9rem;font-weight:600;margin:6px 0 0">📍 ${escaparHtml(cat.ubicacion)}</p>`
       : '') +
-    (cat.ciudad ? `<p style="opacity:.85;font-size:.88rem;margin:4px 0 0">${cat.ciudad}</p>` : '');
+    (cat.ciudad ? `<p style="opacity:.85;font-size:.88rem;margin:4px 0 0">${escaparHtml(cat.ciudad)}</p>` : '');
 
   // ── Chatear, siempre a la vista ───────────────────────────────────────────
   const barraChat = document.createElement('div');
@@ -246,7 +278,7 @@ export const mostrarCatalogo = async (userId: string): Promise<void> => {
   const pintarChip = () => {
     const n = leerTiendas().length;
     chipTiendas.style.display = n ? 'block' : 'none';
-    chipTiendas.textContent = `🔖 Mis tiendas guardadas (${n})`;
+    chipTiendas.textContent = `❤️ Tiendas que sigo (${n})`;
   };
 
   barraChat.append(filaBotones, chipTiendas);
@@ -399,7 +431,7 @@ export const mostrarCatalogo = async (userId: string): Promise<void> => {
   }
 
   // ── Tarjeta de producto ───────────────────────────────────────────────────
-  const tarjeta = (p: ProductoDelCatalogo): HTMLElement => {
+  const tarjeta = (p: ProductoDelCatalogo, nombreCarpeta?: string): HTMLElement => {
     const art = document.createElement('article');
     art.style.cssText =
       'background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 1px 3px rgba(15,23,42,.1);' +
@@ -421,7 +453,7 @@ export const mostrarCatalogo = async (userId: string): Promise<void> => {
           `width:${ancho ? `${ancho}px` : '100%'};height:${alto}px;overflow:hidden;` +
           (ancho ? 'border-radius:8px;flex:none;' : '');
         caja.innerHTML =
-          `<img src="${src}" alt="${p.nombre}" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block">`;
+          `<img src="${escaparHtml(src)}" alt="${escaparHtml(p.nombre)}" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block">`;
         // El precio va encima de la foto, también en las miniaturas: en una
         // carpeta con varios modelos es lo que se compara de un vistazo, y
         // tenerlo solo al pie de la tarjeta obliga a entrar en cada una.
@@ -460,11 +492,34 @@ export const mostrarCatalogo = async (userId: string): Promise<void> => {
 
     const cuerpo = document.createElement('div');
     cuerpo.style.cssText = 'padding:12px;display:flex;flex-direction:column;gap:8px;flex:1';
-    cuerpo.innerHTML = `<h3 style="font-size:.95rem;font-weight:600;margin:0">${p.nombre}</h3>`;
+
+    // El comentario del producto va debajo del nombre. Si el nombre solo repite el
+    // título de la carpeta abierta —«Camisetas hombre» dentro de «Camisetas
+    // hombre»—, el comentario ocupa su sitio: decir dos veces lo mismo no informa
+    // y el comentario sí. Sin comentario se deja el nombre, que es lo que hay.
+    const repiteCarpeta =
+      !!nombreCarpeta && !!p.descripcion && sinAdornos(p.nombre) === sinAdornos(nombreCarpeta);
+
+    if (!repiteCarpeta) {
+      const titulo = document.createElement('h3');
+      titulo.textContent = p.nombre;
+      titulo.style.cssText = 'font-size:.95rem;font-weight:600;margin:0';
+      cuerpo.appendChild(titulo);
+    }
+    if (p.descripcion) {
+      const nota = document.createElement('p');
+      nota.textContent = p.descripcion;
+      nota.style.cssText = repiteCarpeta
+        ? 'font-size:.95rem;font-weight:600;margin:0;line-height:1.35;white-space:pre-line'
+        : 'font-size:.85rem;color:#64748b;margin:0;line-height:1.35;white-space:pre-line';
+      cuerpo.appendChild(nota);
+    }
 
     if (p.precio) {
-      cuerpo.innerHTML +=
-        `<p style="font-size:1.02rem;font-weight:700;color:#2563eb;margin:0">${p.precio}</p>`;
+      const precio = document.createElement('p');
+      precio.textContent = p.precio;
+      precio.style.cssText = 'font-size:1.02rem;font-weight:700;color:#2563eb;margin:0';
+      cuerpo.appendChild(precio);
     } else {
       const preguntar = boton('Pregunta el precio', '#2563eb', () => preguntarPrecio(p));
       preguntar.style.cssText += ';width:100%;padding:9px 12px;margin-top:auto';
@@ -474,24 +529,53 @@ export const mostrarCatalogo = async (userId: string): Promise<void> => {
     return art;
   };
 
-  const rejillaDe = (productos: ProductoDelCatalogo[]): HTMLElement => {
+  const rejillaDe = (productos: ProductoDelCatalogo[], nombreCarpeta?: string): HTMLElement => {
     const g = document.createElement('div');
     g.style.cssText =
       'display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px';
-    productos.forEach(p => g.appendChild(tarjeta(p)));
+    productos.forEach(p => g.appendChild(tarjeta(p, nombreCarpeta)));
     return g;
   };
 
   // ── Contenido: fichas de carpeta, o el interior de una ────────────────────
+
+  /** Todos los productos de una carpeta: los suyos y los de sus subcarpetas. */
+  const productosDeCarpeta = (c: CarpetaDelCatalogo): ProductoDelCatalogo[] => [
+    ...c.productos,
+    ...(c.subcarpetas ?? []).flatMap(s => s.productos),
+  ];
+
+  /**
+   * La ficha de una carpeta o subcarpeta.
+   *
+   * Sin números: cuántos productos hay no le dice nada a quien mira, y una
+   * carpeta con uno solo parecía un error. Con foto, el nombre va en el pie; sin
+   * foto el nombre ya es la portada, que por eso se hace más alta para llenar el
+   * mismo sitio que una ficha con foto y pie.
+   */
+  function fichaDeCarpeta(c: CarpetaDelCatalogo, alAbrir: () => void): HTMLButtonElement {
+    const f = document.createElement('button');
+    f.style.cssText =
+      'background:#fff;border:0;border-radius:14px;overflow:hidden;cursor:pointer;padding:0;' +
+      'box-shadow:0 1px 3px rgba(15,23,42,.1);display:flex;flex-direction:column;text-align:left';
+    f.innerHTML = c.portada
+      ? `<img src="${escaparHtml(c.portada)}" alt="" style="width:100%;height:110px;object-fit:cover;display:block">` +
+        `<span style="display:block;padding:10px 12px;font-weight:700;font-size:.95rem;line-height:1.25">${escaparHtml(c.nombre)}</span>`
+      : portadaDeNombre(c.nombre, 150);
+    f.onclick = alAbrir;
+    return f;
+  }
+
   function pintarContenido() {
     contenido.innerHTML = '';
 
     // Con una sola carpeta no se pinta ninguna: una carpeta suelta que hay que
-    // abrir solo esconde el catálogo y hace pensar que falta algo.
-    const conCarpetas = cat.carpetas.length > 1;
+    // abrir solo esconde el catálogo y hace pensar que falta algo. Con
+    // subcarpetas sí: abrirla es lo que enseña cómo está dividida.
+    const conCarpetas = cat.carpetas.length > 1 || cat.carpetas.some(c => c.subcarpetas?.length);
 
     if (!conCarpetas) {
-      const todos = [...cat.carpetas.flatMap(c => c.productos), ...cat.sueltos];
+      const todos = [...cat.carpetas.flatMap(productosDeCarpeta), ...cat.sueltos];
       contenido.appendChild(
         todos.length
           ? rejillaDe(todos)
@@ -504,17 +588,38 @@ export const mostrarCatalogo = async (userId: string): Promise<void> => {
     }
 
     if (carpetaAbierta) {
+      const sub = subcarpetaAbierta;
+      const actual = sub ?? carpetaAbierta;
       const volver = document.createElement('button');
       volver.style.cssText =
         'display:flex;align-items:center;gap:8px;width:100%;background:#fff;border:0;cursor:pointer;' +
         'padding:14px 16px;border-radius:14px;box-shadow:0 1px 3px rgba(15,23,42,.1);margin-bottom:14px;' +
         `font-weight:700;font-size:1rem;font-family:${FUENTE};color:#0f172a`;
+      // Dentro de una subcarpeta el título lleva el camino, y volver sube un
+      // nivel: a la carpeta, no al principio del catálogo.
       volver.innerHTML =
-        `<span style="color:#2563eb;font-size:1.1rem">←</span><span style="flex:1;text-align:left">${carpetaAbierta.nombre}</span>` +
-        `<span style="background:#eff6ff;color:#2563eb;border-radius:999px;padding:2px 10px;font-size:.75rem">${carpetaAbierta.productos.length}</span>`;
-      volver.onclick = () => { carpetaAbierta = null; pintarContenido(); window.scrollTo(0, 0); };
+        `<span style="color:#2563eb;font-size:1.1rem">←</span>` +
+        `<span style="flex:1;text-align:left">${escaparHtml(sub ? `${carpetaAbierta.nombre} › ${sub.nombre}` : carpetaAbierta.nombre)}</span>`;
+      volver.onclick = () => {
+        if (sub) subcarpetaAbierta = null;
+        else carpetaAbierta = null;
+        pintarContenido();
+        window.scrollTo(0, 0);
+      };
+      contenido.appendChild(volver);
 
-      contenido.append(volver, rejillaDe(carpetaAbierta.productos));
+      // Las subcarpetas van antes que los productos que la carpeta tenga sueltos.
+      const subs = sub ? [] : (carpetaAbierta.subcarpetas ?? []).filter(s => s.productos.length);
+      if (subs.length) {
+        const rejilla = document.createElement('div');
+        rejilla.style.cssText =
+          'display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px;margin-bottom:14px';
+        subs.forEach(s =>
+          rejilla.appendChild(fichaDeCarpeta(s, () => { subcarpetaAbierta = s; pintarContenido(); window.scrollTo(0, 0); })),
+        );
+        contenido.appendChild(rejilla);
+      }
+      if (actual.productos.length) contenido.appendChild(rejillaDe(actual.productos, actual.nombre));
       return;
     }
 
@@ -523,28 +628,12 @@ export const mostrarCatalogo = async (userId: string): Promise<void> => {
       'display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px';
 
     cat.carpetas
-      .filter(c => c.productos.length)
-      .forEach(c => {
-        const f = document.createElement('button');
-        f.style.cssText =
-          'background:#fff;border:0;border-radius:14px;overflow:hidden;cursor:pointer;padding:0;' +
-          'box-shadow:0 1px 3px rgba(15,23,42,.1);display:flex;flex-direction:column;text-align:left';
-        f.innerHTML =
-          (c.portada
-            ? `<img src="${c.portada}" alt="" style="width:100%;height:110px;object-fit:cover;display:block">`
-            : portadaDeNombre(c.nombre)) +
-          '<span style="display:flex;align-items:center;gap:8px;padding:10px 12px;font-weight:700;font-size:.95rem">' +
-          // Con el nombre ya en la portada, repetirlo debajo es decir dos veces
-          // lo mismo en la misma ficha: ahí va lo que falta, cuántos hay.
-          `<span style="flex:1;line-height:1.25">${c.portada ? c.nombre : `${c.productos.length} producto${c.productos.length === 1 ? '' : 's'}`}</span>` +
-          // La burbuja con el número sobra si el pie ya dice «3 productos».
-          (c.portada
-            ? `<span style="background:#eff6ff;color:#2563eb;border-radius:999px;padding:2px 10px;font-size:.75rem;flex:none">${c.productos.length}</span>`
-            : '') +
-          '</span>';
-        f.onclick = () => { carpetaAbierta = c; pintarContenido(); window.scrollTo(0, 0); };
-        fichas.appendChild(f);
-      });
+      .filter(c => productosDeCarpeta(c).length)
+      .forEach(c =>
+        fichas.appendChild(
+          fichaDeCarpeta(c, () => { carpetaAbierta = c; subcarpetaAbierta = null; pintarContenido(); window.scrollTo(0, 0); }),
+        ),
+      );
 
     if (cat.sueltos.length) fichas.appendChild(rejillaDe(cat.sueltos));
     contenido.appendChild(fichas);
@@ -572,7 +661,7 @@ export const mostrarCatalogo = async (userId: string): Promise<void> => {
         'position:relative;border:0;padding:0;width:48px;height:48px;border-radius:10px;overflow:hidden;' +
         'flex:none;cursor:pointer;background:#e2e8f0';
       t.innerHTML =
-        `<img src="${f.imagen}" alt="" style="width:100%;height:100%;object-fit:cover;display:block">` +
+        `<img src="${escaparHtml(f.imagen)}" alt="" style="width:100%;height:100%;object-fit:cover;display:block">` +
         '<span style="position:absolute;top:0;right:0;background:rgba(2,6,23,.72);color:#fff;width:17px;' +
         'height:17px;line-height:16px;font-size:12px;border-radius:0 0 0 8px">×</span>';
       t.onclick = () => {
@@ -608,7 +697,7 @@ export const mostrarCatalogo = async (userId: string): Promise<void> => {
     cab.style.cssText = 'padding:20px 20px 6px';
     cab.innerHTML =
       '<h2 style="font-size:1.15rem;font-weight:700;margin:0 0 4px">Imágenes que me gustan</h2>' +
-      `<p style="font-size:.85rem;color:#64748b;margin:0">Cuéntale a ${cat.negocio} qué buscas y se las mandas.</p>`;
+      `<p style="font-size:.85rem;color:#64748b;margin:0">Cuéntale a ${escaparHtml(cat.negocio)} qué buscas y se las mandas.</p>`;
 
     const lista = document.createElement('div');
     lista.style.cssText = 'flex:1;overflow-y:auto;padding:12px 20px';
@@ -650,8 +739,8 @@ export const mostrarCatalogo = async (userId: string): Promise<void> => {
         const c = document.createElement('div');
         c.style.cssText = 'position:relative;border-radius:12px;overflow:hidden;background:#e2e8f0';
         c.innerHTML =
-          `<img src="${f.imagen}" alt="" style="width:100%;height:88px;object-fit:cover;display:block">` +
-          `<span style="display:block;padding:6px 8px;font-size:.72rem;font-weight:600;line-height:1.25">${f.etiqueta}</span>`;
+          `<img src="${escaparHtml(f.imagen)}" alt="" style="width:100%;height:88px;object-fit:cover;display:block">` +
+          `<span style="display:block;padding:6px 8px;font-size:.72rem;font-weight:600;line-height:1.25">${escaparHtml(f.etiqueta)}</span>`;
         const quitar = document.createElement('button');
         quitar.textContent = '×';
         quitar.title = `Quitar ${f.etiqueta}`;
@@ -712,7 +801,7 @@ export const mostrarCatalogo = async (userId: string): Promise<void> => {
         });
 
     if (!hecho) {
-      alert('Tu navegador no deja guardar en este teléfono. Prueba fuera del modo incógnito.');
+      alert('Tu navegador no deja seguir tiendas en este teléfono. Prueba fuera del modo incógnito.');
       return;
     }
     pintarGuardar();
@@ -722,9 +811,9 @@ export const mostrarCatalogo = async (userId: string): Promise<void> => {
 
   const pintarGuardar = () => {
     const g = estaGuardada();
-    guardar.textContent = g ? '🔖 Guardada' : '🔖 Guardar';
+    guardar.textContent = g ? '❤️ Siguiendo' : '🤍 Seguir tienda';
     guardar.style.background = g ? '#0f766e' : '#f59e0b';
-    guardar.title = g ? 'Quitar de mis tiendas' : 'Guardar esta tienda para volver';
+    guardar.title = g ? 'Dejar de seguir esta tienda' : 'Seguir esta tienda para volver';
   };
 
   const compartir = boton('Compartir', '#22c55e', async () => {
@@ -773,18 +862,18 @@ export const mostrarCatalogo = async (userId: string): Promise<void> => {
   }
 
   /**
-   * Al guardar por primera vez, ofrecerle cuenta.
+   * Al seguir una tienda por primera vez, ofrecerle cuenta.
    *
-   * La tienda ya quedó guardada: esto no es un peaje, es avisarle de que se
-   * guardó solo en este teléfono y que con una cuenta no la pierde. Por eso
+   * La tienda ya quedó seguida: esto no es un peaje, es avisarle de que se
+   * sigue solo en este teléfono y que con una cuenta no la pierde. Por eso
    * «Ahora no» es una salida de verdad y no hay nada bloqueado detrás.
    */
   function invitarARegistrarse(): void {
     const { fondo, panel } = capaConPanel();
     panel.innerHTML =
-      `<p style="font-weight:800;font-size:1.05rem;margin:0 0 6px">Guardaste a ${cat.negocio}</p>` +
-      '<p style="color:#475569;font-size:.9rem;margin:0 0 4px">Quedó guardada <b>en este teléfono</b>.' +
-      ' Si lo cambias o borras los datos del navegador, la pierdes.</p>' +
+      `<p style="font-weight:800;font-size:1.05rem;margin:0 0 6px">Ahora sigues a ${escaparHtml(cat.negocio)}</p>` +
+      '<p style="color:#475569;font-size:.9rem;margin:0 0 4px">La sigues <b>solo en este teléfono</b>.' +
+      ' Si lo cambias o borras los datos del navegador, dejas de verla.</p>' +
       '<p style="color:#475569;font-size:.9rem;margin:0 0 16px">Con una cuenta de Worky la tienes' +
       ' siempre a mano y puedes escribirle por el chat.</p>';
 
@@ -806,10 +895,10 @@ export const mostrarCatalogo = async (userId: string): Promise<void> => {
   function abrirTiendasGuardadas(): void {
     const { fondo, panel } = capaConPanel();
     const cab = document.createElement('p');
-    cab.textContent = 'Mis tiendas guardadas';
+    cab.textContent = 'Tiendas que sigo';
     cab.style.cssText = 'font-weight:800;font-size:1.05rem;margin:0 0 4px';
     const nota = document.createElement('p');
-    nota.textContent = 'Guardadas en este teléfono.';
+    nota.textContent = 'Las sigues desde este teléfono.';
     nota.style.cssText = 'color:#94a3b8;font-size:.78rem;margin:0 0 14px';
     const lista = document.createElement('div');
     lista.style.cssText = 'display:flex;flex-direction:column;gap:8px';
@@ -819,7 +908,7 @@ export const mostrarCatalogo = async (userId: string): Promise<void> => {
       lista.innerHTML = '';
       if (!tiendas.length) {
         lista.innerHTML = '<p style="color:#94a3b8;font-style:italic;text-align:center;padding:20px 0">' +
-          'Todavía no has guardado ninguna tienda.</p>';
+          'Todavía no sigues ninguna tienda.</p>';
         return;
       }
       for (const t of tiendas) {
@@ -828,15 +917,15 @@ export const mostrarCatalogo = async (userId: string): Promise<void> => {
           'display:flex;align-items:center;gap:10px;border:1px solid #e2e8f0;border-radius:14px;padding:10px';
         fila.innerHTML =
           (t.logo
-            ? `<img src="${t.logo}" alt="" style="width:40px;height:40px;border-radius:10px;object-fit:cover;flex:0 0 auto">`
+            ? `<img src="${escaparHtml(t.logo)}" alt="" style="width:40px;height:40px;border-radius:10px;object-fit:cover;flex:0 0 auto">`
             : '<div style="width:40px;height:40px;border-radius:10px;background:#e2e8f0;flex:0 0 auto"></div>') +
           `<div style="flex:1;min-width:0">
-             <div style="font-weight:700;font-size:.9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.negocio}</div>
-             <div style="color:#64748b;font-size:.75rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${[t.ubicacion, t.ciudad].filter(Boolean).join(' · ')}</div>
+             <div style="font-weight:700;font-size:.9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escaparHtml(t.negocio)}</div>
+             <div style="color:#64748b;font-size:.75rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escaparHtml([t.ubicacion, t.ciudad].filter(Boolean).join(' · '))}</div>
            </div>`;
         const abrir = boton('Abrir', '#2563eb', () => { window.location.href = t.enlace; });
         abrir.style.padding = '7px 14px';
-        const quitar = boton('Quitar', '#e2e8f0', () => {
+        const quitar = boton('Dejar de seguir', '#e2e8f0', () => {
           quitarTienda(t.id);
           pintar();
           pintarGuardar();
