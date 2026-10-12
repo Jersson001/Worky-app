@@ -99,14 +99,24 @@ export const saveCategory = async (category: ProductCategory): Promise<void> => 
   try {
     const userId = getCurrentUserId();
 
-    const { error } = await supabase.from('categories').upsert({
+    const fila: Record<string, unknown> = {
       id: category.id,
       user_id: userId,
       name: category.name,
       icon: category.icon,
       color: category.color,
       cover_image: category.coverImage,
-    });
+      parent_id: category.parentId ?? null,
+    };
+
+    let { error } = await supabase.from('categories').upsert(fila);
+
+    // Sin la columna `parent_id` todavía (ver supabase_categories_subcarpetas.sql)
+    // la carpeta se guarda igual, sin su madre: peor es perder la carpeta entera.
+    if (error && (error.message.includes('parent_id') || error.code === '42703')) {
+      delete fila.parent_id;
+      ({ error } = await supabase.from('categories').upsert(fila));
+    }
 
     if (error) throw error;
   } catch (error) {
@@ -170,6 +180,7 @@ const loadCategories = async (
       icon: c.icon,
       color: c.color,
       coverImage: c.cover_image,
+      parentId: c.parent_id ?? undefined,
     }));
 
     callback(categories);

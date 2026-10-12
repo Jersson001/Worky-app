@@ -104,6 +104,8 @@ export interface ProductCategory {
   icon: string;
   color: string;
   coverImage?: string; // Imagen de portada para la carpeta
+  /** De qué carpeta cuelga, si es una subcarpeta. Un solo nivel. Ver utils/carpetas.ts. */
+  parentId?: string;
 }
 
 export interface Expense {

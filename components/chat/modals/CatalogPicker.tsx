@@ -13,6 +13,7 @@
 import React, { useMemo, useState } from 'react';
 import { Product, ProductCategory } from '../../../types';
 import { formatCurrency } from '../../../utils/currency';
+import { carpetasPrincipales, esPrincipal, etiquetaDeCarpeta, idsDeCarpeta, subcarpetasDe } from '../../../utils/carpetas';
 
 interface CatalogBrowserProps {
   products: Product[];
@@ -69,10 +70,23 @@ export const CatalogBrowser: React.FC<CatalogBrowserProps> = ({
     return [];
   }, [products, buscando, termino, carpetaAbierta, sinCarpeta]);
 
+  // Una subcarpeta se nombra con su camino —«Jean › Jean hombre»—: es lo que la
+  // distingue de otra con el mismo nombre en otra carpeta.
   const nombreDeCarpeta = (id?: string) => {
     if (!id) return 'Sin carpeta';
-    return categories.find(c => c.id === id)?.name ?? 'Sin carpeta';
+    const carpeta = categories.find(c => c.id === id);
+    return carpeta ? etiquetaDeCarpeta(carpeta, categories) : 'Sin carpeta';
   };
+
+  /** Si la carpeta abierta es una subcarpeta, la de la que cuelga: volver sube un nivel. */
+  const madreDeLaAbierta =
+    carpetaAbierta && carpetaAbierta !== SIN_CARPETA
+      ? categories.find(c => c.id === carpetaAbierta && !esPrincipal(c, categories))?.parentId ?? null
+      : null;
+
+  /** Las subcarpetas de la carpeta abierta, que se enseñan antes que sus productos. */
+  const subsDeLaAbierta =
+    carpetaAbierta && carpetaAbierta !== SIN_CARPETA ? subcarpetasDe(categories, carpetaAbierta) : [];
 
   const elegir = (p: Product) => {
     onSelectProduct(p);
@@ -97,8 +111,52 @@ export const CatalogBrowser: React.FC<CatalogBrowserProps> = ({
     setFotosAbiertas(null);
   };
 
+  /** Los productos de una carpeta principal incluyen los de sus subcarpetas. */
+  const productosDe = (categoria: ProductCategory) => {
+    const ids = esPrincipal(categoria, categories) ? idsDeCarpeta(categories, categoria.id) : [categoria.id];
+    return products.filter(p => !!p.categoryId && ids.includes(p.categoryId));
+  };
+
   const enPortada = (categoria: ProductCategory) =>
-    products.filter(p => p.categoryId === categoria.id).slice(0, 4).map(p => p.image);
+    productosDe(categoria).slice(0, 4).map(p => p.image);
+
+  const tarjetaDeCarpeta = (categoria: ProductCategory) => {
+    const fotos = enPortada(categoria);
+    const cuantos = productosDe(categoria).length;
+    return (
+      <button
+        key={categoria.id}
+        type="button"
+        onClick={() => { setCarpetaAbierta(categoria.id); setFotosAbiertas(null); }}
+        className="bg-white border border-slate-200 rounded-xl overflow-hidden hover:border-blue-400 hover:shadow-md transition text-left"
+      >
+        <div className="aspect-square bg-slate-100 overflow-hidden">
+          {categoria.coverImage ? (
+            <img src={categoria.coverImage} alt="" className="w-full h-full object-cover" />
+          ) : fotos.length > 0 ? (
+            <div className="w-full h-full grid grid-cols-2 gap-0.5 p-0.5">
+              {fotos.map((foto, i) => (
+                <img key={i} src={foto} alt="" className="w-full h-full object-cover rounded" />
+              ))}
+              {Array.from({ length: Math.max(0, 4 - fotos.length) }).map((_, i) => (
+                <div key={`hueco-${i}`} className="bg-slate-100 rounded" />
+              ))}
+            </div>
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-slate-300">
+              <i className={`${categoria.icon} text-3xl`}></i>
+            </div>
+          )}
+        </div>
+        <div className="p-2">
+          <div className="text-[11px] font-bold text-slate-800 truncate">{categoria.name}</div>
+          <div className="text-[10px] text-slate-500">
+            {cuantos} producto{cuantos === 1 ? '' : 's'}
+          </div>
+        </div>
+      </button>
+    );
+  };
 
   return (
     <div className="flex flex-col h-full">
@@ -127,7 +185,7 @@ export const CatalogBrowser: React.FC<CatalogBrowserProps> = ({
         {!buscando && carpetaAbierta && (
           <button
             type="button"
-            onClick={() => { setCarpetaAbierta(null); setFotosAbiertas(null); }}
+            onClick={() => { setCarpetaAbierta(madreDeLaAbierta); setFotosAbiertas(null); }}
             className="mt-2 text-[11px] font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1.5"
           >
             <i className="fa-solid fa-arrow-left text-[10px]"></i>
@@ -173,43 +231,7 @@ export const CatalogBrowser: React.FC<CatalogBrowserProps> = ({
             </p>
           ) : (
             <div className="grid grid-cols-2 gap-2.5">
-              {categories.map(categoria => {
-                const fotos = enPortada(categoria);
-                const cuantos = products.filter(p => p.categoryId === categoria.id).length;
-                return (
-                  <button
-                    key={categoria.id}
-                    type="button"
-                    onClick={() => setCarpetaAbierta(categoria.id)}
-                    className="bg-white border border-slate-200 rounded-xl overflow-hidden hover:border-blue-400 hover:shadow-md transition text-left"
-                  >
-                    <div className="aspect-square bg-slate-100 overflow-hidden">
-                      {categoria.coverImage ? (
-                        <img src={categoria.coverImage} alt="" className="w-full h-full object-cover" />
-                      ) : fotos.length > 0 ? (
-                        <div className="w-full h-full grid grid-cols-2 gap-0.5 p-0.5">
-                          {fotos.map((foto, i) => (
-                            <img key={i} src={foto} alt="" className="w-full h-full object-cover rounded" />
-                          ))}
-                          {Array.from({ length: Math.max(0, 4 - fotos.length) }).map((_, i) => (
-                            <div key={`hueco-${i}`} className="bg-slate-100 rounded" />
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-slate-300">
-                          <i className={`${categoria.icon} text-3xl`}></i>
-                        </div>
-                      )}
-                    </div>
-                    <div className="p-2">
-                      <div className="text-[11px] font-bold text-slate-800 truncate">{categoria.name}</div>
-                      <div className="text-[10px] text-slate-500">
-                        {cuantos} producto{cuantos === 1 ? '' : 's'}
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
+              {carpetasPrincipales(categories).map(tarjetaDeCarpeta)}
 
               {sinCarpeta.length > 0 && (
                 <button
@@ -234,10 +256,19 @@ export const CatalogBrowser: React.FC<CatalogBrowserProps> = ({
 
         {/* Lista de productos: dentro de una carpeta o resultado de la búsqueda */}
         {(buscando || carpetaAbierta) && (
-          visibles.length === 0 ? (
-            <p className="text-center py-8 text-slate-400 text-xs italic">
-              {buscando ? 'Ningún producto se llama así.' : 'Esta carpeta está vacía.'}
-            </p>
+          <>
+          {!buscando && subsDeLaAbierta.length > 0 && (
+            <div className="grid grid-cols-2 gap-2.5 mb-3">
+              {subsDeLaAbierta.map(tarjetaDeCarpeta)}
+            </div>
+          )}
+          {visibles.length === 0 ? (
+            // Una carpeta que solo tiene subcarpetas no está vacía.
+            !buscando && subsDeLaAbierta.length > 0 ? null : (
+              <p className="text-center py-8 text-slate-400 text-xs italic">
+                {buscando ? 'Ningún producto se llama así.' : 'Esta carpeta está vacía.'}
+              </p>
+            )
           ) : (
             <div className="space-y-1.5">
               {visibles.map(p => {
@@ -271,7 +302,8 @@ export const CatalogBrowser: React.FC<CatalogBrowserProps> = ({
                 );
               })}
             </div>
-          )
+          )}
+          </>
         )}
         </>
         )}

@@ -13,6 +13,7 @@ import { supabase, PUBLIC_BUCKET } from './supabaseConfig';
 import { reducirImagen } from '../utils/imagen';
 import { getCurrentUserId } from './messagingService';
 import { Product, ProductCategory, UserProfileData } from '../types';
+import { carpetasPrincipales, subcarpetasDe } from '../utils/carpetas';
 
 /**
  * La app publicada. El destino por defecto de todo lo que se comparte.
@@ -527,24 +528,39 @@ const grid = (productos: Product[]): string =>
  * se pinta al final: perder un producto por no encontrar su carpeta sería peor
  * que enseñarlo suelto.
  */
-const porCarpeta = (
-  products: Product[],
-  categories: ProductCategory[],
-): Array<{ nombre: string; icono?: string; color?: string; portada?: string; productos: Product[] }> => {
-  type Grupo = { nombre: string; icono?: string; color?: string; portada?: string; productos: Product[] };
+type Grupo = {
+  nombre: string;
+  icono?: string;
+  color?: string;
+  portada?: string;
+  productos: Product[];
+  /** Un nivel: las subcarpetas no tienen otras dentro. */
+  subgrupos: Grupo[];
+};
+
+const porCarpeta = (products: Product[], categories: ProductCategory[]): Grupo[] => {
   const conocidas = new Set(categories.map(c => c.id));
-  const grupos: Grupo[] = categories
+  const deCarpeta = (c: ProductCategory): Grupo => ({
+    nombre: c.name,
+    icono: c.icon,
+    color: c.color,
+    portada: c.coverImage,
+    productos: products.filter(p => p.categoryId === c.id),
+    subgrupos: [],
+  });
+
+  // Una carpeta se pinta si tiene productos propios o alguna subcarpeta con
+  // productos: «Jean» puede no tener nada suelto y ser solo la puerta a
+  // «Jean hombre» y «Jean mujer».
+  const grupos: Grupo[] = carpetasPrincipales(categories)
     .map(c => ({
-      nombre: c.name,
-      icono: c.icon,
-      color: c.color,
-      portada: c.coverImage,
-      productos: products.filter(p => p.categoryId === c.id),
+      ...deCarpeta(c),
+      subgrupos: subcarpetasDe(categories, c.id).map(deCarpeta).filter(s => s.productos.length > 0),
     }))
-    .filter(g => g.productos.length > 0);
+    .filter(g => g.productos.length > 0 || g.subgrupos.length > 0);
 
   const sueltos = products.filter(p => !p.categoryId || !conocidas.has(p.categoryId));
-  if (sueltos.length) grupos.push({ nombre: 'Otros', productos: sueltos });
+  if (sueltos.length) grupos.push({ nombre: 'Otros', productos: sueltos, subgrupos: [] });
 
   return grupos;
 };
@@ -574,7 +590,23 @@ export const buildCatalogHtml = (
   // abrir solo esconde el catálogo y hace pensar que falta algo. Es el mismo
   // criterio que con las pestañas de la cotización.
   const grupos = porCarpeta(products, categories);
-  const conCarpetas = grupos.length > 1;
+  // Una sola carpeta con subcarpetas sí se pinta: abrirla es lo que enseña cómo
+  // está dividida.
+  const conCarpetas = grupos.length > 1 || grupos.some(g => g.subgrupos.length > 0);
+
+  // La ficha de una carpeta o subcarpeta: portada y nombre. Sin el número de
+  // productos: no le dice nada a quien mira, y una carpeta con uno solo parecía
+  // un error.
+  const ficha = (g: Grupo): string => `
+        <summary class="ficha">
+          ${g.portada
+            ? `<img class="portada" src="${esc(g.portada)}" alt="${esc(g.nombre)}" loading="lazy">`
+            // La inicial y no el icono de la carpeta: la instantánea no carga
+            // Font Awesome —es HTML autónomo a propósito— y un <i class="fa-…">
+            // ahí dentro no pinta nada, así que la ficha salía en blanco.
+            : `<span class="portada sin-portada"><i></i><b>${esc(g.nombre)}</b></span>`}
+          <span class="pie"><span class="nombre">${esc(g.nombre)}</span></span>
+        </summary>`;
 
   // Las carpetas se pintan como fichas con su portada, y al pulsar una se entra:
   // las demás se ocultan y quedan sus productos. Ninguna abierta de entrada,
@@ -584,17 +616,13 @@ export const buildCatalogHtml = (
     ? `<div class="carpetas">${grupos
         .map(
           g => `
-      <details class="carpeta">
-        <summary class="ficha">
-          ${g.portada
-            ? `<img class="portada" src="${esc(g.portada)}" alt="${esc(g.nombre)}" loading="lazy">`
-            // La inicial y no el icono de la carpeta: la instantánea no carga
-            // Font Awesome —es HTML autónomo a propósito— y un <i class="fa-…">
-            // ahí dentro no pinta nada, así que la ficha salía en blanco.
-            : `<span class="portada sin-portada"><i></i><b>${esc(g.nombre)}</b></span>`}
-          <span class="pie"><span class="nombre">${esc(g.nombre)}</span><span class="cuenta">${g.productos.length}</span></span>
-        </summary>
-        ${grid(g.productos)}
+      <details class="carpeta">${ficha(g)}
+        ${g.subgrupos.length
+          ? `<div class="subcarpetas">${g.subgrupos
+              .map(s => `<details class="subcarpeta">${ficha(s)}${grid(s.productos)}</details>`)
+              .join('')}</div>`
+          : ''}
+        ${g.productos.length ? grid(g.productos) : ''}
       </details>`,
         )
         .join('')}</div>`
@@ -640,7 +668,6 @@ export const buildCatalogHtml = (
      «Cocinas inte…», que no dice cual es. */
   .ficha .nombre{flex:1;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
                  overflow:hidden;line-height:1.25}
-  .ficha .cuenta{background:#eff6ff;color:#2563eb;border-radius:999px;padding:2px 10px;font-size:.75rem;flex:none}
 
   /* Dentro de una carpeta: ocupa el ancho entero y las demas se apartan, para
      que se sienta que se ha entrado y no que se ha desplegado un acordeon.
@@ -651,10 +678,24 @@ export const buildCatalogHtml = (
      esos 52px de hueco por encima aunque la pagina este sin desplazar, y la
      ficha aparecia con una franja blanca. Lo unico fijo es barra-chat. */
   .carpeta[open]>summary{background:#fff;border-bottom:1px solid #e2e8f0}
-  .carpeta[open] .ficha .portada{height:0}
-  .carpeta[open] .ficha .pie::before{content:'←';color:#2563eb;font-size:1.1rem;margin-right:2px}
-  .carpeta[open] .ficha .pie{padding:14px 16px}
-  .carpeta .grid{margin:0;padding:14px 16px}
+  .carpeta[open]>summary .portada{height:0}
+  .carpeta[open]>summary .pie::before{content:'←';color:#2563eb;font-size:1.1rem;margin-right:2px}
+  .carpeta[open]>summary .pie{padding:14px 16px}
+  .carpeta>.grid{margin:0;padding:14px 16px}
+
+  /* Subcarpetas: el mismo gesto un nivel más abajo. Solo van dentro de una
+     carpeta abierta, y al abrir una se apartan las demás. */
+  .subcarpetas{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px;padding:14px 16px}
+  .subcarpeta{background:#f8fafc;border-radius:14px;box-shadow:0 1px 3px rgba(15,23,42,.1);overflow:hidden}
+  .subcarpeta>summary{list-style:none;cursor:pointer;user-select:none;display:block}
+  .subcarpeta>summary::-webkit-details-marker{display:none}
+  .subcarpeta[open]{grid-column:1/-1}
+  .subcarpetas:has(.subcarpeta[open])>.subcarpeta:not([open]){display:none}
+  .subcarpeta[open]>summary{background:#fff;border-bottom:1px solid #e2e8f0}
+  .subcarpeta[open]>summary .portada{height:0}
+  .subcarpeta[open]>summary .pie::before{content:'←';color:#2563eb;font-size:1.1rem;margin-right:2px}
+  .subcarpeta[open]>summary .pie{padding:14px 16px}
+  .subcarpeta>.grid{margin:0;padding:14px 16px}
 
   /* Galeria: la principal grande y TODAS las demas debajo, a la vista. Antes
      era un carrusel y solo se veia una: quien abria la carpeta creia que el
@@ -795,10 +836,10 @@ export const publishCatalogForCurrentUser = async (
     // como salía hasta ahora. Perder la publicación entera por esto sería peor.
     const { data: cats } = await supabase
       .from('categories')
-      .select('id, name, icon, color, cover_image')
+      .select('id, name, icon, color, cover_image, parent_id')
       .eq('user_id', userId);
 
-    const carpetas = (cats ?? []).map((c: any) => ({ ...c, coverImage: c.cover_image })) as ProductCategory[];
+    const carpetas = (cats ?? []).map((c: any) => ({ ...c, coverImage: c.cover_image, parentId: c.parent_id ?? undefined })) as ProductCategory[];
 
     return publishCatalog(userId, profile, productos, carpetas);
   } catch (e) {

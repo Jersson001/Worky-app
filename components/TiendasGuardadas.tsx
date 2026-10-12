@@ -49,12 +49,12 @@ export const TiendasGuardadas: React.FC<TiendasGuardadasProps> = ({ onClose, onA
       <div className="bg-white w-full max-w-lg rounded-2xl shadow-xl flex flex-col max-h-[85vh] overflow-hidden">
         <div className="p-5 border-b border-slate-100 flex justify-between items-center gap-3">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center text-white shadow-md shadow-amber-500/30 flex-shrink-0">
-              <i className="fa-solid fa-bookmark"></i>
+            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-rose-500 to-pink-600 flex items-center justify-center text-white shadow-md shadow-rose-500/30 flex-shrink-0">
+              <i className="fa-solid fa-heart"></i>
             </div>
             <div className="min-w-0">
-              <h2 className="text-lg font-bold text-slate-900 leading-tight">Tiendas guardadas</h2>
-              <p className="text-slate-500 text-[13px]">Las que guardaste al escanear su código</p>
+              <h2 className="text-lg font-bold text-slate-900 leading-tight">Tiendas que sigues</h2>
+              <p className="text-slate-500 text-[13px]">Las que seguiste al escanear su código</p>
             </div>
           </div>
           <button
@@ -68,10 +68,10 @@ export const TiendasGuardadas: React.FC<TiendasGuardadasProps> = ({ onClose, onA
         <div className="p-5 overflow-y-auto custom-scrollbar flex-1 space-y-2">
           {tiendas.length === 0 ? (
             <div className="text-center py-10 px-4">
-              <i className="fa-regular fa-bookmark text-3xl text-slate-300 mb-3 block"></i>
-              <p className="text-slate-600 font-semibold mb-1">Todavía no has guardado ninguna tienda</p>
+              <i className="fa-regular fa-heart text-3xl text-slate-300 mb-3 block"></i>
+              <p className="text-slate-600 font-semibold mb-1">Todavía no sigues ninguna tienda</p>
               <p className="text-slate-500 text-sm">
-                Cuando escanees el código de una tienda, toca <b>🔖 Guardar</b> en su catálogo y
+                Cuando escanees el código de una tienda, toca <b>🤍 Seguir tienda</b> en su catálogo y
                 la encontrarás aquí.
               </p>
             </div>
@@ -106,7 +106,7 @@ export const TiendasGuardadas: React.FC<TiendasGuardadasProps> = ({ onClose, onA
                   </button>
                   <button
                     onClick={() => quitar(t)}
-                    title="Quitar de mis tiendas"
+                    title="Dejar de seguir"
                     className="w-9 h-9 rounded-lg bg-slate-100 hover:bg-rose-100 text-slate-500 hover:text-rose-600 transition"
                   >
                     <i className="fa-solid fa-trash-can"></i>
@@ -120,7 +120,7 @@ export const TiendasGuardadas: React.FC<TiendasGuardadasProps> = ({ onClose, onA
         {tiendas.length > 0 && (
           <div className="px-5 py-3 border-t border-slate-100 bg-slate-50">
             <p className="text-[11px] text-slate-500">
-              Guardadas en este teléfono. Si cambias de teléfono o borras los datos del
+              Las sigues desde este teléfono. Si cambias de teléfono o borras los datos del
               navegador, esta lista se pierde.
             </p>
           </div>

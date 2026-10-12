@@ -4,6 +4,7 @@ import { ChatList } from './components/ChatList';
 import { ChatWindow } from './components/ChatWindow';
 import { FinancialReport } from './components/FinancialReport';
 import { TiendasGuardadas } from './components/TiendasGuardadas';
+import { carpetasPrincipales, carpetasEnOrden, esPrincipal, etiquetaDeCarpeta, idsDeCarpeta, subcarpetasDe } from './utils/carpetas';
 import ContractGenerator from './components/ContractGenerator';
 import ProFeatureGuard from './components/ProFeatureGuard';
 import AdminPanel from './components/AdminPanel';
@@ -1220,6 +1221,8 @@ const App: React.FC = () => {
   const [newCategoryName, setNewCategoryName] = useState('');
   const [newCategoryIcon, setNewCategoryIcon] = useState('fa-box');
   const [newCategoryCoverImage, setNewCategoryCoverImage] = useState<string>('');
+  /** De qué carpeta principal cuelga la que se está creando o editando. Vacío = es principal. */
+  const [newCategoryParent, setNewCategoryParent] = useState('');
   /** Carpeta que se está editando. Sin esto, guardar siempre creaba una nueva. */
   const [editingCategory, setEditingCategory] = useState<ProductCategory | null>(null);
   const [catalogView, setCatalogView] = useState<'folders' | 'products'>('folders');
@@ -2151,6 +2154,13 @@ ${describeError(error)}
     const colors = ['#ef4444', '#3b82f6', '#22c55e', '#eab308', '#a855f7', '#ec4899', '#6366f1', '#14b8a6'];
     const randomColor = colors[Math.floor(Math.random() * colors.length)];
 
+    // Un solo nivel: una carpeta que ya tiene subcarpetas no puede meterse
+    // dentro de otra, o sus subcarpetas quedarían a dos niveles.
+    if (newCategoryParent && editingCategory && subcarpetasDe(categories, editingCategory.id).length > 0) {
+      alert('Esta carpeta tiene subcarpetas, así que no puede meterse dentro de otra. Muévelas o quítalas primero.');
+      return;
+    }
+
     // Al editar se conservan id y color: son los que ya usa la carpeta en la
     // pantalla y en los productos que cuelgan de ella.
     const newCategory: ProductCategory = {
@@ -2158,7 +2168,8 @@ ${describeError(error)}
       name: newCategoryName,
       icon: newCategoryIcon,
       color: editingCategory?.color ?? randomColor,
-      coverImage: newCategoryCoverImage || undefined
+      coverImage: newCategoryCoverImage || undefined,
+      parentId: newCategoryParent || undefined,
     };
 
     const guardarEnPantalla = () =>
@@ -2181,6 +2192,7 @@ ${describeError(error)}
     setNewCategoryName('');
     setNewCategoryIcon('fa-box');
     setNewCategoryCoverImage('');
+    setNewCategoryParent('');
     setEditingCategory(null);
     setShowCategoryForm(false);
   };
@@ -2191,6 +2203,17 @@ ${describeError(error)}
     setNewCategoryName(category.name);
     setNewCategoryIcon(category.icon || 'fa-box');
     setNewCategoryCoverImage(category.coverImage || '');
+    setNewCategoryParent(category.parentId || '');
+    setShowCategoryForm(true);
+  };
+
+  /** Abre el formulario en blanco. Con `madreId`, la carpeta nueva nace como su subcarpeta. */
+  const abrirFormularioNuevaCarpeta = (madreId = '') => {
+    setEditingCategory(null);
+    setNewCategoryName('');
+    setNewCategoryIcon('fa-box');
+    setNewCategoryCoverImage('');
+    setNewCategoryParent(madreId);
     setShowCategoryForm(true);
   };
 
@@ -2206,20 +2229,230 @@ ${describeError(error)}
   };
 
   const handleDeleteCategory = async (id: string) => {
-    if (confirm('¿Eliminar esta categoría? Los productos no se eliminarán.')) {
+    const tieneSubcarpetas = subcarpetasDe(categories, id).length > 0;
+    if (confirm(`¿Eliminar esta carpeta? Los productos no se eliminarán.${tieneSubcarpetas ? ' Sus subcarpetas pasarán a ser carpetas principales.' : ''}`)) {
+      // Al borrar una subcarpeta desde dentro de ella, se vuelve a su carpeta.
+      const madreDeLaBorrada = categories.find(c => c.id === id)?.parentId ?? null;
+      // La base ya sube las subcarpetas al primer nivel (ON DELETE SET NULL);
+      // aquí se hace lo mismo en pantalla.
+      const quitarEnPantalla = () => {
+        setCategories(prev => prev.filter(c => c.id !== id).map(c => (c.parentId === id ? { ...c, parentId: undefined } : c)));
+        setProducts(prev => prev.map(p => p.categoryId === id ? { ...p, categoryId: undefined } : p));
+        if (selectedCategory === id) setSelectedCategory(madreDeLaBorrada);
+      };
       try {
         await deleteCategory(id);
-        setCategories(prev => prev.filter(c => c.id !== id));
-        setProducts(prev => prev.map(p => p.categoryId === id ? { ...p, categoryId: undefined } : p));
-        if (selectedCategory === id) setSelectedCategory(null);
+        quitarEnPantalla();
       } catch (error) {
         console.error('Error eliminando categoría:', error);
         // Fallback: eliminar del estado local
-        setCategories(prev => prev.filter(c => c.id !== id));
-        setProducts(prev => prev.map(p => p.categoryId === id ? { ...p, categoryId: undefined } : p));
-        if (selectedCategory === id) setSelectedCategory(null);
+        quitarEnPantalla();
       }
     }
+  };
+
+  // ── Carpetas y subcarpetas en el gestor del catálogo ──
+  const catSeleccionada = selectedCategory ? categories.find(c => c.id === selectedCategory) : undefined;
+  const volverASuMadre = !!catSeleccionada && !esPrincipal(catSeleccionada, categories);
+  const madreSeleccionada = volverASuMadre ? categories.find(c => c.id === catSeleccionada!.parentId) : undefined;
+
+  /** El formulario de carpeta: nombre, portada y, si no tiene subcarpetas, de cuál cuelga. */
+  const renderFormularioCarpeta = () => {
+    const conSubcarpetas = !!editingCategory && subcarpetasDe(categories, editingCategory.id).length > 0;
+    return (
+      <div className="mb-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
+        <div className="space-y-4">
+          <div className="grid grid-cols-[1fr_auto] gap-2">
+            <input
+              type="text"
+              placeholder={newCategoryParent ? 'Nombre de la subcarpeta' : 'Nombre de la carpeta'}
+              value={newCategoryName}
+              onChange={e => setNewCategoryName(e.target.value)}
+              className="bg-white p-3 rounded-lg border border-slate-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-100 outline-none"
+            />
+            <button
+              onClick={handleSaveCategory}
+              disabled={!newCategoryName.trim()}
+              className="bg-purple-600 text-white px-6 rounded-lg hover:bg-purple-700 transition disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
+            >
+              <i className="fa-solid fa-check mr-2"></i>
+              {editingCategory ? 'Guardar' : 'Crear'}
+            </button>
+          </div>
+
+          {/* De qué carpeta cuelga. Un solo nivel: una carpeta con subcarpetas
+              se queda como principal, y las subcarpetas no ofrecen otras. */}
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-2">
+              <i className="fa-solid fa-folder-tree mr-2 text-purple-600"></i>
+              Dentro de (Opcional)
+            </label>
+            {conSubcarpetas ? (
+              <p className="text-xs text-slate-500">
+                Esta carpeta tiene subcarpetas, así que se queda como carpeta principal.
+              </p>
+            ) : (
+              <select
+                value={newCategoryParent}
+                onChange={e => setNewCategoryParent(e.target.value)}
+                className="w-full bg-white p-3 rounded-lg border border-slate-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-100 outline-none"
+              >
+                <option value="">Ninguna: carpeta principal</option>
+                {carpetasPrincipales(categories)
+                  .filter(c => c.id !== editingCategory?.id)
+                  .map(c => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+              </select>
+            )}
+          </div>
+
+          {/* Cover Image Upload */}
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-2">
+              <i className="fa-solid fa-image mr-2 text-purple-600"></i>
+              Portada de la Carpeta (Opcional)
+            </label>
+            <div className="flex gap-4 items-center">
+              <div className="flex-1">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleCategoryCoverImageUpload}
+                  className="hidden"
+                  id="category-cover-upload"
+                />
+                <label
+                  htmlFor="category-cover-upload"
+                  className="block w-full bg-white p-3 rounded-lg border-2 border-dashed border-slate-300 hover:border-purple-500 cursor-pointer transition text-center"
+                >
+                  <i className="fa-solid fa-cloud-upload-alt text-purple-600 text-xl mb-2"></i>
+                  <div className="text-sm text-slate-600">
+                    {newCategoryCoverImage ? 'Cambiar portada' : 'Seleccionar imagen de portada'}
+                  </div>
+                </label>
+              </div>
+              {newCategoryCoverImage && (
+                <div className="relative">
+                  <img
+                    src={newCategoryCoverImage}
+                    alt="Preview"
+                    className="w-24 h-24 object-cover rounded-lg border-2 border-purple-500"
+                  />
+                  <button
+                    onClick={() => setNewCategoryCoverImage('')}
+                    className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition"
+                  >
+                    <i className="fa-solid fa-times text-xs"></i>
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  /** La tarjeta de una carpeta o subcarpeta. Una principal cuenta también lo de sus subcarpetas. */
+  const renderTarjetaCarpeta = (category: ProductCategory) => {
+    const esMadre = esPrincipal(category, categories);
+    const idsDentro = esMadre ? idsDeCarpeta(categories, category.id) : [category.id];
+    const categoryProducts = products.filter(p => !!p.categoryId && idsDentro.includes(p.categoryId));
+    const nSub = esMadre ? subcarpetasDe(categories, category.id).length : 0;
+    const previewImages = categoryProducts.slice(0, 4).map(p => p.image);
+
+    return (
+      <div
+        key={category.id}
+        className="relative bg-white rounded-xl border-2 border-slate-200 overflow-hidden hover:shadow-lg transition cursor-pointer group"
+        onClick={() => { setSelectedCategory(category.id); setNewProductCategory(category.id); setCatalogView('products'); setShowCategoryForm(false); }}
+      >
+        {/* Cover Image or Preview Images Grid */}
+        <div className="aspect-square bg-slate-100 overflow-hidden">
+          {category.coverImage ? (
+            <img
+              src={category.coverImage}
+              alt={category.name}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full grid grid-cols-2 gap-0.5 p-0.5">
+              {previewImages.length > 0 ? (
+                previewImages.map((img, idx) => (
+                  <div key={idx} className="bg-slate-200 rounded overflow-hidden">
+                    <img src={img} alt="" className="w-full h-full object-cover" />
+                  </div>
+                ))
+              ) : (
+                <div className="col-span-2 flex items-center justify-center text-slate-400">
+                  <i className={`${category.icon} text-4xl`}></i>
+                </div>
+              )}
+              {previewImages.length > 0 && previewImages.length < 4 && (
+                Array.from({ length: 4 - previewImages.length }).map((_, idx) => (
+                  <div key={`empty-${idx}`} className="bg-slate-100 rounded"></div>
+                ))
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Folder Info */}
+        <div
+          className="p-3"
+          style={{ backgroundColor: category.color + '15' }}
+        >
+          <h4 className="font-bold text-slate-800 text-sm truncate">
+            {category.name}
+          </h4>
+          <p className="text-xs text-slate-500 mt-1">
+            {categoryProducts.length} producto{categoryProducts.length !== 1 ? 's' : ''}
+            {nSub > 0 && ` · ${nSub} subcarpeta${nSub !== 1 ? 's' : ''}`}
+          </p>
+        </div>
+
+        {/* Add Product Button */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setSelectedCategory(category.id);
+            setNewProductCategory(category.id);
+            setCatalogView('products');
+            setShowCategoryForm(false);
+            setShowProductForm(true);
+          }}
+          className="absolute top-2 right-2 w-8 h-8 bg-purple-600 text-white rounded-full shadow-lg opacity-100 md:opacity-0 md:group-hover:opacity-100 transition flex items-center justify-center hover:bg-purple-700"
+          title="Agregar producto a esta carpeta"
+        >
+          <i className="fa-solid fa-plus"></i>
+        </button>
+
+        {/* Editar carpeta: hasta ahora no había forma de
+            cambiarle el nombre ni la portada una vez creada. */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            handleEditCategory(category);
+          }}
+          className="absolute top-12 left-2 w-8 h-8 bg-blue-500 text-white rounded-full shadow-lg opacity-100 md:opacity-0 md:group-hover:opacity-100 transition flex items-center justify-center hover:bg-blue-600"
+          title="Editar carpeta"
+        >
+          <i className="fa-solid fa-pen text-xs"></i>
+        </button>
+
+        {/* Delete Folder Button */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            handleDeleteCategory(category.id);
+          }}
+          className="absolute top-2 left-2 w-8 h-8 bg-red-500 text-white rounded-full shadow-lg opacity-100 md:opacity-0 md:group-hover:opacity-100 transition flex items-center justify-center hover:bg-red-600"
+        >
+          <i className="fa-solid fa-trash text-xs"></i>
+        </button>
+      </div>
+    );
   };
 
   const handleProductImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -2868,14 +3101,15 @@ ${describeError(error)}
                       </div>
                       <span className="text-slate-700 text-[11.5px] font-semibold">Catálogo</span>
                     </button>
-                    {/* Las tiendas que guardó al escanear sus QR. Se le
-                        enseña a todo el mundo: quien vende también compra. */}
+                    {/* Las tiendas que sigue desde sus QR. Se le enseña a todo
+                        el mundo: quien vende también compra. El corazón es el
+                        mismo del botón «Seguir tienda» del catálogo. */}
                     <button onClick={() => setShowTiendas(true)} className="bg-white p-3 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2 relative group">
-                      <Tip text="Tiendas que guardaste al escanear QRs" />
-                      <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center text-white shadow-sm shadow-amber-500/30">
-                        <i className="fa-solid fa-bookmark text-lg"></i>
+                      <Tip text="Tiendas que sigues desde sus QR" />
+                      <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-rose-500 to-pink-600 flex items-center justify-center text-white shadow-sm shadow-rose-500/30">
+                        <i className="fa-solid fa-heart text-lg"></i>
                       </div>
-                      <span className="text-slate-700 text-[11.5px] font-semibold">Tiendas</span>
+                      <span className="text-slate-700 text-[11.5px] font-semibold">Siguiendo</span>
                     </button>
                     <button onClick={() => setShowWallet(true)} className="bg-white p-3 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2 relative group">
                       <Tip text="Tu número de cuenta y datos bancarios" />
@@ -3294,11 +3528,21 @@ ${describeError(error)}
               {/* View Toggle - Only show when in products view */}
               {catalogView === 'products' && (
                 <button
-                  onClick={() => { setCatalogView('folders'); setShowProductForm(false); setEditingProduct(null); setNewProductName(''); setNewProductPrice(''); setNewProductStock(''); setNewProductDescription(''); setNewProductImage(''); setNewProductImages([]);}}
+                  onClick={() => {
+                    // Desde una subcarpeta se vuelve a su carpeta, no al principio.
+                    if (volverASuMadre && catSeleccionada?.parentId) {
+                      setSelectedCategory(catSeleccionada.parentId);
+                      setNewProductCategory(catSeleccionada.parentId);
+                    } else {
+                      setCatalogView('folders');
+                    }
+                    setShowCategoryForm(false);
+                    setShowProductForm(false); setEditingProduct(null); setNewProductName(''); setNewProductPrice(''); setNewProductStock(''); setNewProductDescription(''); setNewProductImage(''); setNewProductImages([]);
+                  }}
                   className="mb-4 text-purple-600 hover:text-purple-700 font-semibold flex items-center gap-2"
                 >
                   <i className="fa-solid fa-arrow-left"></i>
-                  Volver a Carpetas
+                  {madreSeleccionada ? `Volver a ${madreSeleccionada.name}` : 'Volver a Carpetas'}
                 </button>
               )}
 
@@ -3312,7 +3556,7 @@ ${describeError(error)}
                         Carpetas de Productos
                       </h3>
                       <button
-                        onClick={() => setShowCategoryForm(!showCategoryForm)}
+                        onClick={() => (showCategoryForm ? setShowCategoryForm(false) : abrirFormularioNuevaCarpeta())}
                         className="text-purple-600 hover:text-purple-700 font-semibold text-sm flex items-center gap-2"
                       >
                         <i className="fa-solid fa-plus"></i>
@@ -3320,169 +3564,11 @@ ${describeError(error)}
                       </button>
                     </div>
 
-                    {showCategoryForm && (
-                      <div className="mb-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
-                        <div className="space-y-4">
-                          <div className="grid grid-cols-[1fr_auto] gap-2">
-                            <input
-                              type="text"
-                              placeholder="Nombre de la carpeta"
-                              value={newCategoryName}
-                              onChange={e => setNewCategoryName(e.target.value)}
-                              className="bg-white p-3 rounded-lg border border-slate-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-100 outline-none"
-                            />
-                            <button
-                              onClick={handleSaveCategory}
-                              disabled={!newCategoryName.trim()}
-                              className="bg-purple-600 text-white px-6 rounded-lg hover:bg-purple-700 transition disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
-                            >
-                              <i className="fa-solid fa-check mr-2"></i>
-                              {editingCategory ? 'Guardar' : 'Crear'}
-                            </button>
-                          </div>
-
-                          {/* Cover Image Upload */}
-                          <div>
-                            <label className="block text-sm font-semibold text-slate-700 mb-2">
-                              <i className="fa-solid fa-image mr-2 text-purple-600"></i>
-                              Portada de la Carpeta (Opcional)
-                            </label>
-                            <div className="flex gap-4 items-center">
-                              <div className="flex-1">
-                                <input
-                                  type="file"
-                                  accept="image/*"
-                                  onChange={handleCategoryCoverImageUpload}
-                                  className="hidden"
-                                  id="category-cover-upload"
-                                />
-                                <label
-                                  htmlFor="category-cover-upload"
-                                  className="block w-full bg-white p-3 rounded-lg border-2 border-dashed border-slate-300 hover:border-purple-500 cursor-pointer transition text-center"
-                                >
-                                  <i className="fa-solid fa-cloud-upload-alt text-purple-600 text-xl mb-2"></i>
-                                  <div className="text-sm text-slate-600">
-                                    {newCategoryCoverImage ? 'Cambiar portada' : 'Seleccionar imagen de portada'}
-                                  </div>
-                                </label>
-                              </div>
-                              {newCategoryCoverImage && (
-                                <div className="relative">
-                                  <img
-                                    src={newCategoryCoverImage}
-                                    alt="Preview"
-                                    className="w-24 h-24 object-cover rounded-lg border-2 border-purple-500"
-                                  />
-                                  <button
-                                    onClick={() => setNewCategoryCoverImage('')}
-                                    className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition"
-                                  >
-                                    <i className="fa-solid fa-times text-xs"></i>
-                                  </button>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
+                    {showCategoryForm && renderFormularioCarpeta()}
 
                     {/* Folder Grid */}
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                      {categories.map(category => {
-                        const categoryProducts = products.filter(p => p.categoryId === category.id);
-                        const previewImages = categoryProducts.slice(0, 4).map(p => p.image);
-
-                        return (
-                          <div
-                            key={category.id}
-                            className="relative bg-white rounded-xl border-2 border-slate-200 overflow-hidden hover:shadow-lg transition cursor-pointer group"
-                            onClick={() => { setSelectedCategory(category.id); setNewProductCategory(category.id); setCatalogView('products'); }}
-                          >
-                            {/* Cover Image or Preview Images Grid */}
-                            <div className="aspect-square bg-slate-100 overflow-hidden">
-                              {category.coverImage ? (
-                                <img
-                                  src={category.coverImage}
-                                  alt={category.name}
-                                  className="w-full h-full object-cover"
-                                />
-                              ) : (
-                                <div className="w-full h-full grid grid-cols-2 gap-0.5 p-0.5">
-                                  {previewImages.length > 0 ? (
-                                    previewImages.map((img, idx) => (
-                                      <div key={idx} className="bg-slate-200 rounded overflow-hidden">
-                                        <img src={img} alt="" className="w-full h-full object-cover" />
-                                      </div>
-                                    ))
-                                  ) : (
-                                    <div className="col-span-2 flex items-center justify-center text-slate-400">
-                                      <i className={`${category.icon} text-4xl`}></i>
-                                    </div>
-                                  )}
-                                  {previewImages.length > 0 && previewImages.length < 4 && (
-                                    Array.from({ length: 4 - previewImages.length }).map((_, idx) => (
-                                      <div key={`empty-${idx}`} className="bg-slate-100 rounded"></div>
-                                    ))
-                                  )}
-                                </div>
-                              )}
-                            </div>
-
-                            {/* Folder Info */}
-                            <div
-                              className="p-3"
-                              style={{ backgroundColor: category.color + '15' }}
-                            >
-                              <h4 className="font-bold text-slate-800 text-sm truncate">
-                                {category.name}
-                              </h4>
-                              <p className="text-xs text-slate-500 mt-1">
-                                {categoryProducts.length} producto{categoryProducts.length !== 1 ? 's' : ''}
-                              </p>
-                            </div>
-
-                            {/* Add Product Button */}
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedCategory(category.id);
-                                setNewProductCategory(category.id);
-                                setCatalogView('products');
-                                setShowProductForm(true);
-                              }}
-                              className="absolute top-2 right-2 w-8 h-8 bg-purple-600 text-white rounded-full shadow-lg opacity-100 md:opacity-0 md:group-hover:opacity-100 transition flex items-center justify-center hover:bg-purple-700"
-                              title="Agregar producto a esta carpeta"
-                            >
-                              <i className="fa-solid fa-plus"></i>
-                            </button>
-
-                            {/* Editar carpeta: hasta ahora no había forma de
-                                cambiarle el nombre ni la portada una vez creada. */}
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleEditCategory(category);
-                              }}
-                              className="absolute top-12 left-2 w-8 h-8 bg-blue-500 text-white rounded-full shadow-lg opacity-100 md:opacity-0 md:group-hover:opacity-100 transition flex items-center justify-center hover:bg-blue-600"
-                              title="Editar carpeta"
-                            >
-                              <i className="fa-solid fa-pen text-xs"></i>
-                            </button>
-
-                            {/* Delete Folder Button */}
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteCategory(category.id);
-                              }}
-                              className="absolute top-2 left-2 w-8 h-8 bg-red-500 text-white rounded-full shadow-lg opacity-100 md:opacity-0 md:group-hover:opacity-100 transition flex items-center justify-center hover:bg-red-600"
-                            >
-                              <i className="fa-solid fa-trash text-xs"></i>
-                            </button>
-                          </div>
-                        );
-                      })}
+                      {carpetasPrincipales(categories).map(renderTarjetaCarpeta)}
                     </div>
                   </div>
                 </>
@@ -3557,8 +3643,8 @@ ${describeError(error)}
                             } : {}}
                           >
                             <option value="">Sin categoría</option>
-                            {categories.map(cat => (
-                              <option key={cat.id} value={cat.id}>{cat.name}</option>
+                            {carpetasEnOrden(categories).map(cat => (
+                              <option key={cat.id} value={cat.id}>{etiquetaDeCarpeta(cat, categories)}</option>
                             ))}
                           </select>
                           {/* Solo la flecha. El icono de la carpeta se pintaba
@@ -3703,11 +3789,45 @@ ${describeError(error)}
                     </div>
                   )}
 
+                  {/* Subcarpetas: solo dentro de una carpeta principal. Un solo
+                      nivel, así que una subcarpeta no ofrece otras. */}
+                  {catSeleccionada && !volverASuMadre && (
+                    <div className="mb-6">
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="font-bold text-slate-800 flex items-center gap-2">
+                          <i className="fa-solid fa-folder-tree text-amber-500"></i>
+                          Subcarpetas
+                        </h3>
+                        <button
+                          onClick={() => (showCategoryForm ? setShowCategoryForm(false) : abrirFormularioNuevaCarpeta(catSeleccionada.id))}
+                          className="text-purple-600 hover:text-purple-700 font-semibold text-sm flex items-center gap-2"
+                        >
+                          <i className="fa-solid fa-plus"></i>
+                          Nueva subcarpeta
+                        </button>
+                      </div>
+
+                      {showCategoryForm && renderFormularioCarpeta()}
+
+                      {subcarpetasDe(categories, catSeleccionada.id).length > 0 ? (
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                          {subcarpetasDe(categories, catSeleccionada.id).map(renderTarjetaCarpeta)}
+                        </div>
+                      ) : (
+                        !showCategoryForm && (
+                          <p className="text-xs text-slate-400 italic">
+                            Esta carpeta no tiene subcarpetas. Úsalas para partirla, por ejemplo «Jean» en «Jean hombre» y «Jean mujer».
+                          </p>
+                        )
+                      )}
+                    </div>
+                  )}
+
                   {/* Products Gallery */}
                   <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
                     <i className="fa-solid fa-images text-purple-500"></i>
                     {selectedCategory
-                      ? `${categories.find(c => c.id === selectedCategory)?.name} (${products.filter(p => p.categoryId === selectedCategory).length})`
+                      ? `${catSeleccionada ? etiquetaDeCarpeta(catSeleccionada, categories) : ''} (${products.filter(p => p.categoryId === selectedCategory).length})`
                       : `Productos en Catálogo (${products.length})`
                     }
                   </h3>
