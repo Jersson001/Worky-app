@@ -4,13 +4,13 @@ Esta guía te llevará paso a paso para publicar tu aplicación Worky en Google 
 
 ---
 
-## 📌 Dónde va esto — al 6 de octubre de 2026
+## 📌 Dónde va esto — al 12 de octubre de 2026
 
-La 2.10.0 (`versionCode` 26100601) ya se subió, así que su número está gastado. El
-siguiente envío va con el **`versionCode` 26100602 (versión 2.10.1)**,
-compilado y firmado, en el Escritorio como `Worky-2.10.1.aab`. Ya se enviaron el 19, el 20, el 21, el
-26092201 (2.8.4), el 26092702 (2.8.8) y el 26100501 (2.9.0); lo intermedio está
-compilado y nunca se subió por separado.
+La 2.10.1 (`versionCode` 26100602) ya se subió, así que su número está gastado. El
+siguiente envío va con el **`versionCode` 26101201 (versión 2.11.0)**,
+compilado y firmado, en el Escritorio como `Worky-2.11.0.aab`. Ya se enviaron el 19, el 20, el 21, el
+26092201 (2.8.4), el 26092702 (2.8.8), el 26100501 (2.9.0), el 26100601 (2.10.0) y el
+26100602 (2.10.1); lo intermedio está compilado y nunca se subió por separado.
 
 **Dos avisos de Play Console, y los dos se resuelven fuera del código:**
 
@@ -22,16 +22,23 @@ compilado y nunca se subió por separado.
 2. **API 36.** El proyecto ya apunta a 36. El aviso se refiere a la versión en
    producción, que sigue en API 35: se cierra publicando una versión nueva.
 
-**Novedades de la 2.10.0 para la ficha de Play** (por debajo de 500 caracteres):
+**Novedades de la 2.11.0 para la ficha de Play** (357 caracteres; el tope de Play es 500):
 
 ```
 Novedades:
-• Cobro mensual y panel de suscripciones.
-• Cotizaciones: vista previa antes de crearlas, borrador que se guarda solo, calculadora de medidas (ML y m²), comentarios con viñetas y titulares editables.
-• Contactos: documento (cédula, NIT o RUT) que sale en cotización, factura, cuenta de cobro y recibo, y nombre editable.
-• Celular o usuario de WhatsApp en todos los formularios.
-• Correcciones: el logo y la firma ya no se mezclan entre cuentas, y la contraseña se puede ver al escribirla.
+• Catálogo: organiza tus carpetas en subcarpetas.
+• Tiendas: nuevo botón «Seguir tienda» con corazón. Si tienes Worky instalada, el QR de una tienda ahora se abre directo en la app.
+• Las tarjetas del catálogo muestran el comentario del producto, y las carpetas ya no llevan números.
+• Seguridad: protegemos mejor los textos del catálogo público.
 ```
+
+**Los enlaces de aplicación dependen de Play.** Android verifica al instalar que
+`/.well-known/assetlinks.json` de `worky.ferryapp.co` y de
+`worky-app-khaki.vercel.app` liste la huella de la firma del paquete instalado.
+Con Play App Signing esa huella es la del certificado de firma de aplicaciones
+(Play Console → Integridad de la app → Firma de apps), distinta de la de la llave
+de subida; el archivo lleva las dos. Si algún día se cambia la clave de firma,
+hay que actualizar el archivo, o el QR vuelve a abrir la web.
 
 La política y la
 página de eliminación de cuenta viven ahora en el dominio propio:
@@ -126,7 +133,8 @@ intento fallido gasta un número:
 | 26092702 (2.8.8) | Menú «Editar perfil» / «Cerrar sesión» en «Mi perfil». **Subida a Play** |
 | 26100501 (2.9.0) | Cobro mensual, calculadora de medidas y titulares editables en la cotización, celular o usuario de WhatsApp en todos los formularios, y logo, firma y documentos separados por cuenta. **Enviada y devuelta por las credenciales de demostración**: número gastado |
 | 26100601 (2.10.0) | El documento del contacto en cotización, factura, cuenta de cobro y recibo; nombre del contacto editable; vista previa y borrador de la cotización. **Subida a Play**: número gastado |
-| **26100602 (2.10.1)** | El ojito para ver la contraseña. **La que va a Play** |
+| 26100602 (2.10.1) | El ojito para ver la contraseña. **Subida a Play**: número gastado |
+| **26101201 (2.11.0)** | Subcarpetas en el catálogo, «Seguir tienda» con corazón, el comentario del producto en el catálogo público, el arreglo de seguridad del visor y los enlaces de aplicación (el QR de una tienda abre la app). **La que va a Play** |
 
 **Play exige API 36** desde el 1 de septiembre de 2026. Está en
 `android/variables.gradle`.
@@ -179,9 +187,10 @@ fue por el contenido de la app:
 - ✅ **Política de privacidad y términos** escritos, en `public/`, empaquetados con la app
 - ✅ **Página de eliminación de cuenta** en `public/eliminar-cuenta.html`, que es
   la URL que pide el formulario de Seguridad de los datos
-- ✅ VersionCode 26100601 (2.10.0) compilado, firmado y subido el 06/10/2026, con todo
+- ✅ VersionCode 26101201 (2.11.0) compilado y firmado el 12/10/2026, con todo
   lo anterior dentro. El 19, el 20, el 21, el 26092201 (2.8.4), el 26092702
-  (2.8.8) y el 26100501 (2.9.0) ya se enviaron
+  (2.8.8), el 26100501 (2.9.0), el 26100601 (2.10.0) y el 26100602 (2.10.1) ya
+  se enviaron
 - ✅ **Notificaciones probadas en un teléfono de verdad** el 20/09/2026: llegan
   con la app cerrada, con la W en la barra de estado
 - ⏳ **Pendiente de subir.** Ver arriba lo que falta.

@@ -1031,17 +1031,37 @@ llegue a publicarse, así que cada intento fallido quema un número:
 | 26092702 (2.8.8) | «Mi perfil» abre un menú con «Editar perfil» y «Cerrar sesión». **Subida a Play**, número gastado |
 | 26100501 (2.9.0) | Cobro mensual, mejoras de la cotización por oficios (calculadora de medidas, titulares editables, viñetas), celular o usuario de WhatsApp en todos los formularios, y el logo, la firma y los documentos separados por cuenta. **Enviada a Play y devuelta por las credenciales de demostración**, número gastado |
 | 26100601 (2.10.0) | El documento del contacto (cédula, NIT o RUT) al crearlo y en cotización, factura, cuenta de cobro y recibo; nombre del contacto editable y sin alias; vista previa de la cotización y borrador que se guarda solo; celular o usuario de WhatsApp en la cotización. **Subida a Play el 06/10/2026**, número gastado |
-| **26100602 (2.10.1)** | El ojito para ver la contraseña al iniciar sesión, al registrarse y al completar el registro. **Compilada y firmada el 06/10/2026** |
+| 26100602 (2.10.1) | El ojito para ver la contraseña al iniciar sesión, al registrarse y al completar el registro. **Subida a Play**, número gastado |
+| **26101201 (2.11.0)** | Subcarpetas en el catálogo (un nivel), «Seguir tienda» con corazón en vez de «Guardar», el comentario del producto en el catálogo público, carpetas sin números, el arreglo de seguridad del visor del catálogo y los enlaces de aplicación: el QR de una tienda abre la app instalada. **Compilada y firmada el 12/10/2026; es la que va a Play** |
 
 Play exige **API 36** desde el 1 de septiembre de 2026. El proyecto ya apunta a
 36 (`android/variables.gradle`); el aviso de Play Console habla de la versión
 que está en producción, que se subió antes y sigue en API 35. Se cierra
 publicando en producción una versión nueva.
 
-**La 2.10.0 (26100601) se subió a Play el 06/10/2026**; la siguiente es la 26100602 (2.10.1), compilada y firmada el 06/10/2026, que es la que va a Play.
+**La 2.10.1 (26100602) se subió a Play**; la siguiente es la 26101201 (2.11.0),
+compilada y firmada el 12/10/2026, que es la que va a Play.
 Del 14 al 21 son números gastados —enviados o rechazados—, y también todos hasta
-el 26100501 (2.9.0). Las 2.6.0 a 2.8.7 están compiladas y nunca se enviaron por
-separado: sus cambios entraron en la 2.8.8, la 2.9.0 y la 2.10.0.
+el 26100602 (2.10.1). Las 2.6.0 a 2.8.7 están compiladas y nunca se enviaron por
+separado: sus cambios entraron en la 2.8.8, la 2.9.0, la 2.10.x y la 2.11.0.
+
+**Enlaces de aplicación (12/10/2026).** Con la app instalada, escanear el QR de
+una tienda abre la app y no la web. El manifiesto declara `worky.ferryapp.co` y
+`worky-app-khaki.vercel.app` —solo la raíz `/`, así que la política y «eliminar
+cuenta» siguen abriéndose en el navegador— con `autoVerify`, y cada dominio
+sirve [`/.well-known/assetlinks.json`](public/.well-known/assetlinks.json) con
+el paquete `com.worky.app.v2` y dos huellas SHA-256: la de la llave de subida
+(los `.apk` que se instalan a mano) y la de firma de Play (la app instalada
+desde la tienda). Android verifica al instalar, así que el archivo tiene que
+estar publicado, sin redirecciones, antes de instalar la versión nueva. La app
+no interpreta el enlace: al recibirlo por `appUrlOpen` recarga su WebView con
+la misma ruta ([`utils/enlacesDeLaApp.ts`](utils/enlacesDeLaApp.ts)), y
+catálogo, invitación, documento compartido y recuperar contraseña funcionan
+como en la web; un seguro de 15 segundos evita el bucle de recarga. Se
+comprueba en un teléfono con `adb shell pm get-app-links com.worky.app.v2`: los
+dos dominios deben salir `verified`. Lo que no se controla: una app lectora de
+QR que abra el enlace en su propio navegador, o quien tenga desactivado «Abrir
+enlaces compatibles» para Worky.
 
 **La 2.9.0 la devolvió Google por la cuenta de demostración**, no por el
 paquete: «Las credenciales de inicio de sesión son incorrectas». El atajo por
