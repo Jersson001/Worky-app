@@ -1,11 +1,14 @@
 [
   {
-    "relation": ["delegate_permission/common.handle_all_urls"],
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
     "target": {
       "namespace": "android_app",
       "package_name": "com.worky.app.v2",
       "sha256_cert_fingerprints": [
-        "B0:83:DB:58:30:FC:0E:64:73:EE:CD:AE:92:57:2E:CB:E9:BF:C9:CB:39:87:9D:AD:78:6A:00:AC:9B:E2:8D:3E"
+        "B0:83:DB:58:30:FC:0E:64:73:EE:CD:AE:92:57:2E:CB:E9:BF:C9:CB:39:87:9D:AD:78:6A:00:AC:9B:E2:8D:3E",
+        "0F:4F:E5:2E:DA:BA:AF:E5:90:07:BB:6F:D7:7A:97:98:C7:DA:D9:B7:05:61:39:97:76:C6:71:FB:08:88:D1:06"
       ]
     }
   }
