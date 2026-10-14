@@ -17,6 +17,7 @@ import { uploadQuotePhotos } from '../services/storageService';
 import { saveUserProfile, getCurrentUserId } from '../services/messagingService';
 import { Borrador, borrarBorrador, claveBorrador, guardarBorrador, leerBorrador, quoteVacia } from '../utils/borradorCotizacion';
 import { hayCondiciones, repartoDePago } from '../utils/condicionesCotizacion';
+import { formularioDesdeCotizacion } from '../utils/cotizacionAFormulario';
 import { subtotalDeItem } from '../utils/tallas';
 
 // Sub-components
@@ -306,6 +307,23 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
   quoteRef.current = forms.quote;
   const yaRestauradoAlAbrir = useRef(false);
 
+  /**
+   * De qué cotización ya enviada viene el formulario abierto, si viene de una.
+   *
+   * «copia» arma una cotización nueva a partir de otra; «edicion» corrige la
+   * misma y, al guardar, la reescribe en el chat. Ninguna de las dos es el
+   * borrador del contacto: si lo tocaran, un «Continuar» posterior abriría la
+   * corrección de otra cotización como si fuera trabajo a medias.
+   */
+  const [origenCotizacion, setOrigenCotizacion] = useState<{
+    tipo: 'copia' | 'edicion';
+    messageId: string;
+    numero: string;
+    metadataId?: string;
+  } | null>(null);
+  const origenRef = useRef(origenCotizacion);
+  origenRef.current = origenCotizacion;
+
   useEffect(() => {
     setBorrador(claveDelBorrador ? leerBorrador(claveDelBorrador) : null);
     setBorradorRetomado(false);
@@ -313,15 +331,15 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
 
   // Se guarda con un respiro de medio segundo, para no escribir en cada tecla.
   useEffect(() => {
-    if (!claveDelBorrador || !forms.modals.quote) return;
+    if (!claveDelBorrador || !forms.modals.quote || origenCotizacion) return;
     const t = setTimeout(() => setBorrador(guardarBorrador(claveDelBorrador, forms.quote)), 500);
     return () => clearTimeout(t);
-  }, [forms.quote, forms.modals.quote, claveDelBorrador]);
+  }, [forms.quote, forms.modals.quote, claveDelBorrador, origenCotizacion]);
 
   // Cerrar la app no avisa: al pasar a segundo plano se guarda lo último, sin
   // esperar al respiro.
   useEffect(() => {
-    if (!claveDelBorrador || !forms.modals.quote) return;
+    if (!claveDelBorrador || !forms.modals.quote || origenCotizacion) return;
     const volcar = () => { guardarBorrador(claveDelBorrador, quoteRef.current); };
     const alOcultar = () => { if (document.visibilityState === 'hidden') volcar(); };
     document.addEventListener('visibilitychange', alOcultar);
@@ -330,7 +348,7 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
       document.removeEventListener('visibilitychange', alOcultar);
       window.removeEventListener('pagehide', volcar);
     };
-  }, [claveDelBorrador, forms.modals.quote]);
+  }, [claveDelBorrador, forms.modals.quote, origenCotizacion]);
 
   // Al abrir la cotización con el formulario en blanco, vuelve lo que había.
   // Si llega con contenido —desde una foto del chat— no se pisa.
@@ -338,7 +356,7 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
     if (!forms.modals.quote) { yaRestauradoAlAbrir.current = false; return; }
     if (yaRestauradoAlAbrir.current) return;
     yaRestauradoAlAbrir.current = true;
-    if (!claveDelBorrador) return;
+    if (!claveDelBorrador || origenRef.current) return;
     const guardado = leerBorrador(claveDelBorrador);
     if (guardado && quoteVacia(quoteRef.current)) {
       forms.restoreQuote(guardado.quote);
@@ -354,11 +372,34 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
   };
 
   const cerrarCotizacion = () => {
-    if (claveDelBorrador) setBorrador(guardarBorrador(claveDelBorrador, forms.quote));
+    // Una copia o una edición que se cierra se descarta: el borrador que hubiera
+    // sigue siendo el de antes.
+    if (claveDelBorrador && !origenCotizacion) setBorrador(guardarBorrador(claveDelBorrador, forms.quote));
     setBorradorRetomado(false);
+    setOrigenCotizacion(null);
     forms.resetQuote((contact.phone || ''), contact.documento || '');
     forms.closeModal('quote');
   };
+
+  /**
+   * Abre el formulario con una cotización ya enviada puesta encima.
+   *
+   * Reemplaza lo que hubiera en el formulario: quien llega aquí viene de pulsar
+   * el botón de una cotización, no de seguir escribiendo.
+   */
+  const abrirDesdeCotizacion = useCallback((msg: Message, tipo: 'copia' | 'edicion') => {
+    if (!msg.metadata) return;
+    forms.resetQuote((contact.phone || ''), contact.documento || '');
+    forms.restoreQuote(formularioDesdeCotizacion(msg.metadata, paymentAccounts));
+    setBorradorRetomado(false);
+    setOrigenCotizacion({
+      tipo,
+      messageId: msg.id,
+      numero: msg.metadata.number || '',
+      metadataId: msg.metadata.id,
+    });
+    forms.openModal('quote');
+  }, [forms, contact.phone, contact.documento, paymentAccounts]);
 
   /**
    * La cotización tal como saldría, con las líneas y secciones que se le pasen.
@@ -428,7 +469,7 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
       alert('Todavía no hay ninguna línea con precio para mostrar. Agrega al menos un ítem con cantidad y costo unitario.');
       return;
     }
-    setVistaPrevia(armarCotizacion(lineas, sections, 'VISTA PREVIA'));
+    setVistaPrevia(armarCotizacion(lineas, sections, origenCotizacion?.tipo === 'edicion' ? origenCotizacion.numero : 'VISTA PREVIA'));
   };
 
   const handleSendQuote = useCallback(async () => {
@@ -483,7 +524,20 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
       setEnviandoCotizacion(false);
     }
 
-    onSendMessage('📋 Cotización enviada', 'quote', armarCotizacion(validItems, sectionsSubidas, `COT-${Math.floor(Math.random() * 10000)}`));
+    const origen = origenCotizacion;
+    if (origen?.tipo === 'edicion') {
+      // La misma cotización, con el mismo número: el cliente ve cambiar la que
+      // ya tenía en el chat, no le llega otra. Vuelve a pendiente porque lo que
+      // aprobara o rechazara ya no es lo que dice el documento.
+      const corregida = {
+        ...armarCotizacion(validItems, sectionsSubidas, origen.numero),
+        ...(origen.metadataId ? { id: origen.metadataId } : {}),
+        editadaEl: new Date(),
+      };
+      onUpdateMessage(origen.messageId, { metadata: corregida });
+    } else {
+      onSendMessage('📋 Cotización enviada', 'quote', armarCotizacion(validItems, sectionsSubidas, `COT-${Math.floor(Math.random() * 10000)}`));
+    }
 
     // Lo que se escribió aquí queda en la ficha: la próxima cotización a este
     // cliente ya sale con su documento. Si falla no se pierde la cotización.
@@ -493,12 +547,17 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
         console.warn('No se pudo guardar el documento en el contacto:', e));
     }
 
-    if (claveDelBorrador) borrarBorrador(claveDelBorrador);
-    setBorrador(null);
+    // Enviar una copia o una edición no cierra el borrador del contacto: es un
+    // trabajo aparte, y el que hubiera sigue esperando.
+    if (!origen) {
+      if (claveDelBorrador) borrarBorrador(claveDelBorrador);
+      setBorrador(null);
+    }
     setBorradorRetomado(false);
+    setOrigenCotizacion(null);
     forms.resetQuote((contact.phone || ''), documentoFinal || contact.documento || '');
     forms.closeModal('quote');
-  }, [forms.quote, contact, onSendMessage, enviandoCotizacion, armarCotizacion, onSetContactDocumento, claveDelBorrador]);
+  }, [forms.quote, contact, onSendMessage, onUpdateMessage, enviandoCotizacion, armarCotizacion, onSetContactDocumento, claveDelBorrador, origenCotizacion]);
 
   const handleSendCollection = useCallback(() => {
     const { amount, concept, directedTo, nit, selectedAccount, selectedProject } = forms.collection;
@@ -669,7 +728,7 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
               onClick={() => { setVistaPrevia(null); void handleSendQuote(); }}
               className="bg-[#00a884] text-[#111b21] px-6 py-2 rounded-full font-bold shadow-lg hover:bg-[#00c298] transition flex items-center gap-2"
             >
-              <i className="fa-solid fa-paper-plane"></i> {contact.role === 'supplier' ? 'Enviar cotización' : 'Crear cotización'}
+              <i className="fa-solid fa-paper-plane"></i> {origenCotizacion?.tipo === 'edicion' ? 'Guardar cambios' : contact.role === 'supplier' ? 'Enviar cotización' : 'Crear cotización'}
             </button>
           }
         />
@@ -739,6 +798,8 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
           onCopyPaymentInfo={handleCopyPaymentInfo}
           onShowQR={handleShowQR}
           onQuoteImage={esCliente ? undefined : handleQuoteImage}
+          onCopyQuote={esCliente ? undefined : (msg) => abrirDesdeCotizacion(msg, 'copia')}
+          onEditQuote={esCliente ? undefined : (msg) => abrirDesdeCotizacion(msg, 'edicion')}
         />
 
         {avisoSobreElInput}
@@ -800,7 +861,25 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
           onSetValidDays={(v) => forms.setQuoteField('validDays', v)} onSetTaxType={(v) => forms.setQuoteField('taxType', v as any)} onSetTaxPercentage={(v) => forms.setQuoteField('taxPercentage', v)}
           onSetAIUAdmin={(v) => forms.setQuoteField('aiuAdmin', v)} onSetAIUImprevistos={(v) => forms.setQuoteField('aiuImprevistos', v)} onSetAIUUtilidad={(v) => forms.setQuoteField('aiuUtilidad', v)} onSetAIUIva={(v) => forms.setQuoteField('aiuIva', v)}
           onSetClientAddress={(v) => forms.setQuoteField('clientAddress', v)} onSetClientPhone={(v) => forms.setQuoteField('clientPhone', v)} onSetClientDocumento={(v) => forms.setQuoteField('clientDocumento', v)} onPreview={abrirVistaPrevia}
-          aviso={borradorRetomado ? (
+          titulo={origenCotizacion
+            ? (origenCotizacion.tipo === 'edicion' ? 'Editar Cotización' : 'Copiar Cotización')
+            : undefined}
+          etiquetaEnviar={origenCotizacion
+            ? (origenCotizacion.tipo === 'edicion' ? 'Guardar cambios' : 'Crear copia')
+            : undefined}
+          aviso={origenCotizacion ? (
+            <div className="mb-4 bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs text-blue-900">
+              <p className="font-bold mb-0.5">
+                <i className={`fa-solid ${origenCotizacion.tipo === 'edicion' ? 'fa-pen' : 'fa-copy'} mr-1.5`}></i>
+                {origenCotizacion.tipo === 'edicion' ? `Editando la ${origenCotizacion.numero}` : `Copia de la ${origenCotizacion.numero}`}
+              </p>
+              <p className="leading-snug">
+                {origenCotizacion.tipo === 'edicion'
+                  ? 'Al guardar, la cotización cambia en el chat con el mismo número y vuelve a quedar pendiente.'
+                  : 'Cambia lo que haga falta. Al crearla sale como una cotización nueva, con su propio número; la original no se toca.'}
+              </p>
+            </div>
+          ) : borradorRetomado ? (
             <div className="mb-4 bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-900">
               <p className="font-bold mb-0.5"><i className="fa-solid fa-clock-rotate-left mr-1.5"></i>Retomaste tu borrador</p>
               <p className="leading-snug">
