@@ -28,18 +28,12 @@ interface MessageBubbleProps {
    * quien mira es el vendedor: al cliente no se le ofrecen sus herramientas.
    */
   onQuoteImage?: (imageUrl: string, texto?: string) => void;
-  /**
-   * Copiar o editar una cotización que ya se envió. Igual que la anterior, solo
-   * llegan cuando quien mira es el vendedor.
-   */
-  onCopyQuote?: (msg: Message) => void;
-  onEditQuote?: (msg: Message) => void;
 }
 
 export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
   msg, contactRole, contactName, copiedText,
   onViewDocument, onMarkPayment, onUpdateMessage, onDeleteMessage, onCopyPaymentInfo, onShowQR,
-  onQuoteImage, onCopyQuote, onEditQuote,
+  onQuoteImage,
 }) => {
   const isSystem = msg.metadata?.isSystem;
 
@@ -437,10 +431,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
                 <QuoteBubble
                   msg={msg}
                   onView={() => onViewDocument('quote', msg.metadata)}
-                  onUpdateMessage={onUpdateMessage}
-                  onCopy={onCopyQuote ? () => onCopyQuote(msg) : undefined}
-                  onEdit={onEditQuote ? () => onEditQuote(msg) : undefined}
-                />
+                  onUpdateMessage={onUpdateMessage}                />
               )}
 
               {msg.type === 'collection_account' && msg.metadata && (

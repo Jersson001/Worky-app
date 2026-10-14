@@ -9,20 +9,11 @@ interface QuoteBubbleProps {
   msg: Message;
   onView: () => void;
   onUpdateMessage: (messageId: string, metadata: any) => void;
-  /** Arma una cotización nueva a partir de esta. Solo la ofrece quien la envió. */
-  onCopy?: () => void;
-  /** Corrige esta misma cotización. No se ofrece una vez aprobada. */
-  onEdit?: () => void;
 }
 
-export const QuoteBubble: React.FC<QuoteBubbleProps> = React.memo(({ msg, onView, onUpdateMessage, onCopy, onEdit }) => {
+export const QuoteBubble: React.FC<QuoteBubbleProps> = React.memo(({ msg, onView, onUpdateMessage }) => {
   const meta = msg.metadata;
   if (!meta) return null;
-
-  // Aprobada ya tiene proyecto: cambiarle el precio dejaría el proyecto con otro
-  // valor que el documento. Para eso está copiar, que arma una nueva.
-  const puedeEditar = !!onEdit && msg.sender === 'me' && meta.status !== 'accepted';
-  const puedeCopiar = !!onCopy && msg.sender === 'me';
 
   return (
     <div className={`bg-white text-slate-800 p-3.5 rounded-xl mb-1 w-64 border ${meta.status === 'accepted' ? 'border-emerald-300' : 'border-slate-200'}`}>
@@ -53,29 +44,6 @@ export const QuoteBubble: React.FC<QuoteBubbleProps> = React.memo(({ msg, onView
       <button onClick={onView} className="w-full bg-slate-100 text-slate-600 py-2 rounded-lg text-xs font-bold hover:bg-slate-200 transition mb-2">
         Ver Detalle
       </button>
-
-      {(puedeCopiar || puedeEditar) && (
-        <div className="flex gap-2 mb-2">
-          {puedeEditar && (
-            <button
-              type="button"
-              onClick={onEdit}
-              className="flex-1 bg-amber-50 text-amber-700 hover:bg-amber-100 py-2 rounded-lg text-xs font-bold transition border border-amber-100 flex items-center justify-center gap-1.5"
-            >
-              <i className="fa-solid fa-pen text-[10px]"></i> Editar
-            </button>
-          )}
-          {puedeCopiar && (
-            <button
-              type="button"
-              onClick={onCopy}
-              className="flex-1 bg-blue-50 text-blue-700 hover:bg-blue-100 py-2 rounded-lg text-xs font-bold transition border border-blue-100 flex items-center justify-center gap-1.5"
-            >
-              <i className="fa-regular fa-copy text-[10px]"></i> Copiar
-            </button>
-          )}
-        </div>
-      )}
 
       {/* Status Actions */}
       {meta.status === 'accepted' ? (

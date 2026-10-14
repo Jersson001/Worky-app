@@ -459,6 +459,20 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
     };
   }, [forms.quote, contact, paymentAccounts]);
 
+  /**
+   * El mensaje de la cotización que se está viendo, si es una que envió el
+   * usuario. El visor solo recibe el documento; para copiarlo o editarlo hace
+   * falta el mensaje, que es lo que se reescribe en el chat.
+   */
+  const mensajeDeCotizacionVista = useMemo(() => {
+    if (viewingDocument?.type !== 'quote') return null;
+    const meta = viewingDocument.data;
+    return messages.find(m =>
+      m.type === 'quote' && m.sender === 'me' && m.metadata
+      && (meta?.id ? m.metadata.id === meta.id : m.metadata.number === meta?.number),
+    ) ?? null;
+  }, [viewingDocument, messages]);
+
   /** La cotización en pantalla, antes de crearla. Null = cerrada. */
   const [vistaPrevia, setVistaPrevia] = useState<any | null>(null);
 
@@ -744,6 +758,29 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
           contactPhone={contact.phone}
           contactId={contact.id}
           userProfile={userProfile}
+          acciones={mensajeDeCotizacionVista && !esCliente ? (
+            <>
+              {/* Aprobada ya tiene proyecto: cambiarle el precio dejaría el
+                  proyecto con otro valor que el documento. Para eso está copiar,
+                  que arma una cotización nueva. */}
+              {mensajeDeCotizacionVista.metadata?.status !== 'accepted' && (
+                <button
+                  type="button"
+                  onClick={() => { setViewingDocument(null); abrirDesdeCotizacion(mensajeDeCotizacionVista, 'edicion'); }}
+                  className="bg-amber-500 text-[#111b21] px-6 py-2 rounded-full font-bold shadow-lg hover:bg-amber-400 transition flex items-center gap-2"
+                >
+                  <i className="fa-solid fa-pen"></i> Editar
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => { setViewingDocument(null); abrirDesdeCotizacion(mensajeDeCotizacionVista, 'copia'); }}
+                className="bg-[#37404a] text-white px-6 py-2 rounded-full font-bold shadow-lg hover:bg-[#46515c] transition flex items-center gap-2"
+              >
+                <i className="fa-regular fa-copy"></i> Copiar
+              </button>
+            </>
+          ) : undefined}
         />
       )}
 
@@ -797,10 +834,7 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
           onDeleteMessage={onDeleteMessage}
           onCopyPaymentInfo={handleCopyPaymentInfo}
           onShowQR={handleShowQR}
-          onQuoteImage={esCliente ? undefined : handleQuoteImage}
-          onCopyQuote={esCliente ? undefined : (msg) => abrirDesdeCotizacion(msg, 'copia')}
-          onEditQuote={esCliente ? undefined : (msg) => abrirDesdeCotizacion(msg, 'edicion')}
-        />
+          onQuoteImage={esCliente ? undefined : handleQuoteImage}        />
 
         {avisoSobreElInput}
 
