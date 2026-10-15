@@ -15,6 +15,7 @@ import { useChatFormState } from '../hooks/useChatFormState';
 import { useFileUpload } from '../hooks/useFileUpload';
 import { uploadQuotePhotos } from '../services/storageService';
 import { saveUserProfile, getCurrentUserId } from '../services/messagingService';
+import { OrigenCobro, borrarBorradorCobro, claveBorradorCobro, cobroVacio, conceptoVacio, formularioDesdeCobro, guardarBorradorCobro, leerBorradorCobro, listarBorradoresCobro } from '../utils/borradorCuentaCobro';
 import { OrigenBorrador, borrarBorrador, claveBorrador, guardarBorrador, leerBorrador, listarBorradores, quoteVacia } from '../utils/borradorCotizacion';
 import { hayCondiciones, repartoDePago } from '../utils/condicionesCotizacion';
 import { formularioDesdeCotizacion } from '../utils/cotizacionAFormulario';
@@ -210,10 +211,17 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
   const totalGlobalExpenses = contact.projects.reduce((sum, p) => sum + p.expenses.reduce((s, e) => s + e.amount, 0), 0);
   const globalProfit = totalGlobalValue - totalGlobalExpenses;
 
+  const modalCobroAbierto = useRef(false);
+  modalCobroAbierto.current = forms.modals.collection;
+
   // ── Sync contact changes ──
   useEffect(() => {
-    forms.setCollectionField('directedTo', contact.clientName);
-    forms.setCollectionField('nit', contact.documento || '');
+    // Con la cuenta de cobro abierta no se pisa: llega un mensaje, `contact`
+    // cambia, y borraría el cliente de una copia o lo que se está escribiendo.
+    if (!modalCobroAbierto.current) {
+      forms.setCollectionField('directedTo', contact.clientName);
+      forms.setCollectionField('nit', contact.documento || '');
+    }
     if (contact.projects.length > 0) {
       forms.setExpenseField('targetProjectId', contact.projects[0].id);
     }
@@ -550,10 +558,11 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
    * falta el mensaje, que es lo que se reescribe en el chat.
    */
   const mensajeDeCotizacionVista = useMemo(() => {
-    if (viewingDocument?.type !== 'quote') return null;
+    // Sirve también para la cuenta de cobro: se copia y se edita igual.
+    if (viewingDocument?.type !== 'quote' && viewingDocument?.type !== 'collection_account') return null;
     const meta = viewingDocument.data;
     return messages.find(m =>
-      m.type === 'quote' && m.sender === 'me' && m.metadata
+      m.type === viewingDocument.type && m.sender === 'me' && m.metadata
       && (meta?.id ? m.metadata.id === meta.id : m.metadata.number === meta?.number),
     ) ?? null;
   }, [viewingDocument, messages]);
@@ -658,17 +667,148 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
     forms.closeModal('quote');
   }, [forms.quote, contact, onSendMessage, onUpdateMessage, enviandoCotizacion, armarCotizacion, onSetContactDocumento, claveActiva, origenCotizacion, refrescarBorradores]);
 
-  const handleSendCollection = useCallback(() => {
-    const { amount, concept, directedTo, nit, clientAddress, issuerRut, issuerCedula, issuerPhone, selectedAccount, selectedProject } = forms.collection;
-    if (!amount || !concept.replace(/•/g, '').trim()) return;
-    guardarCedulaEmisor(issuerCedula);
+  // ── Cuenta de cobro: borrador, vista previa, copiar y editar ──
+  // Mismo recorrido que la cotización, en pequeño: no hay fotos ni líneas, así
+  // que cada trabajo es un solo formulario. Ver utils/borradorCuentaCobro.ts.
+  const claveDelCobro = useMemo(
+    () => (usuarioId ? claveBorradorCobro(usuarioId, contact.id) : null),
+    [usuarioId, contact.id],
+  );
+  const [borradoresCobro, setBorradoresCobro] = useState(() => (usuarioId ? listarBorradoresCobro(usuarioId, contact.id) : []));
+  const refrescarBorradoresCobro = useCallback(() => {
+    setBorradoresCobro(usuarioId ? listarBorradoresCobro(usuarioId, contact.id) : []);
+  }, [usuarioId, contact.id]);
+  const [borradorCobroRetomado, setBorradorCobroRetomado] = useState(false);
+  const [origenCobro, setOrigenCobro] = useState<OrigenCobro | null>(null);
+  const origenCobroRef = useRef(origenCobro);
+  origenCobroRef.current = origenCobro;
+  const cobroRef = useRef(forms.collection);
+  cobroRef.current = forms.collection;
+  const claveCobroActiva = origenCobro && usuarioId
+    ? claveBorradorCobro(usuarioId, contact.id, origenCobro)
+    : claveDelCobro;
+  const yaRestauradoCobro = useRef(false);
 
+  /** Cómo quedó el formulario al abrir una copia o edición: abrirla y cerrarla sin tocar nada no deja borrador. */
+  const baseDelCobro = useRef<string | null>(null);
+  const baseCobroPendiente = useRef(false);
+  useEffect(() => {
+    if (!baseCobroPendiente.current || !origenCobroRef.current) return;
+    baseDelCobro.current = JSON.stringify(forms.collection);
+    baseCobroPendiente.current = false;
+  }, [forms.collection]);
+  const cobroSinCambios = () =>
+    !!origenCobroRef.current && baseDelCobro.current !== null && JSON.stringify(cobroRef.current) === baseDelCobro.current;
+
+  useEffect(() => { refrescarBorradoresCobro(); }, [refrescarBorradoresCobro]);
+
+  useEffect(() => {
+    if (!claveCobroActiva || !forms.modals.collection) return;
+    const t = setTimeout(() => {
+      if (cobroSinCambios()) return;
+      guardarBorradorCobro(claveCobroActiva, forms.collection, origenCobro ?? undefined);
+      refrescarBorradoresCobro();
+    }, 500);
+    return () => clearTimeout(t);
+  }, [forms.collection, forms.modals.collection, claveCobroActiva, origenCobro]);
+
+  useEffect(() => {
+    if (!claveCobroActiva || !forms.modals.collection) return;
+    const volcar = () => {
+      if (cobroSinCambios()) return;
+      guardarBorradorCobro(claveCobroActiva, cobroRef.current, origenCobroRef.current ?? undefined);
+    };
+    const alOcultar = () => { if (document.visibilityState === 'hidden') volcar(); };
+    document.addEventListener('visibilitychange', alOcultar);
+    window.addEventListener('pagehide', volcar);
+    return () => {
+      document.removeEventListener('visibilitychange', alOcultar);
+      window.removeEventListener('pagehide', volcar);
+    };
+  }, [claveCobroActiva, forms.modals.collection]);
+
+  /** Lo de siempre de quien cobra: el perfil y la cédula recordada. */
+  const emisorHabitual = useCallback(() => ({
+    issuerRut: userProfile?.nit || '',
+    issuerPhone: userProfile?.phone || '',
+    issuerCedula: leerCedulaEmisor(),
+  }), [userProfile?.nit, userProfile?.phone]);
+
+  // Al abrir la cuenta de cobro en blanco, vuelve lo que había. Las copias y las
+  // ediciones traen lo suyo y no pasan por aquí.
+  useEffect(() => {
+    if (!forms.modals.collection) { yaRestauradoCobro.current = false; return; }
+    if (yaRestauradoCobro.current) return;
+    yaRestauradoCobro.current = true;
+    if (!claveDelCobro || origenCobroRef.current) return;
+    const guardado = leerBorradorCobro(claveDelCobro);
+    if (guardado && cobroVacio(cobroRef.current)) {
+      forms.restoreCollection(guardado.form);
+      setBorradorCobroRetomado(true);
+    }
+  }, [forms.modals.collection, claveDelCobro]);
+
+  const descartarBorradorCobro = (clave: string) => {
+    borrarBorradorCobro(clave);
+    refrescarBorradoresCobro();
+  };
+
+  const empezarCobroDeCero = () => {
+    if (claveDelCobro) borrarBorradorCobro(claveDelCobro);
+    refrescarBorradoresCobro();
+    setBorradorCobroRetomado(false);
+    forms.resetCollection(contact.clientName, contact.documento, emisorHabitual());
+  };
+
+  /** Deja todo como estaba al cerrar o terminar, sin tocar el borrador. */
+  const limpiarCobro = () => {
+    setBorradorCobroRetomado(false);
+    setOrigenCobro(null);
+    baseDelCobro.current = null;
+    baseCobroPendiente.current = false;
+    forms.resetCollection(contact.clientName, contact.documento, emisorHabitual());
+    forms.closeModal('collection');
+  };
+
+  const cerrarCobro = () => {
+    if (claveCobroActiva && !cobroSinCambios()) {
+      guardarBorradorCobro(claveCobroActiva, forms.collection, origenCobro ?? undefined);
+      refrescarBorradoresCobro();
+    }
+    limpiarCobro();
+  };
+
+  /** Abre el formulario con una cuenta de cobro ya enviada puesta encima. */
+  const abrirDesdeCobro = useCallback((msg: Message, tipo: 'copia' | 'edicion', desdeCero = false) => {
+    if (!msg.metadata) return;
+    const origen: OrigenCobro = { tipo, messageId: msg.id, numero: msg.metadata.number || '', metadataId: msg.metadata.id };
+    const clave = usuarioId ? claveBorradorCobro(usuarioId, contact.id, origen) : null;
+    if (clave && desdeCero) { borrarBorradorCobro(clave); refrescarBorradoresCobro(); }
+    const previo = clave && !desdeCero ? leerBorradorCobro(clave) : null;
+
+    if (previo) {
+      forms.restoreCollection(previo.form);
+      baseDelCobro.current = null;
+      baseCobroPendiente.current = false;
+    } else {
+      forms.restoreCollection(formularioDesdeCobro(msg.metadata, paymentAccounts, contact.projects, emisorHabitual()));
+      baseDelCobro.current = null;
+      baseCobroPendiente.current = true;
+    }
+    setBorradorCobroRetomado(!!previo);
+    setOrigenCobro(origen);
+    forms.openModal('collection');
+  }, [forms, contact.id, contact.projects, paymentAccounts, usuarioId, refrescarBorradoresCobro, emisorHabitual]);
+
+  /** La cuenta de cobro tal como saldría: la usan el envío y la vista previa. */
+  const armarCuentaCobro = useCallback((numero: string) => {
+    const { amount, concept, directedTo, nit, clientAddress, issuerRut, issuerCedula, issuerPhone, selectedAccount, selectedProject } = forms.collection;
     const selectedAcc = selectedAccount === 'efectivo' ? null : paymentAccounts.find(acc => acc.id === selectedAccount);
     const project = contact.projects.find(p => p.id === selectedProject);
 
-    onSendMessage('📨 Cuenta de Cobro enviada', 'collection_account', {
+    return {
       id: Date.now().toString(),
-      number: `CC-${Math.floor(Math.random() * 10000)}`,
+      number: numero,
       amount: Number(amount), concept: concept.trim(), directedTo, nit,
       clientAddress: clientAddress.trim() || undefined,
       issuerRut: issuerRut.trim() || undefined,
@@ -683,11 +823,45 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
       // el QR con el que se pidió la plata.
       qrImage: selectedAccount === 'efectivo' ? undefined : selectedAcc?.qrImage,
       projectName: project?.name || '', date: new Date(),
-    });
+    };
+  }, [forms.collection, contact.projects, paymentAccounts]);
 
-    forms.resetCollection(contact.clientName, contact.documento);
-    forms.closeModal('collection');
-  }, [forms.collection, contact, paymentAccounts, onSendMessage]);
+  const [vistaPreviaCobro, setVistaPreviaCobro] = useState<any | null>(null);
+
+  const abrirVistaPreviaCobro = () => {
+    const { amount, concept } = forms.collection;
+    if (!amount || conceptoVacio(concept)) {
+      alert('Para ver la vista previa escribe el concepto y el valor de la cuenta de cobro.');
+      return;
+    }
+    setVistaPreviaCobro(armarCuentaCobro(origenCobro?.tipo === 'edicion' ? origenCobro.numero : 'VISTA PREVIA'));
+  };
+
+  const handleSendCollection = useCallback(() => {
+    const { amount, concept, issuerCedula } = forms.collection;
+    if (!amount || conceptoVacio(concept)) return;
+    guardarCedulaEmisor(issuerCedula);
+
+    const origen = origenCobro;
+    if (origen?.tipo === 'edicion') {
+      // La misma cuenta de cobro, con el mismo número: el cliente ve cambiar la
+      // que ya tenía en el chat, no le llega otra.
+      onUpdateMessage(origen.messageId, {
+        metadata: {
+          ...armarCuentaCobro(origen.numero),
+          ...(origen.metadataId ? { id: origen.metadataId } : {}),
+          editadaEl: new Date(),
+        },
+      });
+    } else {
+      onSendMessage('📨 Cuenta de Cobro enviada', 'collection_account', armarCuentaCobro(`CC-${Math.floor(Math.random() * 10000)}`));
+    }
+
+    // Enviada, ya no es borrador. Cada trabajo borra solo el suyo.
+    if (claveCobroActiva) borrarBorradorCobro(claveCobroActiva);
+    refrescarBorradoresCobro();
+    limpiarCobro();
+  }, [forms.collection, onSendMessage, onUpdateMessage, armarCuentaCobro, claveCobroActiva, origenCobro, refrescarBorradoresCobro, contact, emisorHabitual]);
 
   const handleSendReceipt = useCallback(() => {
     const { amount, concept, selectedAccount, selectedProject } = forms.receipt;
@@ -838,6 +1012,29 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
         />
       )}
 
+      {vistaPreviaCobro && (
+        <DocumentViewer
+          type="collection_account"
+          data={vistaPreviaCobro}
+          onClose={() => setVistaPreviaCobro(null)}
+          businessLogo={businessLogo}
+          digitalSignature={digitalSignature}
+          contactPhone={contact.phone}
+          contactId={contact.id}
+          userProfile={userProfile}
+          soloLectura
+          acciones={
+            <button
+              type="button"
+              onClick={() => { setVistaPreviaCobro(null); handleSendCollection(); }}
+              className="bg-[#00a884] text-[#111b21] px-6 py-2 rounded-full font-bold shadow-lg hover:bg-[#00c298] transition flex items-center gap-2"
+            >
+              <i className="fa-solid fa-paper-plane"></i> {origenCobro?.tipo === 'edicion' ? 'Guardar cambios' : 'Crear cuenta de cobro'}
+            </button>
+          }
+        />
+      )}
+
       {viewingDocument && (
         <DocumentViewer
           type={viewingDocument.type}
@@ -853,10 +1050,16 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
               {/* Aprobada ya tiene proyecto: cambiarle el precio dejaría el
                   proyecto con otro valor que el documento. Para eso está copiar,
                   que arma una cotización nueva. */}
-              {mensajeDeCotizacionVista.metadata?.status !== 'accepted' && (
+              {(viewingDocument.type === 'collection_account'
+                ? !mensajeDeCotizacionVista.isPaid
+                : mensajeDeCotizacionVista.metadata?.status !== 'accepted') && (
                 <button
                   type="button"
-                  onClick={() => { setViewingDocument(null); abrirDesdeCotizacion(mensajeDeCotizacionVista, 'edicion'); }}
+                  onClick={() => {
+                    setViewingDocument(null);
+                    if (viewingDocument.type === 'collection_account') abrirDesdeCobro(mensajeDeCotizacionVista, 'edicion');
+                    else abrirDesdeCotizacion(mensajeDeCotizacionVista, 'edicion');
+                  }}
                   className="bg-amber-500 text-[#111b21] px-6 py-2 rounded-full font-bold shadow-lg hover:bg-amber-400 transition flex items-center gap-2"
                 >
                   <i className="fa-solid fa-pen"></i> Editar
@@ -864,7 +1067,11 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
               )}
               <button
                 type="button"
-                onClick={() => { setViewingDocument(null); abrirDesdeCotizacion(mensajeDeCotizacionVista, 'copia'); }}
+                onClick={() => {
+                  setViewingDocument(null);
+                  if (viewingDocument.type === 'collection_account') abrirDesdeCobro(mensajeDeCotizacionVista, 'copia');
+                  else abrirDesdeCotizacion(mensajeDeCotizacionVista, 'copia');
+                }}
                 className="bg-[#37404a] text-white px-6 py-2 rounded-full font-bold shadow-lg hover:bg-[#46515c] transition flex items-center gap-2"
               >
                 <i className="fa-regular fa-copy"></i> Copiar
@@ -955,6 +1162,35 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
                 Continuar
               </button>
               <button type="button" onClick={() => descartarBorrador(clave)} className="font-bold text-slate-500 hover:underline">Descartar</button>
+            </div>
+          );
+        })}
+
+        {!forms.modals.collection && !esCliente && borradoresCobro.map(({ clave, borrador }) => {
+          const origen = borrador.origen;
+          // Como en la cotización: el borrador de una copia o edición va con su
+          // cuenta de cobro. Si ya no está, o se pagó —ya no se edita—, no se ofrece.
+          const mensajeOrigen = origen ? messages.find(m => m.id === origen.messageId) : undefined;
+          if (origen && (!mensajeOrigen || (origen.tipo === 'edicion' && mensajeOrigen.isPaid))) return null;
+          const titulo = !origen
+            ? 'Borrador de cuenta de cobro'
+            : origen.tipo === 'edicion' ? `Borrador de edición · ${origen.numero}` : `Borrador de copia · ${origen.numero}`;
+          return (
+            <div key={clave} className="mx-3 mb-2 flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 text-xs text-amber-900">
+              <i className="fa-solid fa-file-pen text-amber-600"></i>
+              <span className="flex-1 min-w-0 truncate">
+                <b>{titulo}</b>
+                {' · '}
+                {new Date(borrador.guardado).toLocaleString('es-CO', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+              </span>
+              <button
+                type="button"
+                onClick={() => (origen && mensajeOrigen ? abrirDesdeCobro(mensajeOrigen, origen.tipo) : forms.openModal('collection'))}
+                className="font-bold text-blue-700 hover:underline"
+              >
+                Continuar
+              </button>
+              <button type="button" onClick={() => descartarBorradorCobro(clave)} className="font-bold text-slate-500 hover:underline">Descartar</button>
             </div>
           );
         })}
@@ -1066,10 +1302,50 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
           onAddCarpentryItem={forms.addCarpentryItem} onUpdateCarpentryItem={forms.updateCarpentryItem} onRemoveCarpentryItem={forms.removeCarpentryItem} onUpdateGroupLabel={forms.updateCarpentryGroupLabel} onUpdateSectionName={forms.updateCarpentrySectionName}
         />
         <CollectionModal
-          show={forms.modals.collection} onClose={() => forms.closeModal('collection')}
+          show={forms.modals.collection} onClose={cerrarCobro}
           uniqueApprovedProjects={approvedProjects} paymentAccounts={paymentAccounts}
           form={forms.collection} onField={forms.setCollectionField}
-          onSend={handleSendCollection}
+          onSend={handleSendCollection} onPreview={abrirVistaPreviaCobro}
+          titulo={origenCobro
+            ? (origenCobro.tipo === 'edicion' ? 'Editar Cuenta de Cobro' : 'Copiar Cuenta de Cobro')
+            : undefined}
+          etiquetaEnviar={origenCobro
+            ? (origenCobro.tipo === 'edicion' ? 'Guardar cambios' : 'Crear copia')
+            : undefined}
+          aviso={origenCobro ? (
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs text-blue-900">
+              <p className="font-bold mb-0.5">
+                <i className={`fa-solid ${origenCobro.tipo === 'edicion' ? 'fa-pen' : 'fa-copy'} mr-1.5`}></i>
+                {origenCobro.tipo === 'edicion' ? `Editando la ${origenCobro.numero}` : `Copia de la ${origenCobro.numero}`}
+              </p>
+              <p className="leading-snug">
+                {borradorCobroRetomado && <b>Retomaste tu borrador, con lo que ya habías cambiado. </b>}
+                {origenCobro.tipo === 'edicion'
+                  ? 'Al guardar, la cuenta de cobro cambia en el chat con el mismo número.'
+                  : 'Cambia lo que haga falta. Al crearla sale como una cuenta de cobro nueva, con su propio número; la original no se toca.'}
+              </p>
+              {borradorCobroRetomado && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const original = messages.find(m => m.id === origenCobro.messageId);
+                    if (original) abrirDesdeCobro(original, origenCobro.tipo, true);
+                  }}
+                  className="mt-1.5 font-bold text-blue-800 underline"
+                >
+                  Empezar de nuevo desde la original
+                </button>
+              )}
+            </div>
+          ) : borradorCobroRetomado ? (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-900">
+              <p className="font-bold mb-0.5"><i className="fa-solid fa-clock-rotate-left mr-1.5"></i>Retomaste tu borrador</p>
+              <p className="leading-snug">Quedó guardado lo que escribiste.</p>
+              <button type="button" onClick={empezarCobroDeCero} className="mt-1.5 font-bold text-amber-800 underline">
+                Empezar de cero
+              </button>
+            </div>
+          ) : undefined}
         />
         <ReceiptModal
           show={forms.modals.receipt} onClose={() => forms.closeModal('receipt')}

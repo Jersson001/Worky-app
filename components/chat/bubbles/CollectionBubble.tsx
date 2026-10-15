@@ -34,7 +34,10 @@ export const CollectionBubble: React.FC<CollectionBubbleProps> = React.memo(({
       <div className="flex justify-between items-center border-b border-orange-100 pb-2 mb-2 pr-16">
         <div>
           <span className="font-bold text-orange-600 text-[10px] uppercase">Cuenta de Cobro</span>
-          <div className="text-[10px] text-slate-400">{meta.number}</div>
+          <div className="text-[10px] text-slate-400">
+            {meta.number}
+            {meta.editadaEl && <span className="ml-1.5 text-[9px] font-bold uppercase text-amber-600">Editada</span>}
+          </div>
           {meta.projectName && <div className="text-xs text-slate-700 font-semibold mt-1">{meta.projectName}</div>}
         </div>
         <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center text-white shadow-sm shadow-orange-500/30">

@@ -142,6 +142,7 @@ export interface ChatFormActions {
   collection: CollectionFormState;
   setCollectionField: <K extends keyof CollectionFormState>(field: K, value: CollectionFormState[K]) => void;
   resetCollection: (clientName: string, nit?: string, emisor?: Partial<DatosEmisor>) => void;
+  restoreCollection: (form: CollectionFormState) => void;
 
   // Receipt
   receipt: ReceiptFormState;
@@ -481,6 +482,9 @@ export const useChatFormState = (
       selectedAccount: '', selectedProject: '',
     }));
   }, []);
+  const restoreCollection = useCallback((form: CollectionFormState) => {
+    setCollection(form);
+  }, []);
 
   // ── Receipt ──
   const [receipt, setReceipt] = useState<ReceiptFormState>(DEFAULT_RECEIPT);
@@ -513,7 +517,7 @@ export const useChatFormState = (
     quote, addQuoteItem, addProductToQuote, updateQuoteItem, updateQuoteItemPrice,
     deleteQuoteItem, addQuoteItemImages, addPhotoToQuote, removeQuoteItemImage, updateQuoteItemImage, setQuoteField, resetQuote, restoreQuote, setCondicion,
     setQuoteMode, addCarpentrySection, removeCarpentrySection, addCarpentryItem, updateCarpentryItem, removeCarpentryItem, updateCarpentryGroupLabel, updateCarpentrySectionName,
-    collection, setCollectionField, resetCollection,
+    collection, setCollectionField, resetCollection, restoreCollection,
     receipt, setReceiptField, resetReceipt,
     modals, openModal, closeModal,
     pendingPayment, setPendingPayment,

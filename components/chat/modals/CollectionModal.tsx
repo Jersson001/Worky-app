@@ -15,6 +15,13 @@ interface CollectionModalProps {
   form: CollectionFormState;
   onField: <K extends keyof CollectionFormState>(field: K, value: CollectionFormState[K]) => void;
   onSend: () => void;
+  /** Abre la cuenta de cobro como la vería el cliente, antes de crearla. */
+  onPreview?: () => void;
+  /** Al copiar o editar una ya enviada el modal cambia de título y de botón. */
+  titulo?: string;
+  etiquetaEnviar?: string;
+  /** Franja sobre el formulario: de dónde viene la copia o la edición. */
+  aviso?: React.ReactNode;
 }
 
 const VINETA = '• ';
@@ -68,10 +75,12 @@ const ConceptoConVinetas: React.FC<{ value: string; onChange: (v: string) => voi
 
 export const CollectionModal: React.FC<CollectionModalProps> = React.memo(({
   show, onClose, uniqueApprovedProjects, paymentAccounts, form, onField, onSend,
+  onPreview, titulo, etiquetaEnviar, aviso,
 }) => {
   return (
-    <ModalWrapper show={show} onClose={onClose} title="Cuenta de Cobro" icon="fa-file-invoice" iconColor="text-orange-500">
+    <ModalWrapper show={show} onClose={onClose} title={titulo || 'Cuenta de Cobro'} icon="fa-file-invoice" iconColor="text-orange-500">
       <div className="space-y-3">
+        {aviso}
         {uniqueApprovedProjects.length > 0 && (
           <div>
             <label className={LABEL}>Proyecto</label>
@@ -163,11 +172,20 @@ export const CollectionModal: React.FC<CollectionModalProps> = React.memo(({
           </select>
         </div>
 
+        {onPreview && (
+          <button
+            type="button"
+            onClick={onPreview}
+            className="w-full bg-white text-orange-600 border border-orange-300 py-3 rounded-xl font-bold hover:bg-orange-50 transition flex items-center justify-center gap-2 mt-2"
+          >
+            <i className="fa-regular fa-eye"></i> Vista previa
+          </button>
+        )}
         <button
           onClick={onSend}
           className="w-full bg-gradient-to-r from-orange-500 to-orange-600 text-white py-3 rounded-xl font-bold shadow-lg shadow-orange-500/25 hover:shadow-xl transition active:scale-[0.99] flex items-center justify-center gap-2 mt-2"
         >
-          <i className="fa-solid fa-file-invoice"></i> Crear Cuenta de Cobro
+          <i className="fa-solid fa-file-invoice"></i> {etiquetaEnviar || 'Crear Cuenta de Cobro'}
         </button>
       </div>
     </ModalWrapper>
