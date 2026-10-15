@@ -64,7 +64,7 @@ export const CollectionBubble: React.FC<CollectionBubbleProps> = React.memo(({
       )}
 
       <div className="text-center mb-3">
-        <div className="text-xs text-slate-500 mb-1">{meta.concept}</div>
+        <div className="text-xs text-slate-500 mb-1 whitespace-pre-line line-clamp-4">{meta.concept}</div>
         <div className="font-bold text-slate-900 text-lg mb-3">{formatCurrency(meta.amount)}</div>
 
         {/* QR Payment Section */}

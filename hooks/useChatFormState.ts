@@ -67,9 +67,16 @@ export interface CollectionFormState {
   concept: string;
   directedTo: string;
   nit: string;
+  clientAddress: string;
+  issuerRut: string;
+  issuerCedula: string;
+  issuerPhone: string;
   selectedAccount: string;
   selectedProject: string;
 }
+
+/** Los datos de quien cobra no cambian entre cuentas de cobro: se arrastran al reiniciar. */
+export type DatosEmisor = Pick<CollectionFormState, 'issuerRut' | 'issuerCedula' | 'issuerPhone'>;
 
 export interface ReceiptFormState {
   amount: string;
@@ -134,7 +141,7 @@ export interface ChatFormActions {
   // Collection
   collection: CollectionFormState;
   setCollectionField: <K extends keyof CollectionFormState>(field: K, value: CollectionFormState[K]) => void;
-  resetCollection: (clientName: string, nit?: string) => void;
+  resetCollection: (clientName: string, nit?: string, emisor?: Partial<DatosEmisor>) => void;
 
   // Receipt
   receipt: ReceiptFormState;
@@ -459,13 +466,20 @@ export const useChatFormState = (
 
   // ── Collection ──
   const [collection, setCollection] = useState<CollectionFormState>({
-    amount: '', concept: '', directedTo: initialClientName, nit: '', selectedAccount: '', selectedProject: '',
+    amount: '', concept: '', directedTo: initialClientName, nit: '', clientAddress: '',
+    issuerRut: '', issuerCedula: '', issuerPhone: '', selectedAccount: '', selectedProject: '',
   });
   const setCollectionField = useCallback(<K extends keyof CollectionFormState>(field: K, value: CollectionFormState[K]) => {
     setCollection(prev => ({ ...prev, [field]: value }));
   }, []);
-  const resetCollection = useCallback((clientName: string, nit?: string) => {
-    setCollection({ amount: '', concept: '', directedTo: clientName, nit: nit || '', selectedAccount: '', selectedProject: '' });
+  const resetCollection = useCallback((clientName: string, nit?: string, emisor?: Partial<DatosEmisor>) => {
+    setCollection(prev => ({
+      amount: '', concept: '', directedTo: clientName, nit: nit || '', clientAddress: '',
+      issuerRut: emisor?.issuerRut ?? prev.issuerRut,
+      issuerCedula: emisor?.issuerCedula ?? prev.issuerCedula,
+      issuerPhone: emisor?.issuerPhone ?? prev.issuerPhone,
+      selectedAccount: '', selectedProject: '',
+    }));
   }, []);
 
   // ── Receipt ──

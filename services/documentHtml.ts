@@ -234,7 +234,13 @@ const cuerpo = (type: DocType, d: any): string => {
       return `
         ${fila('Dirigido a', d.directedTo)}
         ${fila('NIT / Cédula', d.nit)}
-        ${fila('Concepto', d.concept)}
+        ${fila('Dirección', d.clientAddress)}
+        <h3 class="seccion">Cobra</h3>
+        ${fila('RUT', d.issuerRut)}
+        ${fila('Cédula', d.issuerCedula)}
+        ${fila('Celular', d.issuerPhone)}
+        <h3 class="seccion">Concepto</h3>
+        ${String(d.concept || '').split('\n').filter(l => l.replace(/•/g, '').trim()).map(l => `<p style="margin:2px 0">${esc(l)}</p>`).join('')}
         ${fila('Fecha', fecha(d.date))}
         ${d.accountNumber ? `
         <h3 class="seccion">Datos para el pago</h3>

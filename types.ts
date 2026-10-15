@@ -414,6 +414,12 @@ export interface CollectionAccountData {
   concept: string;
   directedTo: string;
   nit?: string;
+  /** Dirección del cliente al que se le cobra. */
+  clientAddress?: string;
+  /** Quien cobra: RUT, cédula y celular, que una cuenta de cobro pide al pie. */
+  issuerRut?: string;
+  issuerCedula?: string;
+  issuerPhone?: string;
   bankName?: string;
   accountType?: string;
   accountNumber?: string;

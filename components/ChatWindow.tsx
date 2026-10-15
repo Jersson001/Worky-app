@@ -78,6 +78,18 @@ interface ChatWindowProps {
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
+/**
+ * La cédula de quien cobra no vive en el perfil (no hay columna para ella):
+ * se recuerda en este dispositivo para no teclearla en cada cuenta de cobro.
+ */
+const CLAVE_CEDULA_EMISOR = 'worky_cedula_emisor';
+const leerCedulaEmisor = (): string => {
+  try { return localStorage.getItem(CLAVE_CEDULA_EMISOR) || ''; } catch { return ''; }
+};
+const guardarCedulaEmisor = (cedula: string) => {
+  try { localStorage.setItem(CLAVE_CEDULA_EMISOR, cedula.trim()); } catch { /* sin almacenamiento: se vuelve a pedir */ }
+};
+
 export const ChatWindow: React.FC<ChatWindowProps> = (props) => {
   if (!props.contact) {
     return (
@@ -210,6 +222,15 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
     }
     forms.setQuoteField('clientDocumento', contact.documento || '');
   }, [contact]);
+
+  // Los datos de quien cobra salen del perfil y de lo recordado en el
+  // dispositivo. Aparte del efecto del contacto: ese corre en cada mensaje
+  // nuevo y pisaría lo que la persona está escribiendo en el formulario.
+  useEffect(() => {
+    forms.setCollectionField('issuerRut', userProfile?.nit || '');
+    forms.setCollectionField('issuerPhone', userProfile?.phone || '');
+    forms.setCollectionField('issuerCedula', leerCedulaEmisor());
+  }, [userProfile?.nit, userProfile?.phone]);
 
   // ── Handle active action from parent ──
   useEffect(() => {
@@ -638,8 +659,9 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
   }, [forms.quote, contact, onSendMessage, onUpdateMessage, enviandoCotizacion, armarCotizacion, onSetContactDocumento, claveActiva, origenCotizacion, refrescarBorradores]);
 
   const handleSendCollection = useCallback(() => {
-    const { amount, concept, directedTo, nit, selectedAccount, selectedProject } = forms.collection;
-    if (!amount || !concept) return;
+    const { amount, concept, directedTo, nit, clientAddress, issuerRut, issuerCedula, issuerPhone, selectedAccount, selectedProject } = forms.collection;
+    if (!amount || !concept.replace(/•/g, '').trim()) return;
+    guardarCedulaEmisor(issuerCedula);
 
     const selectedAcc = selectedAccount === 'efectivo' ? null : paymentAccounts.find(acc => acc.id === selectedAccount);
     const project = contact.projects.find(p => p.id === selectedProject);
@@ -647,7 +669,11 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
     onSendMessage('📨 Cuenta de Cobro enviada', 'collection_account', {
       id: Date.now().toString(),
       number: `CC-${Math.floor(Math.random() * 10000)}`,
-      amount: Number(amount), concept, directedTo, nit,
+      amount: Number(amount), concept: concept.trim(), directedTo, nit,
+      clientAddress: clientAddress.trim() || undefined,
+      issuerRut: issuerRut.trim() || undefined,
+      issuerCedula: issuerCedula.trim() || undefined,
+      issuerPhone: issuerPhone.trim() || undefined,
       bankName: selectedAccount === 'efectivo' ? 'Pago en Efectivo' : (selectedAcc?.bankName || ''),
       accountType: selectedAccount === 'efectivo' ? '' : (selectedAcc?.accountType || ''),
       accountNumber: selectedAccount === 'efectivo' ? '' : (selectedAcc?.accountNumber || ''),
@@ -1042,8 +1068,7 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
         <CollectionModal
           show={forms.modals.collection} onClose={() => forms.closeModal('collection')}
           uniqueApprovedProjects={approvedProjects} paymentAccounts={paymentAccounts}
-          amount={forms.collection.amount} concept={forms.collection.concept} directedTo={forms.collection.directedTo} nit={forms.collection.nit} selectedAccount={forms.collection.selectedAccount} selectedProject={forms.collection.selectedProject}
-          onAmountChange={(v) => forms.setCollectionField('amount', v)} onConceptChange={(v) => forms.setCollectionField('concept', v)} onDirectedToChange={(v) => forms.setCollectionField('directedTo', v)} onNitChange={(v) => forms.setCollectionField('nit', v)} onAccountChange={(v) => forms.setCollectionField('selectedAccount', v)} onProjectChange={(v) => forms.setCollectionField('selectedProject', v)}
+          form={forms.collection} onField={forms.setCollectionField}
           onSend={handleSendCollection}
         />
         <ReceiptModal

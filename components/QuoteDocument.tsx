@@ -196,8 +196,9 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
       const documentName = type === 'receipt' ? 'Recibo' : 
                           type === 'collection_account' ? 'Cuenta de Cobro' : 
                           'Documento';
-      const catalogoTexto = catalogLink ? `\n🛒 *Mira nuestro catálogo:*\n${catalogLink}\n` : '';
-      openWhatsApp(contactPhone, `📄 Te comparto el ${documentName} generado.\n\n📎 *Ver documento completo:*\n${documentLink}\n${catalogoTexto}\n📲 *Descarga Worky App en Google Play:*\nhttps://play.google.com/store/apps/details?id=com.worky.app.v2&hl=es`, ventana);
+      // Un solo enlace, como en la cotización y la factura: el catálogo y la
+      // descarga de la app son botones dentro del documento.
+      openWhatsApp(contactPhone, `📄 Te comparto el ${documentName} generado.\n\n📎 *Ver documento completo:*\n${documentLink}\n`, ventana);
     }
   };
 
@@ -896,11 +897,15 @@ const CollectionTemplate = ({ data, businessLogo, userProfile, signature, scale,
                 {data.nit && (
                     <p className="text-sm text-gray-600">NIT/CC: {data.nit}</p>
                 )}
+                {data.clientAddress && (
+                    <p className="text-sm text-gray-600">{data.clientAddress}</p>
+                )}
             </div>
 
             <p className="mb-6">
                 <span className="font-bold text-gray-900">Debe a:</span><br/>
                 {userProfile?.businessName || ''} / {userProfile?.ownerName || 'Representante Legal'}
+                {data.issuerRut && <><br/><span className="text-sm text-gray-600">RUT: {data.issuerRut}</span></>}
             </p>
         </div>
 
@@ -909,7 +914,11 @@ const CollectionTemplate = ({ data, businessLogo, userProfile, signature, scale,
             <p className="text-sm uppercase tracking-wider mb-2 opacity-90">La suma de:</p>
             <p className="text-4xl font-bold mb-4">{formatCurrency(data.amount)}</p>
             <p className="text-sm uppercase tracking-wider mb-2 opacity-90">Por concepto de:</p>
-            <p className="text-xl font-medium italic">"{data.concept}"</p>
+            <div className="text-xl font-medium space-y-1">
+                {String(data.concept || '').split('\n').filter(l => l.replace(/•/g, '').trim()).map((linea, i) => (
+                    <p key={i}>{linea}</p>
+                ))}
+            </div>
         </div>
 
         {/* Bank Info */}
@@ -982,7 +991,9 @@ const CollectionTemplate = ({ data, businessLogo, userProfile, signature, scale,
                     <div className="border-t-2 border-gray-800 w-64 pt-2 mb-1">
                         <p className="font-bold text-gray-900">Firma Autorizada</p>
                     </div>
-                    <p className="text-sm text-gray-600">C.C. 123.456.789</p>
+                    <p className="text-sm text-gray-600">{userProfile?.ownerName || ''}</p>
+                    {data.issuerCedula && <p className="text-sm text-gray-600">C.C. {data.issuerCedula}</p>}
+                    {data.issuerPhone && <p className="text-sm text-gray-600">Celular: {data.issuerPhone}</p>}
                 </div>
                 <div className="text-sm text-gray-500">
                     <p>Fecha: {new Date(data.date).toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })} - {new Date(data.date).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</p>
