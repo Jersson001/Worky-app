@@ -11,6 +11,7 @@ import { getCurrentUserId } from '../services/messagingService';
 import { computeLineSubtotal, computeMaterialSubtotal, computeManoDeObraTotal, computeMaterialesTotal, computeGroupSubtotal, computeSectionSubtotal, seccionesConContenido, describeCantidad, describeMaterial } from '../utils/carpentryCalculations';
 import { ORDEN_CONDICIONES, lineasDe, hayCondiciones, repartoDePago } from '../utils/condicionesCotizacion';
 import { hayTallas, hayNumeracion, detalleDeTallas, resumenDeTallas, subtotalDeItem } from '../utils/tallas';
+import { VisorDeFotos } from './VisorDeFotos';
 
 interface DocumentViewerProps {
   type: 'quote' | 'invoice' | 'receipt' | 'collection_account' | 'expense_receipt';
@@ -85,6 +86,10 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
     document.body.classList.add('imprimiendo-documento');
     return () => document.body.classList.remove('imprimiendo-documento');
   }, []);
+
+  /** La foto que se está mirando de cerca, con las demás del mismo ítem. */
+  const [fotoAmpliada, setFotoAmpliada] = useState<{ fotos: string[]; indice: number } | null>(null);
+  const ampliar = (fotos: string[], indice: number) => setFotoAmpliada({ fotos, indice });
 
   const [signatureScale, setSignatureScale] = useState(1);
   const [signaturePosition, setSignaturePosition] = useState({ x: 0, y: 0 });
@@ -216,7 +221,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
 
     switch (type) {
       case 'invoice': return <InvoiceTemplate data={data as InvoiceData} businessLogo={businessLogo} userProfile={userProfile} {...signatureProps} />;
-      case 'quote': return <QuoteTemplate data={data as QuoteData} businessLogo={businessLogo} userProfile={userProfile} catalogoUrl={catalogoUrl} {...signatureProps} />;
+      case 'quote': return <QuoteTemplate data={data as QuoteData} businessLogo={businessLogo} userProfile={userProfile} catalogoUrl={catalogoUrl} ampliar={ampliar} {...signatureProps} />;
       case 'collection_account': return <CollectionTemplate data={data as CollectionAccountData} businessLogo={businessLogo} userProfile={userProfile} {...signatureProps} />;
       case 'receipt': return <ReceiptTemplate data={data as ReceiptData} businessLogo={businessLogo} userProfile={userProfile} {...signatureProps} />;
       case 'expense_receipt': return <ExpenseReceiptTemplate data={data as ReceiptData} businessLogo={businessLogo} userProfile={userProfile} {...signatureProps} />;
@@ -324,6 +329,15 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
       {pie && (
         <div className="w-full max-w-[850px] px-4 pb-12 no-print">{pie}</div>
       )}
+
+      {fotoAmpliada && (
+        <VisorDeFotos
+          fotos={fotoAmpliada.fotos}
+          indice={fotoAmpliada.indice}
+          onCambiar={indice => setFotoAmpliada({ fotos: fotoAmpliada.fotos, indice })}
+          onCerrar={() => setFotoAmpliada(null)}
+        />
+      )}
     </div>
   ), document.body);
 };
@@ -340,7 +354,7 @@ interface SignatureProps {
   onDragEnd: () => void;
 }
 
-const QuoteTemplate = ({ data, businessLogo, userProfile, catalogoUrl, signature, scale, position, showSignature, onDragStart, onDrag, onDragEnd }: { data: QuoteData, businessLogo?: string, userProfile?: UserProfileData | null, catalogoUrl?: string } & Partial<SignatureProps>) => {
+const QuoteTemplate = ({ data, businessLogo, userProfile, catalogoUrl, ampliar, signature, scale, position, showSignature, onDragStart, onDrag, onDragEnd }: { data: QuoteData, businessLogo?: string, userProfile?: UserProfileData | null, catalogoUrl?: string, ampliar: (fotos: string[], indice: number) => void } & Partial<SignatureProps>) => {
     // El QR lleva al catálogo, que es lo que promete el texto de debajo.
     // Antes codificaba una vCard con los datos del negocio: al escanearlo se
     // guardaba un contacto y no se llegaba a ninguna parte. Es el mismo enlace
@@ -469,10 +483,10 @@ const QuoteTemplate = ({ data, businessLogo, userProfile, catalogoUrl, signature
                                                                     {item.images && item.images.length > 0 && (
                                                                         <div className="flex gap-1.5 flex-shrink-0">
                                                                             {item.images.slice(0, 3).map((img, i) => (
-                                                                                <img key={i} src={img} className="w-20 h-20 rounded object-cover border border-gray-200" />
+                                                                                <img key={i} src={img} onClick={() => ampliar(item.images!, i)} className="w-20 h-20 rounded object-cover border border-gray-200 cursor-zoom-in" />
                                                                             ))}
                                                                             {item.images.length > 3 && (
-                                                                                <div className="w-20 h-20 rounded border border-gray-200 bg-gray-100 flex items-center justify-center text-[10px] text-gray-500 font-bold">
+                                                                                <div onClick={() => ampliar(item.images!, 3)} className="w-20 h-20 rounded border border-gray-200 bg-gray-100 flex items-center justify-center text-[10px] text-gray-500 font-bold cursor-zoom-in">
                                                                                     +{item.images.length - 3}
                                                                                 </div>
                                                                             )}
@@ -535,16 +549,16 @@ const QuoteTemplate = ({ data, businessLogo, userProfile, catalogoUrl, signature
                                     {(item.images && item.images.length > 0) ? (
                                         <div className="flex gap-2">
                                             {item.images.slice(0, 3).map((img, imgIdx) => (
-                                                <img key={imgIdx} src={img} className="w-24 h-24 rounded object-cover border border-gray-200" />
+                                                <img key={imgIdx} src={img} onClick={() => ampliar(item.images!, imgIdx)} className="w-24 h-24 rounded object-cover border border-gray-200 cursor-zoom-in" />
                                             ))}
                                             {item.images.length > 3 && (
-                                                <div className="w-24 h-24 rounded border border-gray-200 bg-gray-100 flex items-center justify-center text-xs text-gray-500 font-bold">
+                                                <div onClick={() => ampliar(item.images!, 3)} className="w-24 h-24 rounded border border-gray-200 bg-gray-100 flex items-center justify-center text-xs text-gray-500 font-bold cursor-zoom-in">
                                                     +{item.images.length - 3}
                                                 </div>
                                             )}
                                         </div>
                                     ) : item.image && (
-                                        <img src={item.image} className="w-24 h-24 rounded object-cover border border-gray-200" />
+                                        <img src={item.image} onClick={() => ampliar([item.image!], 0)} className="w-24 h-24 rounded object-cover border border-gray-200 cursor-zoom-in" />
                                     )}
                                     <div className="min-w-0">
                                         <span className="text-gray-800 text-sm font-medium">{item.description}</span>
