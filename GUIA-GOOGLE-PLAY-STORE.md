@@ -4,11 +4,18 @@ Esta guía te llevará paso a paso para publicar tu aplicación Worky en Google 
 
 ---
 
-## 📌 Dónde va esto — al 14 de octubre de 2026
+## 📌 Dónde va esto — al 15 de octubre de 2026
 
 La 2.11.0 (`versionCode` 26101201) ya se subió, así que su número está gastado. El
-siguiente envío va con el **`versionCode` 26101401 (versión 2.12.0)**,
-compilado y firmado, en el Escritorio como `Worky-2.12.0.aab`. Ya se enviaron el 19, el 20, el 21, el
+siguiente envío va con el **`versionCode` 26101501 (versión 2.13.0)**,
+compilado y firmado el 15/10/2026, en el Escritorio como `Worky-2.13.0.aab`.
+
+La 26101401 (2.12.0) se compiló el 14/10 y quedó en el Escritorio como
+`Worky-2.12.0.aab`; **si llegó a subirse, su número está gastado** y la 2.13.0 la
+reemplaza igual, porque lleva todo lo de la 2.12.0 más lo nuevo. Si no se subió,
+no hace falta subirla: se sube solo la 2.13.0.
+
+Ya se enviaron el 19, el 20, el 21, el
 26092201 (2.8.4), el 26092702 (2.8.8), el 26100501 (2.9.0), el 26100601 (2.10.0) y el
 26100602 (2.10.1) y el 26101201 (2.11.0); lo intermedio está compilado y nunca se subió por separado.
 
@@ -22,14 +29,16 @@ compilado y firmado, en el Escritorio como `Worky-2.12.0.aab`. Ya se enviaron el
 2. **API 36.** El proyecto ya apunta a 36. El aviso se refiere a la versión en
    producción, que sigue en API 35: se cierra publicando una versión nueva.
 
-**Novedades de la 2.12.0 para la ficha de Play** (337 caracteres; el tope de Play es 500):
+**Novedades de la 2.13.0 para la ficha de Play** (el tope de Play es 500
+caracteres; ésta no llega a 480):
 
 ```
 Novedades:
-• Cotizaciones: copia o edita una cotización ya enviada desde su detalle, sin rehacerla.
-• Los borradores de cotización ahora también guardan copias y ediciones, y no se pierden si la app se cierra.
-• Las fotos de la cotización se amplían con un toque.
-• Ancho, alto y cantidad funcionan como calculadora en todos los oficios.
+• Cuenta de cobro más completa: RUT, cédula, celular y dirección, y el concepto en viñetas.
+• Cuenta de cobro con vista previa, copiar, editar y borradores, como la cotización.
+• Copia o edita una cotización ya enviada desde su detalle, y las fotos se amplían con un toque.
+• Cada documento lleva su consecutivo: COT-A001, CC-A001, FAC-A001, RC-A001.
+• Compartir por WhatsApp envía un solo enlace al documento.
 ```
 
 **Los enlaces de aplicación dependen de Play.** Android verifica al instalar que
@@ -135,7 +144,8 @@ intento fallido gasta un número:
 | 26100601 (2.10.0) | El documento del contacto en cotización, factura, cuenta de cobro y recibo; nombre del contacto editable; vista previa y borrador de la cotización. **Subida a Play**: número gastado |
 | 26100602 (2.10.1) | El ojito para ver la contraseña. **Subida a Play**: número gastado |
 | 26101201 (2.11.0) | Subcarpetas en el catálogo, «Seguir tienda» con corazón, el comentario del producto en el catálogo público, el arreglo de seguridad del visor y los enlaces de aplicación (el QR de una tienda abre la app). **Subida a Play**: número gastado |
-| **26101401 (2.12.0)** | Copiar y editar una cotización enviada, borradores para copias y ediciones, fotos de la cotización que se amplían y calculadora en todos los campos de medida. **La que va a Play** |
+| 26101401 (2.12.0) | Copiar y editar una cotización enviada, borradores para copias y ediciones, fotos de la cotización que se amplían y calculadora en todos los campos de medida. Compilada el 14/10; **si se subió, número gastado** |
+| **26101501 (2.13.0)** | La cuenta de cobro con RUT, cédula, celular, dirección, concepto con viñetas, vista previa, copiar, editar y borradores; consecutivos con serie (`COT-A001`…); un solo enlace en el mensaje de WhatsApp. **La que va a Play** |
 
 **Play exige API 36** desde el 1 de septiembre de 2026. Está en
 `android/variables.gradle`.
@@ -188,8 +198,9 @@ fue por el contenido de la app:
 - ✅ **Política de privacidad y términos** escritos, en `public/`, empaquetados con la app
 - ✅ **Página de eliminación de cuenta** en `public/eliminar-cuenta.html`, que es
   la URL que pide el formulario de Seguridad de los datos
-- ✅ VersionCode 26101401 (2.12.0) compilado y firmado el 14/10/2026, con todo
-  lo anterior dentro. El 19, el 20, el 21, el 26092201 (2.8.4), el 26092702
+- ✅ VersionCode 26101501 (2.13.0) compilado y firmado el 15/10/2026, con todo
+  lo anterior dentro (la 26101401, 2.12.0, se compiló el 14/10 y no consta que
+  se subiera). El 19, el 20, el 21, el 26092201 (2.8.4), el 26092702
   (2.8.8), el 26100501 (2.9.0), el 26100601 (2.10.0), el 26100602 (2.10.1) y el
   26101201 (2.11.0) ya se enviaron
 - ✅ **Notificaciones probadas en un teléfono de verdad** el 20/09/2026: llegan

@@ -167,7 +167,16 @@ android {
         // su detalle; el borrador que se guarda también para las copias y las
         // ediciones, y que ya no pierde las fotos subidas; las fotos de la
         // cotización se amplían con un click; y todos los campos de medida
-        // (ancho, alto, cantidad, rendimiento) son calculadora.
+        // (ancho, alto, cantidad, rendimiento) son calculadora. Compilada el
+        // 14/10/2026; si no se subió a Play, sus cambios van dentro de la
+        // siguiente.
+        //
+        // El 26101501 (2.13.0): la cuenta de cobro con RUT, cédula, celular y
+        // dirección, el concepto con viñetas, y vista previa, copiar, editar y
+        // borradores como la cotización; los consecutivos con serie
+        // (COT-A001, CC-A001, FAC-A001, RC-A001, RG-A001) en vez de números al
+        // azar; y el mensaje de WhatsApp de cuenta de cobro y recibo con un solo
+        // enlace.
         /*
          * Son dos cosas distintas y solo una es libre.
          *
@@ -205,8 +214,8 @@ android {
          * número de en medio —2.4, 2.5 y 2.6 en tres días— y a ese paso la 3.0
          * llegaba sin que hubiera cambiado nada grande.
          */
-        versionCode 26101401
-        versionName "2.12.0"
+        versionCode 26101501
+        versionName "2.13.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'

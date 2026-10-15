@@ -1,6 +1,6 @@
 # Compartir por WhatsApp
 
-Última revisión: 22 de septiembre de 2026.
+Última revisión: 15 de octubre de 2026.
 
 > Este documento decía que para mandar un documento habría que «generar el PDF y
 > subirlo a Firebase Storage». Firebase ya no está, y lo que se manda no es un
@@ -22,9 +22,16 @@ El mensaje que se arma lleva:
   cotización es por capítulos, va desglosada por capítulo y grupo, no como una
   lista plana.
 - El total.
-- **Enlace para ver el documento completo**, `?view=<documentId>`.
-- **Enlace al catálogo**, si el vendedor tiene uno publicado.
-- El enlace de la app en Google Play.
+- **Un solo enlace: el del documento completo**, `?view=<documentId>`.
+
+**El catálogo y la descarga de la app ya no van en el mensaje**: están dentro del
+documento, como botones —«Responder por el chat», «Ver catálogo» si hay uno
+publicado, y «Descargar» al pie—. El mensaje llevaba tres enlaces compitiendo:
+quedaba largo, parecía publicidad y el que importa se perdía entre los otros dos.
+Es así en la cotización y la factura, y desde el 15/10/2026 también en la cuenta
+de cobro y el recibo, que caían en un texto aparte que seguía mandando los tres.
+Quedan con enlace a Google Play en el texto solo el mensaje de un **producto** y
+el de un **archivo** suelto, que no son documentos y no tienen visor con botones.
 
 ---
 

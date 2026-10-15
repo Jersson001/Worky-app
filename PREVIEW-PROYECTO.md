@@ -1,6 +1,6 @@
 # Vista general del proyecto
 
-Última revisión: 22 de septiembre de 2026.
+Última revisión: 15 de octubre de 2026.
 
 > Este documento describía la app sobre Firebase (Authentication, Realtime
 > Database, Storage) y con Gemini analizando las fotos del catálogo. Nada de eso
@@ -64,6 +64,7 @@ worky_app/
 │   ├── dataService.ts        # Productos, categorías, proyectos, gastos, cuentas
 │   ├── storageService.ts     # Subidas a Storage
 │   ├── catalogShareService.ts# Instantánea HTML del catálogo, QR y enlaces
+│   ├── consecutivosService.ts# Reserva el siguiente COT-A001, CC-A001… (metadata de la cuenta + teléfono)
 │   ├── whatsappService.ts    # Documentos compartidos y enlaces de WhatsApp
 │   ├── documentHtml.ts       # HTML maquetado de los documentos
 │   ├── adminService.ts       # Panel de admin: Pro y prueba
@@ -73,6 +74,7 @@ worky_app/
 ├── utils/          currency · imagen · id · errorMessage · carpentryCalculations · taxCalculations
 │                   finanzas · tiendasGuardadas · contactoWhatsApp · legal · avatar · tallas · condicionesCotizacion · tiposDeNegocio
 │                  legal · tiposDeNegocio · condicionesCotizacion · tallas
+│                  consecutivos (formato y serie) · borradorCotizacion · borradorCuentaCobro
 ├── supabase/       functions/ (gemini, view-doc — ambas sin uso) y migrations/
 ├── android/        Proyecto Capacitor
 └── *.sql           Migraciones para el SQL Editor, idempotentes

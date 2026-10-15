@@ -1,6 +1,6 @@
 # Estado de funcionalidades — Worky
 
-Última revisión: 22 de septiembre de 2026.
+Última revisión: 15 de octubre de 2026.
 
 > Este documento describía el proyecto cuando corría sobre Firebase y decía que
 > los clientes no podían tener cuenta, que Storage no estaba implementado y que
@@ -715,6 +715,104 @@ se pinta en el `body`, fuera de la hoja —que se reduce con `zoom`— y lleva
 `no-print`, así que el PDF no cambia. Una foto reducida al adjuntarla se ve más
 grande pero no más nítida.
 
+### Cuenta de cobro
+
+Desde el 15/10/2026 sale como la de papel: lo que el cliente necesita para
+pagarle a una persona natural, y no solo el valor.
+
+**Qué pide el formulario**, en tres bloques:
+
+- **Cliente:** nombre, NIT o cédula y **dirección**.
+- **Tus datos (quien cobra):** **RUT**, **cédula** y **celular**. El RUT sale del
+  NIT del perfil y el celular del teléfono del perfil. La **cédula no tiene
+  columna** en `user_profiles`: se recuerda en el dispositivo
+  (`worky_cedula_emisor`, en `localStorage`), así que al cambiar de teléfono se
+  escribe otra vez. Guardarla en la cuenta pide una migración que no se hizo.
+- **Cobro:** concepto, valor y cuenta de consignación.
+
+**El concepto lleva viñetas.** Al tocar la caja aparece la primera (•), Enter abre
+otra fila con la suya y Enter sobre una vacía la quita, que es como se sale de la
+lista. Se guarda como texto con una viñeta por línea: los documentos lo pintan
+una línea por renglón y la burbuja del chat lo recorta a cuatro. Un concepto de
+solo viñetas cuenta como vacío.
+
+**El documento** muestra la dirección del cliente, el RUT bajo «Debe a» y, al
+pie de la firma, el nombre, la cédula y el celular de quien cobra. Ese pie traía
+una cédula de relleno, **«C.C. 123.456.789»**, que salía en todas las cuentas de
+cobro; ya no está, y sin cédula escrita no sale la línea. El HTML compartido por
+WhatsApp lleva los mismos datos.
+
+**Vista previa, copiar, editar y borradores**, igual que en la cotización:
+
+- **Vista previa** abre la cuenta como la vería el cliente, antes de crearla,
+  con el botón de crear o guardar a mano. Pide concepto y valor.
+- **Copiar** abre el formulario con todo lo de la original y, al crearla, sale
+  con número nuevo. La original no se toca.
+- **Editar** reescribe la misma cuenta de cobro en el chat —mismo número, mismo
+  `id`, `editadaEl`— y la burbuja lleva la marca «Editada». **No aparece si ya
+  está pagada.**
+- Los botones están en la barra del detalle y solo los ve quien la envió.
+- **Cada copia y cada edición tiene su borrador**
+  (`worky_borrador_cobro:uid:contacto:tipo:mensaje`, en
+  [`utils/borradorCuentaCobro.ts`](utils/borradorCuentaCobro.ts)), aparte del de
+  la cuenta de cero, con su franja en el chat. Abrir una copia y cerrarla sin
+  tocar nada no deja borrador.
+- La cuenta de pago se copió entera en el mensaje, así que al copiar o editar se
+  busca de nuevo en la libreta por banco y número; el proyecto, por su nombre. Si
+  ya no están, el formulario abre sin ellos.
+- El formulario **no se pisa** con los cambios del contacto mientras está abierto:
+  la sincronización con el contacto corría en cada mensaje nuevo y borraba el
+  cliente de una copia a medias.
+
+El mensaje de WhatsApp de la cuenta de cobro y del recibo lleva **un solo
+enlace**, el del documento. Llevaba tres —documento, catálogo y Google Play—, y
+los dos últimos son ahora botones dentro del documento, como en la cotización y
+la factura. Ver [INTEGRACION-WHATSAPP.md](INTEGRACION-WHATSAPP.md).
+
+### El número de cada documento
+
+Cotización, cuenta de cobro, factura, recibo de caja y comprobante de gasto
+llevan un **consecutivo con serie**, desde el 15/10/2026:
+
+| Documento | Prefijo | Primero |
+|---|---|---|
+| Cotización | `COT` | `COT-A001` |
+| Cuenta de cobro | `CC` | `CC-A001` |
+| Factura | `FAC` | `FAC-A001` |
+| Recibo de caja | `RC` | `RC-A001` |
+| Comprobante de gasto | `RG` | `RG-A001` |
+
+La letra es la **serie**: cada una lleva 999 documentos —`A001` a `A999`— y al
+llenarse sigue la siguiente: `B001`, hasta `Z999`, que da paso a `AA001`. El
+número queda siempre en tres cifras.
+
+**Hasta ese día eran `Math.random() * 10000`**: sin orden, sin garantía de ser
+únicos y sin forma de saber cuántos se habían mandado. Importaba: el número de la
+cotización es también el **código del proyecto** que nace al aprobarla
+(`metadata.quoteCode`), y con dos cotizaciones del mismo número el segundo
+proyecto «ya existía» y no se creaba.
+
+- **Cada tipo lleva su cuenta, por usuario.** Lo que se guarda es cuántos
+  documentos van, no el texto; la serie y el número salen de esa cuenta
+  ([`utils/consecutivos.ts`](utils/consecutivos.ts)).
+- **Vive en la metadata de la cuenta** (`user_metadata.consecutivos`) y no solo en
+  el teléfono: quien cotiza desde el celular y desde la web sigue una sola
+  secuencia. No hizo falta tabla ni migración. Hay copia en el teléfono y el
+  número nunca retrocede —se toma el mayor de los dos—
+  ([`services/consecutivosService.ts`](services/consecutivosService.ts)).
+- **Se reserva al enviar**, no al abrir el formulario. La vista previa y la
+  edición de una ya enviada no gastan número: la edición conserva el suyo.
+- **Salta lo que ya está en el chat.** Los códigos anteriores eran al azar y
+  `COT-42` y `COT-042` son el mismo número para quien los lee, así que se
+  comparan como números. Los sin letra se leen como esa cifra.
+- Mientras se reserva, otro toque al botón no manda un segundo documento.
+- **Lo ya enviado no se renumera**, y la primera cotización nueva de cada usuario
+  es la `COT-A001` aunque haya mandado muchas con número al azar. Se reparten solo
+  entre quien las manda: dos vendedores pueden tener su propia `CC-A001`.
+
+Un documento nuevo con número entra por `reservarConsecutivo`, no con su propio
+`Math.random()`.
+
 ### Comentarios por línea en la cotización básica
 
 Desde el 13/09/2026 cada línea de la básica lleva su campo de comentarios, como
@@ -1082,18 +1180,22 @@ llegue a publicarse, así que cada intento fallido quema un número:
 | 26100601 (2.10.0) | El documento del contacto (cédula, NIT o RUT) al crearlo y en cotización, factura, cuenta de cobro y recibo; nombre del contacto editable y sin alias; vista previa de la cotización y borrador que se guarda solo; celular o usuario de WhatsApp en la cotización. **Subida a Play el 06/10/2026**, número gastado |
 | 26100602 (2.10.1) | El ojito para ver la contraseña al iniciar sesión, al registrarse y al completar el registro. **Subida a Play**, número gastado |
 | 26101201 (2.11.0) | Subcarpetas en el catálogo (un nivel), «Seguir tienda» con corazón en vez de «Guardar», el comentario del producto en el catálogo público, carpetas sin números, el arreglo de seguridad del visor del catálogo y los enlaces de aplicación: el QR de una tienda abre la app instalada. **Subida a Play**, número gastado |
-| **26101401 (2.12.0)** | Copiar y editar una cotización ya enviada desde su detalle, borradores para las copias y las ediciones, fotos de la cotización que se amplían con un click y calculadora en todos los campos de medida. **Compilada y firmada el 14/10/2026; es la que va a Play** |
+| 26101401 (2.12.0) | Copiar y editar una cotización ya enviada desde su detalle, borradores para las copias y las ediciones, fotos de la cotización que se amplían con un click y calculadora en todos los campos de medida. Compilada y firmada el 14/10/2026. **Si se subió a Play, su número está gastado**; si no, sus cambios van dentro de la 2.13.0 |
+| **26101501 (2.13.0)** | La cuenta de cobro con RUT, cédula, celular y dirección, el concepto con viñetas, y vista previa, copiar, editar y borradores; los consecutivos con serie (`COT-A001`, `CC-A001`…) en vez de números al azar; y el mensaje de WhatsApp con un solo enlace. **Compilada y firmada el 15/10/2026; es la que va a Play** |
 
 Play exige **API 36** desde el 1 de septiembre de 2026. El proyecto ya apunta a
 36 (`android/variables.gradle`); el aviso de Play Console habla de la versión
 que está en producción, que se subió antes y sigue en API 35. Se cierra
 publicando en producción una versión nueva.
 
-**La 2.11.0 (26101201) se subió a Play**; la siguiente es la 26101401 (2.12.0),
-compilada y firmada el 14/10/2026, que es la que va a Play.
+**La 2.11.0 (26101201) se subió a Play**; la siguiente es la 26101501 (2.13.0),
+compilada y firmada el 15/10/2026, que es la que va a Play. La 26101401 (2.12.0)
+se compiló el 14/10 y, hasta donde consta aquí, no se subió: de haberse subido,
+su número está gastado y no se reutiliza.
 Del 14 al 21 son números gastados —enviados o rechazados—, y también todos hasta
 el 26101201 (2.11.0). Las 2.6.0 a 2.8.7 están compiladas y nunca se enviaron por
-separado: sus cambios entraron en la 2.8.8, la 2.9.0, la 2.10.x, la 2.11.0 y la 2.12.0.
+separado: sus cambios entraron en la 2.8.8, la 2.9.0, la 2.10.x, la 2.11.0, la
+2.12.0 y la 2.13.0.
 
 **Enlaces de aplicación (12/10/2026).** Con la app instalada, escanear el QR de
 una tienda abre la app y no la web. El manifiesto declara `worky.ferryapp.co` y
