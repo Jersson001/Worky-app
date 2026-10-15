@@ -15,6 +15,8 @@ import { useChatFormState } from '../hooks/useChatFormState';
 import { useFileUpload } from '../hooks/useFileUpload';
 import { uploadQuotePhotos } from '../services/storageService';
 import { saveUserProfile, getCurrentUserId } from '../services/messagingService';
+import { reservarConsecutivo } from '../services/consecutivosService';
+import { TipoConsecutivo } from '../utils/consecutivos';
 import { OrigenCobro, borrarBorradorCobro, claveBorradorCobro, cobroVacio, conceptoVacio, formularioDesdeCobro, guardarBorradorCobro, leerBorradorCobro, listarBorradoresCobro } from '../utils/borradorCuentaCobro';
 import { OrigenBorrador, borrarBorrador, claveBorrador, guardarBorrador, leerBorrador, listarBorradores, quoteVacia } from '../utils/borradorCotizacion';
 import { hayCondiciones, repartoDePago } from '../utils/condicionesCotizacion';
@@ -289,9 +291,23 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
     forms.closeModal('expense');
   }, [forms.expense, contact, onAddExpense, onSendMessage]);
 
-  const handleSendInvoice = useCallback(() => {
+  /**
+   * Reserva el siguiente número del tipo (CC-001…). Se le pasan los códigos del
+   * chat abierto para que no repita uno que ya está a la vista: los anteriores a
+   * los consecutivos eran al azar.
+   */
+  const reservarNumero = useCallback(
+    (prefijo: TipoConsecutivo) => reservarConsecutivo(prefijo, messages.map(m => m.metadata?.number)),
+    [messages],
+  );
+  /** Mientras se reserva un número, otro toque al botón no manda un segundo documento. */
+  const enviandoNumero = useRef(false);
+
+  const handleSendInvoice = useCallback(async () => {
     const validItems = forms.invoice.items.filter(i => i.description && i.price > 0);
-    if (validItems.length === 0) return;
+    if (validItems.length === 0 || enviandoNumero.current) return;
+    enviandoNumero.current = true;
+    try {
 
     const subtotal = validItems.reduce((acc, item) => acc + subtotalDeItem(item), 0);
     const result = calculateTax(subtotal, forms.invoice.taxType);
@@ -310,7 +326,7 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
 
     onSendMessage('📄 Factura generada', 'invoice', {
       id: Date.now().toString(),
-      number: `FAC-${Math.floor(Math.random() * 10000)}`,
+      number: await reservarNumero('FAC'),
       clientName: contact.clientName,
       clientDocumento: contact.documento?.trim() || undefined,
       items: validItems, subtotal, taxDetails,
@@ -321,7 +337,10 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
 
     forms.resetInvoice();
     forms.closeModal('invoice');
-  }, [forms.invoice, contact, onSendMessage]);
+    } finally {
+      enviandoNumero.current = false;
+    }
+  }, [forms.invoice, contact, onSendMessage, reservarNumero]);
 
   // ── Borrador de la cotización ──
   // Se guarda en el teléfono mientras se escribe, uno por contacto, y se retoma
@@ -644,7 +663,7 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
       };
       onUpdateMessage(origen.messageId, { metadata: corregida });
     } else {
-      onSendMessage('📋 Cotización enviada', 'quote', armarCotizacion(validItems, sectionsSubidas, `COT-${Math.floor(Math.random() * 10000)}`));
+      onSendMessage('📋 Cotización enviada', 'quote', armarCotizacion(validItems, sectionsSubidas, await reservarNumero('COT')));
     }
 
     // Lo que se escribió aquí queda en la ficha: la próxima cotización a este
@@ -665,7 +684,7 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
     basePendiente.current = false;
     forms.resetQuote((contact.phone || ''), documentoFinal || contact.documento || '');
     forms.closeModal('quote');
-  }, [forms.quote, contact, onSendMessage, onUpdateMessage, enviandoCotizacion, armarCotizacion, onSetContactDocumento, claveActiva, origenCotizacion, refrescarBorradores]);
+  }, [forms.quote, contact, onSendMessage, onUpdateMessage, enviandoCotizacion, armarCotizacion, onSetContactDocumento, claveActiva, origenCotizacion, refrescarBorradores, reservarNumero]);
 
   // ── Cuenta de cobro: borrador, vista previa, copiar y editar ──
   // Mismo recorrido que la cotización, en pequeño: no hay fotos ni líneas, así
@@ -837,9 +856,11 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
     setVistaPreviaCobro(armarCuentaCobro(origenCobro?.tipo === 'edicion' ? origenCobro.numero : 'VISTA PREVIA'));
   };
 
-  const handleSendCollection = useCallback(() => {
+  const handleSendCollection = useCallback(async () => {
     const { amount, concept, issuerCedula } = forms.collection;
-    if (!amount || conceptoVacio(concept)) return;
+    if (!amount || conceptoVacio(concept) || enviandoNumero.current) return;
+    enviandoNumero.current = true;
+    try {
     guardarCedulaEmisor(issuerCedula);
 
     const origen = origenCobro;
@@ -854,18 +875,23 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
         },
       });
     } else {
-      onSendMessage('📨 Cuenta de Cobro enviada', 'collection_account', armarCuentaCobro(`CC-${Math.floor(Math.random() * 10000)}`));
+      onSendMessage('📨 Cuenta de Cobro enviada', 'collection_account', armarCuentaCobro(await reservarNumero('CC')));
     }
 
     // Enviada, ya no es borrador. Cada trabajo borra solo el suyo.
     if (claveCobroActiva) borrarBorradorCobro(claveCobroActiva);
     refrescarBorradoresCobro();
     limpiarCobro();
-  }, [forms.collection, onSendMessage, onUpdateMessage, armarCuentaCobro, claveCobroActiva, origenCobro, refrescarBorradoresCobro, contact, emisorHabitual]);
+    } finally {
+      enviandoNumero.current = false;
+    }
+  }, [forms.collection, onSendMessage, onUpdateMessage, armarCuentaCobro, claveCobroActiva, origenCobro, refrescarBorradoresCobro, contact, emisorHabitual, reservarNumero]);
 
-  const handleSendReceipt = useCallback(() => {
+  const handleSendReceipt = useCallback(async () => {
     const { amount, concept, selectedAccount, selectedProject } = forms.receipt;
-    if (!amount || !concept) return;
+    if (!amount || !concept || enviandoNumero.current) return;
+    enviandoNumero.current = true;
+    try {
 
     // El avance se abona a una obra concreta. Con un solo proyecto se da por
     // hecho: preguntarlo cuando no hay elección es una casilla de más.
@@ -876,7 +902,7 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
 
     const receiptMetadata: any = {
       id: Date.now().toString(),
-      number: `RC-${Math.floor(Math.random() * 10000)}`,
+      number: await reservarNumero('RC'),
       amount: Number(amount), concept, date: new Date(),
       paymentMethod: selectedAccount === 'efectivo' ? 'Efectivo' : 'Transferencia',
       bankName: selectedAccount === 'efectivo' ? 'Pago en Efectivo' : (selectedAcc?.bankName || ''),
@@ -906,7 +932,10 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
 
     forms.resetReceipt();
     forms.closeModal('receipt');
-  }, [forms.receipt, contact, paymentAccounts, onSendMessage]);
+    } finally {
+      enviandoNumero.current = false;
+    }
+  }, [forms.receipt, contact, paymentAccounts, onSendMessage, reservarNumero]);
 
   const handleConfirmPayment = useCallback(() => {
     if (!forms.pendingPayment) return;
