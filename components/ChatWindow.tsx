@@ -264,21 +264,37 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
   }, [activeAction, onClearAction, contact.phone]);
 
   // ── Handlers ──
-  const handleSaveExpense = useCallback(() => {
+  /**
+   * Reserva el siguiente número del tipo (CC-A001…). Se le pasan los códigos del
+   * chat abierto para que no repita uno que ya está a la vista: los anteriores a
+   * los consecutivos eran al azar.
+   */
+  const reservarNumero = useCallback(
+    (prefijo: TipoConsecutivo) => reservarConsecutivo(prefijo, messages.map(m => m.metadata?.number)),
+    [messages],
+  );
+  /** Mientras se reserva un número, otro toque al botón no manda un segundo documento. */
+  const enviandoNumero = useRef(false);
+
+  const handleSaveExpense = useCallback(async () => {
     const { amount, description, targetProjectId } = forms.expense;
-    if (!amount || !description) return;
+    if (!amount || !description || enviandoNumero.current) return;
 
     if ((contact.role === 'supplier' || contact.projects.length > 1) && !targetProjectId) {
       alert('Por favor selecciona a qué proyecto pertenece este gasto.');
       return;
     }
 
+    enviandoNumero.current = true;
+    try {
+    // El número va primero: si la reserva fallara no se apunta el gasto sin su comprobante.
+    const numero = await reservarNumero('RG');
     onAddExpense(Number(amount), description, targetProjectId || undefined);
 
     const selectedProject = contact.projects.find(p => p.id === targetProjectId) || contact.projects[0];
     onSendMessage('', 'expense_receipt', {
       id: Date.now().toString(),
-      number: `RG-${Math.floor(Math.random() * 10000)}`,
+      number: numero,
       amount: Number(amount),
       concept: description,
       projectId: targetProjectId || contact.projects[0]?.id,
@@ -289,19 +305,10 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
 
     forms.resetExpense();
     forms.closeModal('expense');
-  }, [forms.expense, contact, onAddExpense, onSendMessage]);
-
-  /**
-   * Reserva el siguiente número del tipo (CC-001…). Se le pasan los códigos del
-   * chat abierto para que no repita uno que ya está a la vista: los anteriores a
-   * los consecutivos eran al azar.
-   */
-  const reservarNumero = useCallback(
-    (prefijo: TipoConsecutivo) => reservarConsecutivo(prefijo, messages.map(m => m.metadata?.number)),
-    [messages],
-  );
-  /** Mientras se reserva un número, otro toque al botón no manda un segundo documento. */
-  const enviandoNumero = useRef(false);
+    } finally {
+      enviandoNumero.current = false;
+    }
+  }, [forms.expense, contact, onAddExpense, onSendMessage, reservarNumero]);
 
   const handleSendInvoice = useCallback(async () => {
     const validItems = forms.invoice.items.filter(i => i.description && i.price > 0);
