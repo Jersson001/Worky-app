@@ -15,7 +15,7 @@ import { useChatFormState } from '../hooks/useChatFormState';
 import { useFileUpload } from '../hooks/useFileUpload';
 import { uploadQuotePhotos } from '../services/storageService';
 import { saveUserProfile, getCurrentUserId } from '../services/messagingService';
-import { Borrador, borrarBorrador, claveBorrador, guardarBorrador, leerBorrador, quoteVacia } from '../utils/borradorCotizacion';
+import { OrigenBorrador, borrarBorrador, claveBorrador, guardarBorrador, leerBorrador, listarBorradores, quoteVacia } from '../utils/borradorCotizacion';
 import { hayCondiciones, repartoDePago } from '../utils/condicionesCotizacion';
 import { formularioDesdeCotizacion } from '../utils/cotizacionAFormulario';
 import { subtotalDeItem } from '../utils/tallas';
@@ -297,12 +297,23 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
   // ── Borrador de la cotización ──
   // Se guarda en el teléfono mientras se escribe, uno por contacto, y se retoma
   // al volver a abrir la cotización. Ver utils/borradorCotizacion.ts.
-  const claveDelBorrador = useMemo(() => {
-    try { return claveBorrador(getCurrentUserId(), contact.id); } catch { return null; }
+  const usuarioId = useMemo(() => {
+    try { return getCurrentUserId(); } catch { return null; }
   }, [contact.id]);
-  const [borrador, setBorrador] = useState<Borrador | null>(() => (claveDelBorrador ? leerBorrador(claveDelBorrador) : null));
+  /** El borrador de la cotización que se hace de cero. */
+  const claveDelBorrador = useMemo(
+    () => (usuarioId ? claveBorrador(usuarioId, contact.id) : null),
+    [usuarioId, contact.id],
+  );
+  /** Todos los borradores de este contacto: el de cero y los de cada copia o edición. */
+  const [borradores, setBorradores] = useState(() => (usuarioId ? listarBorradores(usuarioId, contact.id) : []));
+  const refrescarBorradores = useCallback(() => {
+    setBorradores(usuarioId ? listarBorradores(usuarioId, contact.id) : []);
+  }, [usuarioId, contact.id]);
   /** El formulario abierto trae lo que quedó a medias, y se le avisa. */
   const [borradorRetomado, setBorradorRetomado] = useState(false);
+  /** Cuántas fotos recién tomadas no entraron en el borrador que se retomó. */
+  const [fotosPerdidas, setFotosPerdidas] = useState(0);
   const quoteRef = useRef(forms.quote);
   quoteRef.current = forms.quote;
   const yaRestauradoAlAbrir = useRef(false);
@@ -311,36 +322,59 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
    * De qué cotización ya enviada viene el formulario abierto, si viene de una.
    *
    * «copia» arma una cotización nueva a partir de otra; «edicion» corrige la
-   * misma y, al guardar, la reescribe en el chat. Ninguna de las dos es el
-   * borrador del contacto: si lo tocaran, un «Continuar» posterior abriría la
-   * corrección de otra cotización como si fuera trabajo a medias.
+   * misma y, al guardar, la reescribe en el chat. Cada una tiene su propio
+   * borrador, aparte del de la cotización de cero: empezar una copia no debe
+   * pisar lo que se llevaba escrito en otra.
    */
-  const [origenCotizacion, setOrigenCotizacion] = useState<{
-    tipo: 'copia' | 'edicion';
-    messageId: string;
-    numero: string;
-    metadataId?: string;
-  } | null>(null);
+  const [origenCotizacion, setOrigenCotizacion] = useState<OrigenBorrador | null>(null);
   const origenRef = useRef(origenCotizacion);
   origenRef.current = origenCotizacion;
+  /** Dónde se guarda lo que se escribe ahora mismo. */
+  const claveActiva = origenCotizacion && usuarioId
+    ? claveBorrador(usuarioId, contact.id, origenCotizacion)
+    : claveDelBorrador;
+
+  /**
+   * Cómo quedó el formulario al abrir una copia o una edición.
+   *
+   * Abrir una copia y cerrarla sin tocar nada no es trabajo a medias: si se
+   * guardara, aparecería un «borrador» de algo que no se escribió. Se compara
+   * con esto para saber si hubo cambios. Nulo = no se sabe, y se guarda.
+   */
+  const baseDelOrigen = useRef<string | null>(null);
+  const basePendiente = useRef(false);
+  useEffect(() => {
+    if (!basePendiente.current || !origenRef.current) return;
+    baseDelOrigen.current = JSON.stringify(forms.quote);
+    basePendiente.current = false;
+  }, [forms.quote]);
+  const sinCambiosDelOrigen = () =>
+    !!origenRef.current && baseDelOrigen.current !== null && JSON.stringify(quoteRef.current) === baseDelOrigen.current;
 
   useEffect(() => {
-    setBorrador(claveDelBorrador ? leerBorrador(claveDelBorrador) : null);
+    refrescarBorradores();
     setBorradorRetomado(false);
-  }, [claveDelBorrador]);
+  }, [refrescarBorradores]);
 
   // Se guarda con un respiro de medio segundo, para no escribir en cada tecla.
   useEffect(() => {
-    if (!claveDelBorrador || !forms.modals.quote || origenCotizacion) return;
-    const t = setTimeout(() => setBorrador(guardarBorrador(claveDelBorrador, forms.quote)), 500);
+    if (!claveActiva || !forms.modals.quote) return;
+    const t = setTimeout(() => {
+      if (sinCambiosDelOrigen()) return;
+      guardarBorrador(claveActiva, forms.quote, origenCotizacion ?? undefined);
+      refrescarBorradores();
+    }, 500);
     return () => clearTimeout(t);
-  }, [forms.quote, forms.modals.quote, claveDelBorrador, origenCotizacion]);
+  }, [forms.quote, forms.modals.quote, claveActiva, origenCotizacion]);
 
   // Cerrar la app no avisa: al pasar a segundo plano se guarda lo último, sin
   // esperar al respiro.
   useEffect(() => {
-    if (!claveDelBorrador || !forms.modals.quote || origenCotizacion) return;
-    const volcar = () => { guardarBorrador(claveDelBorrador, quoteRef.current); };
+    if (!claveActiva || !forms.modals.quote) return;
+    const volcar = () => {
+      if (sinCambiosDelOrigen()) return;
+      guardarBorrador(claveActiva, quoteRef.current, origenRef.current ?? undefined);
+    };
     const alOcultar = () => { if (document.visibilityState === 'hidden') volcar(); };
     document.addEventListener('visibilitychange', alOcultar);
     window.addEventListener('pagehide', volcar);
@@ -348,10 +382,11 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
       document.removeEventListener('visibilitychange', alOcultar);
       window.removeEventListener('pagehide', volcar);
     };
-  }, [claveDelBorrador, forms.modals.quote, origenCotizacion]);
+  }, [claveActiva, forms.modals.quote]);
 
   // Al abrir la cotización con el formulario en blanco, vuelve lo que había.
-  // Si llega con contenido —desde una foto del chat— no se pisa.
+  // Si llega con contenido —desde una foto del chat— no se pisa. Las copias y
+  // las ediciones traen lo suyo y no pasan por aquí.
   useEffect(() => {
     if (!forms.modals.quote) { yaRestauradoAlAbrir.current = false; return; }
     if (yaRestauradoAlAbrir.current) return;
@@ -360,23 +395,34 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
     const guardado = leerBorrador(claveDelBorrador);
     if (guardado && quoteVacia(quoteRef.current)) {
       forms.restoreQuote(guardado.quote);
+      setFotosPerdidas(guardado.fotosOmitidas);
       setBorradorRetomado(true);
     }
   }, [forms.modals.quote, claveDelBorrador]);
 
-  const descartarBorrador = () => {
+  /** Borra un borrador sin tocar el formulario. */
+  const descartarBorrador = (clave: string) => {
+    borrarBorrador(clave);
+    refrescarBorradores();
+  };
+
+  /** Deja el formulario de cero en blanco, sin el borrador que traía. */
+  const empezarDeCero = () => {
     if (claveDelBorrador) borrarBorrador(claveDelBorrador);
-    setBorrador(null);
+    refrescarBorradores();
     setBorradorRetomado(false);
     forms.resetQuote((contact.phone || ''), contact.documento || '');
   };
 
   const cerrarCotizacion = () => {
-    // Una copia o una edición que se cierra se descarta: el borrador que hubiera
-    // sigue siendo el de antes.
-    if (claveDelBorrador && !origenCotizacion) setBorrador(guardarBorrador(claveDelBorrador, forms.quote));
+    if (claveActiva && !sinCambiosDelOrigen()) {
+      guardarBorrador(claveActiva, forms.quote, origenCotizacion ?? undefined);
+      refrescarBorradores();
+    }
     setBorradorRetomado(false);
     setOrigenCotizacion(null);
+    baseDelOrigen.current = null;
+    basePendiente.current = false;
     forms.resetQuote((contact.phone || ''), contact.documento || '');
     forms.closeModal('quote');
   };
@@ -384,22 +430,40 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
   /**
    * Abre el formulario con una cotización ya enviada puesta encima.
    *
+   * Si esa cotización ya tenía un borrador a medias, se retoma en vez de
+   * empezar otra vez: es lo que se perdía al recargar la página. `desdeCero`
+   * lo ignora y vuelve a copiar la original.
+   *
    * Reemplaza lo que hubiera en el formulario: quien llega aquí viene de pulsar
    * el botón de una cotización, no de seguir escribiendo.
    */
-  const abrirDesdeCotizacion = useCallback((msg: Message, tipo: 'copia' | 'edicion') => {
+  const abrirDesdeCotizacion = useCallback((msg: Message, tipo: 'copia' | 'edicion', desdeCero = false) => {
     if (!msg.metadata) return;
-    forms.resetQuote((contact.phone || ''), contact.documento || '');
-    forms.restoreQuote(formularioDesdeCotizacion(msg.metadata, paymentAccounts));
-    setBorradorRetomado(false);
-    setOrigenCotizacion({
+    const origen: OrigenBorrador = {
       tipo,
       messageId: msg.id,
       numero: msg.metadata.number || '',
       metadataId: msg.metadata.id,
-    });
+    };
+    const clave = usuarioId ? claveBorrador(usuarioId, contact.id, origen) : null;
+    if (clave && desdeCero) { borrarBorrador(clave); refrescarBorradores(); }
+    const previo = clave && !desdeCero ? leerBorrador(clave) : null;
+
+    forms.resetQuote((contact.phone || ''), contact.documento || '');
+    if (previo) {
+      forms.restoreQuote(previo.quote);
+      setFotosPerdidas(previo.fotosOmitidas);
+      baseDelOrigen.current = null;
+      basePendiente.current = false;
+    } else {
+      forms.restoreQuote(formularioDesdeCotizacion(msg.metadata, paymentAccounts));
+      baseDelOrigen.current = null;
+      basePendiente.current = true;
+    }
+    setBorradorRetomado(!!previo);
+    setOrigenCotizacion(origen);
     forms.openModal('quote');
-  }, [forms, contact.phone, contact.documento, paymentAccounts]);
+  }, [forms, contact.id, contact.phone, contact.documento, paymentAccounts, usuarioId, refrescarBorradores]);
 
   /**
    * La cotización tal como saldría, con las líneas y secciones que se le pasen.
@@ -561,17 +625,17 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
         console.warn('No se pudo guardar el documento en el contacto:', e));
     }
 
-    // Enviar una copia o una edición no cierra el borrador del contacto: es un
-    // trabajo aparte, y el que hubiera sigue esperando.
-    if (!origen) {
-      if (claveDelBorrador) borrarBorrador(claveDelBorrador);
-      setBorrador(null);
-    }
+    // Enviada, ya no es borrador. Cada trabajo borra solo el suyo: enviar una
+    // copia no cierra el de la cotización de cero ni el de otra copia.
+    if (claveActiva) borrarBorrador(claveActiva);
+    refrescarBorradores();
     setBorradorRetomado(false);
     setOrigenCotizacion(null);
+    baseDelOrigen.current = null;
+    basePendiente.current = false;
     forms.resetQuote((contact.phone || ''), documentoFinal || contact.documento || '');
     forms.closeModal('quote');
-  }, [forms.quote, contact, onSendMessage, onUpdateMessage, enviandoCotizacion, armarCotizacion, onSetContactDocumento, claveDelBorrador, origenCotizacion]);
+  }, [forms.quote, contact, onSendMessage, onUpdateMessage, enviandoCotizacion, armarCotizacion, onSetContactDocumento, claveActiva, origenCotizacion, refrescarBorradores]);
 
   const handleSendCollection = useCallback(() => {
     const { amount, concept, directedTo, nit, selectedAccount, selectedProject } = forms.collection;
@@ -834,22 +898,40 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
           onDeleteMessage={onDeleteMessage}
           onCopyPaymentInfo={handleCopyPaymentInfo}
           onShowQR={handleShowQR}
-          onQuoteImage={esCliente ? undefined : handleQuoteImage}        />
+          onQuoteImage={esCliente ? undefined : handleQuoteImage}
+        />
 
         {avisoSobreElInput}
 
-        {borrador && !forms.modals.quote && !esCliente && (
-          <div className="mx-3 mb-2 flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 text-xs text-amber-900">
-            <i className="fa-solid fa-file-pen text-amber-600"></i>
-            <span className="flex-1 min-w-0 truncate">
-              <b>Borrador de cotización</b>
-              {' · '}
-              {new Date(borrador.guardado).toLocaleString('es-CO', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-            </span>
-            <button type="button" onClick={() => forms.openModal('quote')} className="font-bold text-blue-700 hover:underline">Continuar</button>
-            <button type="button" onClick={descartarBorrador} className="font-bold text-slate-500 hover:underline">Descartar</button>
-          </div>
-        )}
+        {!forms.modals.quote && !esCliente && borradores.map(({ clave, borrador }) => {
+          const origen = borrador.origen;
+          // El borrador de una copia o edición va con su cotización: si ya no
+          // está en el chat, o se aprobó mientras tanto —ya no se puede editar—,
+          // no hay a qué volver y no se ofrece.
+          const mensajeOrigen = origen ? messages.find(m => m.id === origen.messageId) : undefined;
+          if (origen && (!mensajeOrigen || (origen.tipo === 'edicion' && mensajeOrigen.metadata?.status === 'accepted'))) return null;
+          const titulo = !origen
+            ? 'Borrador de cotización'
+            : origen.tipo === 'edicion' ? `Borrador de edición · ${origen.numero}` : `Borrador de copia · ${origen.numero}`;
+          return (
+            <div key={clave} className="mx-3 mb-2 flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 text-xs text-amber-900">
+              <i className="fa-solid fa-file-pen text-amber-600"></i>
+              <span className="flex-1 min-w-0 truncate">
+                <b>{titulo}</b>
+                {' · '}
+                {new Date(borrador.guardado).toLocaleString('es-CO', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+              </span>
+              <button
+                type="button"
+                onClick={() => (origen && mensajeOrigen ? abrirDesdeCotizacion(mensajeOrigen, origen.tipo) : forms.openModal('quote'))}
+                className="font-bold text-blue-700 hover:underline"
+              >
+                Continuar
+              </button>
+              <button type="button" onClick={() => descartarBorrador(clave)} className="font-bold text-slate-500 hover:underline">Descartar</button>
+            </div>
+          );
+        })}
 
         <ChatFooter
           contactRole={contact.role}
@@ -908,19 +990,33 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
                 {origenCotizacion.tipo === 'edicion' ? `Editando la ${origenCotizacion.numero}` : `Copia de la ${origenCotizacion.numero}`}
               </p>
               <p className="leading-snug">
+                {borradorRetomado && <b>Retomaste tu borrador, con lo que ya habías cambiado. </b>}
                 {origenCotizacion.tipo === 'edicion'
                   ? 'Al guardar, la cotización cambia en el chat con el mismo número y vuelve a quedar pendiente.'
                   : 'Cambia lo que haga falta. Al crearla sale como una cotización nueva, con su propio número; la original no se toca.'}
+                {borradorRetomado && fotosPerdidas > 0 && ` Las fotos recién tomadas no se guardan en el borrador: vuelve a agregar las ${fotosPerdidas}.`}
               </p>
+              {borradorRetomado && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const original = messages.find(m => m.id === origenCotizacion.messageId);
+                    if (original) abrirDesdeCotizacion(original, origenCotizacion.tipo, true);
+                  }}
+                  className="mt-1.5 font-bold text-blue-800 underline"
+                >
+                  Empezar de nuevo desde la original
+                </button>
+              )}
             </div>
           ) : borradorRetomado ? (
             <div className="mb-4 bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-900">
               <p className="font-bold mb-0.5"><i className="fa-solid fa-clock-rotate-left mr-1.5"></i>Retomaste tu borrador</p>
               <p className="leading-snug">
                 Quedó guardado lo que escribiste.
-                {borrador && borrador.fotosOmitidas > 0 && ` Las fotos no se guardan en el borrador: vuelve a agregar las ${borrador.fotosOmitidas}.`}
+                {fotosPerdidas > 0 && ` Las fotos recién tomadas no se guardan en el borrador: vuelve a agregar las ${fotosPerdidas}.`}
               </p>
-              <button type="button" onClick={descartarBorrador} className="mt-1.5 font-bold text-amber-800 underline">
+              <button type="button" onClick={empezarDeCero} className="mt-1.5 font-bold text-amber-800 underline">
                 Empezar de cero
               </button>
             </div>
