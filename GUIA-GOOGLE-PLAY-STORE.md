@@ -4,13 +4,13 @@ Esta guía te llevará paso a paso para publicar tu aplicación Worky en Google 
 
 ---
 
-## 📌 Dónde va esto — al 12 de octubre de 2026
+## 📌 Dónde va esto — al 14 de octubre de 2026
 
-La 2.10.1 (`versionCode` 26100602) ya se subió, así que su número está gastado. El
-siguiente envío va con el **`versionCode` 26101201 (versión 2.11.0)**,
-compilado y firmado, en el Escritorio como `Worky-2.11.0.aab`. Ya se enviaron el 19, el 20, el 21, el
+La 2.11.0 (`versionCode` 26101201) ya se subió, así que su número está gastado. El
+siguiente envío va con el **`versionCode` 26101401 (versión 2.12.0)**,
+compilado y firmado, en el Escritorio como `Worky-2.12.0.aab`. Ya se enviaron el 19, el 20, el 21, el
 26092201 (2.8.4), el 26092702 (2.8.8), el 26100501 (2.9.0), el 26100601 (2.10.0) y el
-26100602 (2.10.1); lo intermedio está compilado y nunca se subió por separado.
+26100602 (2.10.1) y el 26101201 (2.11.0); lo intermedio está compilado y nunca se subió por separado.
 
 **Dos avisos de Play Console, y los dos se resuelven fuera del código:**
 
@@ -22,14 +22,14 @@ compilado y firmado, en el Escritorio como `Worky-2.11.0.aab`. Ya se enviaron el
 2. **API 36.** El proyecto ya apunta a 36. El aviso se refiere a la versión en
    producción, que sigue en API 35: se cierra publicando una versión nueva.
 
-**Novedades de la 2.11.0 para la ficha de Play** (357 caracteres; el tope de Play es 500):
+**Novedades de la 2.12.0 para la ficha de Play** (337 caracteres; el tope de Play es 500):
 
 ```
 Novedades:
-• Catálogo: organiza tus carpetas en subcarpetas.
-• Tiendas: nuevo botón «Seguir tienda» con corazón. Si tienes Worky instalada, el QR de una tienda ahora se abre directo en la app.
-• Las tarjetas del catálogo muestran el comentario del producto, y las carpetas ya no llevan números.
-• Seguridad: protegemos mejor los textos del catálogo público.
+• Cotizaciones: copia o edita una cotización ya enviada desde su detalle, sin rehacerla.
+• Los borradores de cotización ahora también guardan copias y ediciones, y no se pierden si la app se cierra.
+• Las fotos de la cotización se amplían con un toque.
+• Ancho, alto y cantidad funcionan como calculadora en todos los oficios.
 ```
 
 **Los enlaces de aplicación dependen de Play.** Android verifica al instalar que
@@ -134,7 +134,8 @@ intento fallido gasta un número:
 | 26100501 (2.9.0) | Cobro mensual, calculadora de medidas y titulares editables en la cotización, celular o usuario de WhatsApp en todos los formularios, y logo, firma y documentos separados por cuenta. **Enviada y devuelta por las credenciales de demostración**: número gastado |
 | 26100601 (2.10.0) | El documento del contacto en cotización, factura, cuenta de cobro y recibo; nombre del contacto editable; vista previa y borrador de la cotización. **Subida a Play**: número gastado |
 | 26100602 (2.10.1) | El ojito para ver la contraseña. **Subida a Play**: número gastado |
-| **26101201 (2.11.0)** | Subcarpetas en el catálogo, «Seguir tienda» con corazón, el comentario del producto en el catálogo público, el arreglo de seguridad del visor y los enlaces de aplicación (el QR de una tienda abre la app). **La que va a Play** |
+| 26101201 (2.11.0) | Subcarpetas en el catálogo, «Seguir tienda» con corazón, el comentario del producto en el catálogo público, el arreglo de seguridad del visor y los enlaces de aplicación (el QR de una tienda abre la app). **Subida a Play**: número gastado |
+| **26101401 (2.12.0)** | Copiar y editar una cotización enviada, borradores para copias y ediciones, fotos de la cotización que se amplían y calculadora en todos los campos de medida. **La que va a Play** |
 
 **Play exige API 36** desde el 1 de septiembre de 2026. Está en
 `android/variables.gradle`.
@@ -187,10 +188,10 @@ fue por el contenido de la app:
 - ✅ **Política de privacidad y términos** escritos, en `public/`, empaquetados con la app
 - ✅ **Página de eliminación de cuenta** en `public/eliminar-cuenta.html`, que es
   la URL que pide el formulario de Seguridad de los datos
-- ✅ VersionCode 26101201 (2.11.0) compilado y firmado el 12/10/2026, con todo
+- ✅ VersionCode 26101401 (2.12.0) compilado y firmado el 14/10/2026, con todo
   lo anterior dentro. El 19, el 20, el 21, el 26092201 (2.8.4), el 26092702
-  (2.8.8), el 26100501 (2.9.0), el 26100601 (2.10.0) y el 26100602 (2.10.1) ya
-  se enviaron
+  (2.8.8), el 26100501 (2.9.0), el 26100601 (2.10.0), el 26100602 (2.10.1) y el
+  26101201 (2.11.0) ya se enviaron
 - ✅ **Notificaciones probadas en un teléfono de verdad** el 20/09/2026: llegan
   con la app cerrada, con la W en la barra de estado
 - ⏳ **Pendiente de subir.** Ver arriba lo que falta.

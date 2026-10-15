@@ -666,6 +666,55 @@ distingue. Si no cuadra, salen las de fábrica del oficio
 recibía las de confección, porque sin oficio se ven todos los gremios y
 bastaba con que confección estuviera en la lista.
 
+### Copiar y editar una cotización enviada
+
+Desde el 14/10/2026 el detalle de una cotización que mandó el propio usuario
+trae dos botones en la barra, junto a compartir e imprimir: **Copiar** y
+**Editar**. Ninguno aparece al cliente ni en las cotizaciones recibidas.
+
+- **Copiar** abre el formulario con todo lo de la original —ítems o capítulos,
+  fotos, impuestos, anticipo, cuenta y condiciones— y al crearla sale como una
+  cotización nueva, con su propio número. La original no se toca. Es para el
+  cliente que pide «lo mismo con otra medida».
+- **Editar** abre el mismo formulario, pero al guardar reescribe el mensaje que
+  ya está en el chat: mismo número, mismo `id`, `editadaEl` con la fecha y el
+  estado de nuevo en `pending`. El cliente la ve cambiar en vivo (el canal de
+  tiempo real ya escucha los `UPDATE` de `messages`) y la burbuja lleva la
+  marca «Editada». **No aparece si ya está aprobada**: aprobarla creó un
+  proyecto con ese valor y cambiarle el precio dejaría los dos desacordes. Para
+  eso queda Copiar.
+
+La conversión del mensaje al formulario está en
+[`utils/cotizacionAFormulario.ts`](utils/cotizacionAFormulario.ts). Hace copia
+profunda para no tocar lo que ya vio el cliente, devuelve la vigencia a la más
+cercana de 7, 15 o 30 días y busca la cuenta de cobro en la libreta por banco y
+número; si ya no está, el formulario abre sin cuenta.
+
+**Cada copia y cada edición tiene su borrador.** Antes solo lo tenía la
+cotización hecha de cero, y recargar la página a mitad de una copia perdía todo.
+Ahora hay un borrador por contacto para la de cero y uno más por cada
+cotización que se copia o edita
+(`worky_borrador_cotizacion:uid:contacto:tipo:mensaje`), porque son trabajos
+distintos y empezar una copia no debe pisar otra. El chat muestra una franja por
+cada uno —«Borrador de copia · COT-123»— con Continuar y Descartar. Abrir una
+copia y cerrarla sin tocar nada no deja borrador: se compara con cómo quedó el
+formulario al abrirse. Si la cotización de origen desapareció, o se aprobó y el
+borrador era una edición, la franja no se ofrece. Las fotos que ya están subidas
+son solo un enlace y ahora **sí** se guardan en el borrador; solo se descartan
+las recién tomadas, que son base64.
+
+### Fotos que se amplían
+
+Las fotos de cada ítem salen como miniaturas de 80 a 96 px. Desde el 14/10/2026
+un click las abre a pantalla completa
+([`components/VisorDeFotos.tsx`](components/VisorDeFotos.tsx)), con flechas si
+el ítem tiene varias; el «+N» también abre el visor, en la cuarta, para ver las
+que quedaban escondidas. Vale para la cotización básica y la de capítulos, y
+por tanto para todos los oficios y para el cliente que abre el enlace. El visor
+se pinta en el `body`, fuera de la hoja —que se reduce con `zoom`— y lleva
+`no-print`, así que el PDF no cambia. Una foto reducida al adjuntarla se ve más
+grande pero no más nítida.
+
 ### Comentarios por línea en la cotización básica
 
 Desde el 13/09/2026 cada línea de la básica lleva su campo de comentarios, como
@@ -1032,18 +1081,19 @@ llegue a publicarse, así que cada intento fallido quema un número:
 | 26100501 (2.9.0) | Cobro mensual, mejoras de la cotización por oficios (calculadora de medidas, titulares editables, viñetas), celular o usuario de WhatsApp en todos los formularios, y el logo, la firma y los documentos separados por cuenta. **Enviada a Play y devuelta por las credenciales de demostración**, número gastado |
 | 26100601 (2.10.0) | El documento del contacto (cédula, NIT o RUT) al crearlo y en cotización, factura, cuenta de cobro y recibo; nombre del contacto editable y sin alias; vista previa de la cotización y borrador que se guarda solo; celular o usuario de WhatsApp en la cotización. **Subida a Play el 06/10/2026**, número gastado |
 | 26100602 (2.10.1) | El ojito para ver la contraseña al iniciar sesión, al registrarse y al completar el registro. **Subida a Play**, número gastado |
-| **26101201 (2.11.0)** | Subcarpetas en el catálogo (un nivel), «Seguir tienda» con corazón en vez de «Guardar», el comentario del producto en el catálogo público, carpetas sin números, el arreglo de seguridad del visor del catálogo y los enlaces de aplicación: el QR de una tienda abre la app instalada. **Compilada y firmada el 12/10/2026; es la que va a Play** |
+| 26101201 (2.11.0) | Subcarpetas en el catálogo (un nivel), «Seguir tienda» con corazón en vez de «Guardar», el comentario del producto en el catálogo público, carpetas sin números, el arreglo de seguridad del visor del catálogo y los enlaces de aplicación: el QR de una tienda abre la app instalada. **Subida a Play**, número gastado |
+| **26101401 (2.12.0)** | Copiar y editar una cotización ya enviada desde su detalle, borradores para las copias y las ediciones, fotos de la cotización que se amplían con un click y calculadora en todos los campos de medida. **Compilada y firmada el 14/10/2026; es la que va a Play** |
 
 Play exige **API 36** desde el 1 de septiembre de 2026. El proyecto ya apunta a
 36 (`android/variables.gradle`); el aviso de Play Console habla de la versión
 que está en producción, que se subió antes y sigue en API 35. Se cierra
 publicando en producción una versión nueva.
 
-**La 2.10.1 (26100602) se subió a Play**; la siguiente es la 26101201 (2.11.0),
-compilada y firmada el 12/10/2026, que es la que va a Play.
+**La 2.11.0 (26101201) se subió a Play**; la siguiente es la 26101401 (2.12.0),
+compilada y firmada el 14/10/2026, que es la que va a Play.
 Del 14 al 21 son números gastados —enviados o rechazados—, y también todos hasta
-el 26100602 (2.10.1). Las 2.6.0 a 2.8.7 están compiladas y nunca se enviaron por
-separado: sus cambios entraron en la 2.8.8, la 2.9.0, la 2.10.x y la 2.11.0.
+el 26101201 (2.11.0). Las 2.6.0 a 2.8.7 están compiladas y nunca se enviaron por
+separado: sus cambios entraron en la 2.8.8, la 2.9.0, la 2.10.x, la 2.11.0 y la 2.12.0.
 
 **Enlaces de aplicación (12/10/2026).** Con la app instalada, escanear el QR de
 una tienda abre la app y no la web. El manifiesto declara `worky.ferryapp.co` y

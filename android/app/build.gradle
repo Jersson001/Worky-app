@@ -160,7 +160,14 @@ android {
         // escapaban mal) y los enlaces de aplicación: con la app instalada, el QR
         // de una tienda se abre en la app y no en la web. Eso último pide el
         // archivo /.well-known/assetlinks.json publicado con la huella de la
-        // llave de subida y la de firma de Play.
+        // llave de subida y la de firma de Play. Subida a Play: su número está
+        // gastado.
+        //
+        // El 26101401 (2.12.0): copiar y editar una cotización ya enviada, desde
+        // su detalle; el borrador que se guarda también para las copias y las
+        // ediciones, y que ya no pierde las fotos subidas; las fotos de la
+        // cotización se amplían con un click; y todos los campos de medida
+        // (ancho, alto, cantidad, rendimiento) son calculadora.
         /*
          * Son dos cosas distintas y solo una es libre.
          *
@@ -198,8 +205,8 @@ android {
          * número de en medio —2.4, 2.5 y 2.6 en tres días— y a ese paso la 3.0
          * llegaba sin que hubiera cambiado nada grande.
          */
-        versionCode 26101201
-        versionName "2.11.0"
+        versionCode 26101401
+        versionName "2.12.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
