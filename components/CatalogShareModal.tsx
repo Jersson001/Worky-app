@@ -9,7 +9,7 @@ import React, { useEffect, useState } from 'react';
 import { Product, ProductCategory, UserProfileData } from '../types';
 import { getCurrentUserId } from '../services/messagingService';
 import { describeError } from '../utils/errorMessage';
-import { catalogNfcUrl, publishCatalog, qrImageUrl } from '../services/catalogShareService';
+import { publishCatalog, qrImageUrl } from '../services/catalogShareService';
 
 interface CatalogShareModalProps {
   show: boolean;
@@ -27,8 +27,6 @@ export const CatalogShareModal: React.FC<CatalogShareModalProps> = ({
   const [enlace, setEnlace] = useState('');
   const [detalle, setDetalle] = useState('');
   const [copiado, setCopiado] = useState(false);
-  const [copiadoNfc, setCopiadoNfc] = useState(false);
-  const [userId, setUserId] = useState('');
 
   useEffect(() => {
     if (!show) return;
@@ -45,7 +43,6 @@ export const CatalogShareModal: React.FC<CatalogShareModalProps> = ({
       setEstado('error');
       return;
     }
-    setUserId(userId);
 
     publishCatalog(userId, profile ?? { businessName: '', ownerName: '', phone: '' } as any, products, categories)
       .then(publicada => {
@@ -72,17 +69,6 @@ export const CatalogShareModal: React.FC<CatalogShareModalProps> = ({
       await navigator.clipboard.writeText(enlace);
       setCopiado(true);
       setTimeout(() => setCopiado(false), 2000);
-    } catch {
-      /* sin portapapeles: el enlace está visible para copiarlo a mano */
-    }
-  };
-
-  /** El enlace para grabar en una etiqueta NFC: el mismo, con `via=nfc` y siempre el dominio publicado. */
-  const copiarNfc = async () => {
-    try {
-      await navigator.clipboard.writeText(catalogNfcUrl(userId));
-      setCopiadoNfc(true);
-      setTimeout(() => setCopiadoNfc(false), 2000);
     } catch {
       /* sin portapapeles: el enlace está visible para copiarlo a mano */
     }
@@ -152,22 +138,6 @@ export const CatalogShareModal: React.FC<CatalogShareModalProps> = ({
                 </span>
                 <span className="text-xs text-slate-700 break-all">{enlace}</span>
               </button>
-
-              {userId && (
-                <button
-                  onClick={copiarNfc}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 mb-2 text-left hover:bg-slate-100 transition"
-                >
-                  <span className="text-[10px] text-slate-500 font-bold uppercase block mb-0.5">
-                    <i className="fa-solid fa-tag mr-1"></i>
-                    {copiadoNfc ? '¡Enlace NFC copiado!' : 'Enlace para NFC — toca para copiar'}
-                  </span>
-                  <span className="text-xs text-slate-700 break-all">{catalogNfcUrl(userId)}</span>
-                  <span className="text-[10px] text-slate-400 block mt-1 leading-snug">
-                    Para grabarlo en una etiqueta del sticker o el hablador de tu vitrina.
-                  </span>
-                </button>
-              )}
 
               <div className="flex gap-2 mt-3">
                 <button
