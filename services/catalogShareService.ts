@@ -153,6 +153,19 @@ export const catalogPageUrl = (userId: string): string =>
   `${WORKY_APP_URL}/?catalogo=${userId}`;
 
 /**
+ * Enlace para grabar en una etiqueta NFC —el sticker o el hablador de la
+ * vitrina—.
+ *
+ * Es el mismo del QR más `via=nfc`, que la app ignora hoy y sirve después para
+ * contar qué visitas vinieron de la vitrina. Va **siempre con el dominio
+ * publicado** y nunca con `WORKY_APP_URL`: esa constante sigue el origen actual,
+ * y generado desde un preview de Vercel el enlace apuntaría a una dirección que
+ * se tira, grabada para siempre en una etiqueta que además se bloquea.
+ */
+export const catalogNfcUrl = (userId: string): string =>
+  `${APP_PUBLICADA}/?catalogo=${encodeURIComponent(userId)}&via=nfc`;
+
+/**
  * Enlace de «Chatear»: entra a la app diciendo con quién quiere hablar.
  *
  * Es lo que convierte un QR escaneado en una conversación. La app se guarda ese

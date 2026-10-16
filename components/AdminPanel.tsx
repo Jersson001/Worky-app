@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { AdminProfileRow, adminSetPro, adminSetSubscriptionEndsAt, listAllUserProfiles, mesDespuesDe } from '../services/adminService';
 import { tieneAcceso } from './ProFeatureGuard';
+import { catalogNfcUrl, qrImageUrl, tieneCatalogo } from '../services/catalogShareService';
 
 interface AdminPanelProps {
   onClose: () => void;
@@ -17,6 +18,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
   const [search, setSearch] = useState('');
   const [savingId, setSavingId] = useState<string | null>(null);
   const [dateDrafts, setDateDrafts] = useState<Record<string, string>>({});
+  /** La tienda cuyo enlace NFC está abierto. */
+  const [nfcAbierto, setNfcAbierto] = useState<string | null>(null);
+  /** Si cada tienda tiene catálogo publicado; null mientras se pregunta. */
+  const [conCatalogo, setConCatalogo] = useState<Record<string, boolean | null>>({});
+  const [copiadoId, setCopiadoId] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -81,6 +87,30 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
       alert(e.message || 'Error actualizando fecha');
     } finally {
       setSavingId(null);
+    }
+  };
+
+  /**
+   * Abre o cierra el enlace NFC de una tienda. Al abrirlo se comprueba que tenga
+   * catálogo: una etiqueta que lleva a «No encontramos este catálogo» se graba y
+   * se bloquea igual, y ya no se puede corregir.
+   */
+  const toggleNfc = (row: AdminProfileRow) => {
+    if (nfcAbierto === row.id) { setNfcAbierto(null); return; }
+    setNfcAbierto(row.id);
+    if (conCatalogo[row.id] === undefined) {
+      setConCatalogo((prev) => ({ ...prev, [row.id]: null }));
+      tieneCatalogo(row.id).then((si) => setConCatalogo((prev) => ({ ...prev, [row.id]: si })));
+    }
+  };
+
+  const copiarEnlace = async (row: AdminProfileRow) => {
+    try {
+      await navigator.clipboard.writeText(catalogNfcUrl(row.id));
+      setCopiadoId(row.id);
+      setTimeout(() => setCopiadoId((actual) => (actual === row.id ? null : actual)), 2000);
+    } catch {
+      /* sin portapapeles el enlace está a la vista para copiarlo a mano */
     }
   };
 
@@ -190,6 +220,65 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                       <p className="text-[10px] text-slate-400 ml-auto">
                         Trial hasta {row.trialEndsAt ? new Date(row.trialEndsAt).toLocaleDateString() : '—'}
                       </p>
+                    </div>
+
+                    <div className="mt-3 pt-3 border-t border-slate-100">
+                      <button
+                        onClick={() => toggleNfc(row)}
+                        className="text-xs font-bold px-3 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition flex items-center gap-2"
+                      >
+                        <i className="fa-solid fa-tag"></i>
+                        Enlace NFC
+                        <i className={`fa-solid ${nfcAbierto === row.id ? 'fa-chevron-up' : 'fa-chevron-down'} text-[9px]`}></i>
+                      </button>
+
+                      {nfcAbierto === row.id && (
+                        <div className="mt-3 bg-slate-50 rounded-xl p-3 space-y-3">
+                          {conCatalogo[row.id] === false && (
+                            <p className="text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-lg p-2 leading-snug">
+                              <b>Esta tienda no tiene catálogo publicado.</b> Quien toque la etiqueta
+                              vería «No encontramos este catálogo». Que lo publique antes de grabarla.
+                            </p>
+                          )}
+                          {conCatalogo[row.id] === null && (
+                            <p className="text-xs text-slate-500">Comprobando que tenga catálogo…</p>
+                          )}
+
+                          <div className="flex items-start gap-3">
+                            <img
+                              src={qrImageUrl(catalogNfcUrl(row.id), 160)}
+                              alt="QR de la tienda"
+                              className="w-20 h-20 rounded-lg bg-white border border-slate-200 p-1 shrink-0"
+                            />
+                            <div className="min-w-0 flex-1">
+                              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Enlace para grabar</p>
+                              <p className="text-xs text-slate-800 break-all select-all">{catalogNfcUrl(row.id)}</p>
+                              <div className="mt-2 flex flex-wrap gap-2">
+                                <button
+                                  onClick={() => copiarEnlace(row)}
+                                  className="text-xs font-bold px-3 py-1.5 rounded-lg bg-gradient-to-br from-blue-600 to-blue-700 text-white shadow-md shadow-blue-500/30 hover:shadow-lg transition"
+                                >
+                                  {copiadoId === row.id ? '¡Copiado!' : 'Copiar enlace'}
+                                </button>
+                                <a
+                                  href={catalogNfcUrl(row.id)}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-xs font-bold px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 transition"
+                                >
+                                  Probar
+                                </a>
+                              </div>
+                            </div>
+                          </div>
+
+                          <p className="text-[11px] text-slate-500 leading-snug">
+                            Graba este enlace en la etiqueta, <b>pruébala en un Android y en un iPhone</b> y
+                            solo al final bloquéala contra escritura: el bloqueo no se deshace. Lleva el
+                            QR impreso como respaldo.
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
