@@ -4,11 +4,13 @@ Esta guía te llevará paso a paso para publicar tu aplicación Worky en Google 
 
 ---
 
-## 📌 Dónde va esto — al 15 de octubre de 2026
+## 📌 Dónde va esto — al 22 de octubre de 2026
 
-La 2.11.0 (`versionCode` 26101201) ya se subió, así que su número está gastado. El
-siguiente envío va con el **`versionCode` 26101501 (versión 2.13.0)**,
-compilado y firmado el 15/10/2026, en el Escritorio como `Worky-2.13.0.aab`.
+La 2.13.0 (`versionCode` 26101501) **ya se subió a Play**, así que su número está
+gastado, igual que el de la 2.11.0 (26101201). Es la que cumple el aviso de API 36
+(el aviso mira lo que está en producción, que seguía en API 35): al publicarse
+se cierra. Quedó en el Escritorio como `Worky-2.13.0.aab`. El siguiente envío va
+con un número mayor, por fecha.
 
 La 26101401 (2.12.0) se compiló el 14/10 y quedó en el Escritorio como
 `Worky-2.12.0.aab`; **si llegó a subirse, su número está gastado** y la 2.13.0 la
@@ -145,7 +147,7 @@ intento fallido gasta un número:
 | 26100602 (2.10.1) | El ojito para ver la contraseña. **Subida a Play**: número gastado |
 | 26101201 (2.11.0) | Subcarpetas en el catálogo, «Seguir tienda» con corazón, el comentario del producto en el catálogo público, el arreglo de seguridad del visor y los enlaces de aplicación (el QR de una tienda abre la app). **Subida a Play**: número gastado |
 | 26101401 (2.12.0) | Copiar y editar una cotización enviada, borradores para copias y ediciones, fotos de la cotización que se amplían y calculadora en todos los campos de medida. Compilada el 14/10; **si se subió, número gastado** |
-| **26101501 (2.13.0)** | La cuenta de cobro con RUT, cédula, celular, dirección, concepto con viñetas, vista previa, copiar, editar y borradores; consecutivos con serie (`COT-A001`…); un solo enlace en el mensaje de WhatsApp. **La que va a Play** |
+| **26101501 (2.13.0)** | La cuenta de cobro con RUT, cédula, celular, dirección, concepto con viñetas, vista previa, copiar, editar y borradores; consecutivos con serie (`COT-A001`…); un solo enlace en el mensaje de WhatsApp. **Subida a Play**: número gastado |
 
 **Play exige API 36** desde el 1 de septiembre de 2026. Está en
 `android/variables.gradle`.
@@ -198,7 +200,7 @@ fue por el contenido de la app:
 - ✅ **Política de privacidad y términos** escritos, en `public/`, empaquetados con la app
 - ✅ **Página de eliminación de cuenta** en `public/eliminar-cuenta.html`, que es
   la URL que pide el formulario de Seguridad de los datos
-- ✅ VersionCode 26101501 (2.13.0) compilado y firmado el 15/10/2026, con todo
+- ✅ VersionCode 26101501 (2.13.0) compilado y firmado el 15/10/2026 y **subido a Play**, con todo
   lo anterior dentro (la 26101401, 2.12.0, se compiló el 14/10 y no consta que
   se subiera). El 19, el 20, el 21, el 26092201 (2.8.4), el 26092702
   (2.8.8), el 26100501 (2.9.0), el 26100601 (2.10.0), el 26100602 (2.10.1) y el

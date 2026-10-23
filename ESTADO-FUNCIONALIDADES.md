@@ -1181,15 +1181,16 @@ llegue a publicarse, así que cada intento fallido quema un número:
 | 26100602 (2.10.1) | El ojito para ver la contraseña al iniciar sesión, al registrarse y al completar el registro. **Subida a Play**, número gastado |
 | 26101201 (2.11.0) | Subcarpetas en el catálogo (un nivel), «Seguir tienda» con corazón en vez de «Guardar», el comentario del producto en el catálogo público, carpetas sin números, el arreglo de seguridad del visor del catálogo y los enlaces de aplicación: el QR de una tienda abre la app instalada. **Subida a Play**, número gastado |
 | 26101401 (2.12.0) | Copiar y editar una cotización ya enviada desde su detalle, borradores para las copias y las ediciones, fotos de la cotización que se amplían con un click y calculadora en todos los campos de medida. Compilada y firmada el 14/10/2026. **Si se subió a Play, su número está gastado**; si no, sus cambios van dentro de la 2.13.0 |
-| **26101501 (2.13.0)** | La cuenta de cobro con RUT, cédula, celular y dirección, el concepto con viñetas, y vista previa, copiar, editar y borradores; los consecutivos con serie (`COT-A001`, `CC-A001`…) en vez de números al azar; y el mensaje de WhatsApp con un solo enlace. **Compilada y firmada el 15/10/2026; es la que va a Play** |
+| **26101501 (2.13.0)** | La cuenta de cobro con RUT, cédula, celular y dirección, el concepto con viñetas, y vista previa, copiar, editar y borradores; los consecutivos con serie (`COT-A001`, `CC-A001`…) en vez de números al azar; y el mensaje de WhatsApp con un solo enlace. **Compilada y firmada el 15/10/2026. Subida a Play**, número gastado |
 
 Play exige **API 36** desde el 1 de septiembre de 2026. El proyecto ya apunta a
 36 (`android/variables.gradle`); el aviso de Play Console habla de la versión
 que está en producción, que se subió antes y sigue en API 35. Se cierra
 publicando en producción una versión nueva.
 
-**La 2.11.0 (26101201) se subió a Play**; la siguiente es la 26101501 (2.13.0),
-compilada y firmada el 15/10/2026, que es la que va a Play. La 26101401 (2.12.0)
+**La 2.13.0 (26101501) ya se subió a Play** —compilada y firmada el 15/10/2026—,
+así que el siguiente envío va con un número mayor (por fecha, `AAMMDDNN`). La
+26101401 (2.12.0)
 se compiló el 14/10 y, hasta donde consta aquí, no se subió: de haberse subido,
 su número está gastado y no se reutiliza.
 Del 14 al 21 son números gastados —enviados o rechazados—, y también todos hasta
