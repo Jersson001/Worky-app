@@ -134,6 +134,21 @@ export const cifraCorta = (valor: number): string => {
   return `${signo}$${abs}`;
 };
 
+/** Cuándo fue el último mensaje, como milisegundos; 0 si no se sabe. */
+export const aMs = (v: unknown): number => {
+  if (v instanceof Date) return v.getTime();
+  if (typeof v === 'number') return v;
+  const t = new Date(v as any).getTime();
+  return Number.isNaN(t) ? 0 : t;
+};
+
+/** La hora de un chat, tal como la enseña la lista de chats. */
+export const horaCorta = (v: unknown): string => {
+  if (v instanceof Date) return v.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  if (typeof v === 'number') return new Date(v).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  return typeof v === 'string' ? v : '';
+};
+
 export type FamiliaDeNegocio = 'obra' | 'comercio' | 'otro';
 
 /**

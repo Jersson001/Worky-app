@@ -1,4 +1,7 @@
 import './estilos.css';
+// Va primero: lee lo que Google devuelve en la dirección antes de que la librería
+// de sesión lo descarte. Ver utils/retornoDeGoogle.ts.
+import './utils/capturarRetorno';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';

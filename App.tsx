@@ -45,6 +45,8 @@ import { App as CapacitorApp } from '@capacitor/app';
 import { Browser } from '@capacitor/browser';
 import { Capacitor } from '@capacitor/core';
 import { AvisoGuardarEspacio } from './components/AvisoGuardarEspacio';
+import { InicioCliente } from './components/InicioCliente';
+import { mensajeDeErrorDeGoogle, recordarChatParaVolver, tomarChatParaVolver, tomarErrorDeRetorno } from './utils/retornoDeGoogle';
 
 // Mock Data (usado como fallback o inicial)
 const MOCK_CONTACTS: Contact[] = [
@@ -203,6 +205,10 @@ const App: React.FC = () => {
    * complete el registro, que no bloquea nada.
    */
   const [esAnonimo, setEsAnonimo] = useState(false);
+  /** Marcado como cliente en su cuenta; dura lo que la cuenta, a diferencia de `vendedor`. */
+  const [rolCliente, setRolCliente] = useState(false);
+  /** Lo que falló al volver de Google, para contárselo en el aviso. */
+  const [errorGuardarEspacio, setErrorGuardarEspacio] = useState('');
   /**
    * Si la cuenta nació entrando al catálogo de alguien.
    *
@@ -597,6 +603,7 @@ const App: React.FC = () => {
         setUidSesion(user.id);
         setEsAnonimo(user.is_anonymous === true);
         setLlegoDeUnCatalogo(!!user.user_metadata?.vendedor);
+        setRolCliente(user.user_metadata?.rol === 'cliente');
 
         // El teléfono se engancha aquí y no al abrir la app: el token se cuelga
         // de una cuenta, y sin sesión no hay de quién. En el navegador no hace
@@ -941,7 +948,7 @@ const App: React.FC = () => {
    * Ante la duda se le trata como vendedor: sobrarle un botón es molesto,
    * faltarle una herramienta que necesita es peor.
    */
-  const esCliente = esAnonimo || (llegoDeUnCatalogo && !userProfile?.businessType);
+  const esCliente = esAnonimo || ((llegoDeUnCatalogo || rolCliente) && !userProfile?.businessType);
 
   const handleLogout = useCallback(async () => {
     // Primero se suelta el teléfono, con la sesión todavía abierta: después de
@@ -1480,6 +1487,22 @@ const App: React.FC = () => {
     }
   };
 
+  // Al volver de Google —en la web la página arranca de cero—: al chat donde
+  // estaba, y si falló se le cuenta. Se espera a tener contactos: antes no hay
+  // chat que abrir.
+  useEffect(() => {
+    if (!isAuthenticated || contacts.length === 0) return;
+    const error = tomarErrorDeRetorno();
+    const volver = tomarChatParaVolver();
+    if (volver && contacts.some(c => c.id === volver)) {
+      setSelectedContactId(volver);
+      setSelectedGroupId(null);
+      setShowFinancials(false);
+      setMobileTab('chats');
+    }
+    if (error) setErrorGuardarEspacio(mensajeDeErrorDeGoogle(error));
+  }, [isAuthenticated, contacts.length > 0]);
+
   /**
    * Guarda el espacio de quien entró sin cuenta vinculándole Google.
    *
@@ -1501,6 +1524,10 @@ const App: React.FC = () => {
     const destino = esNativo
       ? 'worky://auth-callback'
       : (protocol === 'http:' || protocol === 'https:') ? origin : WORKY_APP_URL;
+
+    // En la web la página entera se va a Google y vuelve de cero en el Inicio:
+    // se anota el chat para volver a él. Ver utils/retornoDeGoogle.ts.
+    recordarChatParaVolver(selectedContactId);
 
     const { data, error } = await supabase.auth.linkIdentity({
       provider: 'google',
@@ -2987,6 +3014,7 @@ ${describeError(error)}
               <AvisoGuardarEspacio
                 onGoogle={guardarEspacioConGoogle}
                 onCorreo={() => setShowProfileEditor(true)}
+                errorInicial={errorGuardarEspacio}
               />
             ) : null}
             esCliente={esCliente}
@@ -3068,54 +3096,75 @@ ${describeError(error)}
               {/* El cuerpo del Inicio vive en InicioPanel: lo que se hace a diario, en
                   el orden en que se hace. Antes eran dos cuadrículas de baldosas
                   iguales; ver el comentario de ese componente. */}
-              <InicioPanel
+              {/* Quien compra ve dos bloques; quien vende, su consola. */}
+              {esCliente ? (
+              <InicioCliente
                 contacts={contacts}
-                totalSinLeer={totalSinLeer}
-                userProfile={userProfile}
-                productCount={products.length}
-                folderCount={carpetasPrincipales(categories).length}
-                onOpenChats={() => { setSelectedContactId(null); setMobileTab('chats'); }}
+                nombre={userProfile?.ownerName || userProfile?.businessName || 'bienvenido'}
+                esAnonimo={esAnonimo}
                 onOpenChat={seleccionarContacto}
-                onCrearDocumento={handleDocumentClick}
-                onOpenFinancials={() => setShowFinancials(true)}
-                onOpenCatalog={() => setShowCatalogManager(true)}
-                onAddProduct={() => {
-                  // Entra a «todos los productos» con el formulario abierto: sin
-                  // carpeta elegida, que se escoge en el propio formulario.
-                  setCatalogView('products');
-                  setSelectedCategory(null);
-                  setNewProductCategory('');
-                  setShowProductForm(true);
-                  setShowCatalogManager(true);
+                onAbrirChatTienda={(idTienda) => {
+                  // Solo si ya es un contacto suyo. Si no, se pasa por la
+                  // invitación, que es lo que crea el contacto y abre el chat.
+                  if (!contacts.some(c => c.id === idTienda)) return false;
+                  seleccionarContacto(idTienda);
+                  setMobileTab('chats');
+                  return true;
                 }}
-                onShareQr={() => setShowCatalogShare(true)}
-                onOpenWallet={() => setShowWallet(true)}
-                onOpenGantt={() => setShowGanttChart(true)}
-                onOpenStatus={(conCamara) => { setShowStatus(true); setStartCamera(conCamara); }}
-                onOpenGroups={() => setShowGroupsManager(true)}
-                onOpenTiendas={() => setShowTiendas(true)}
-                onNewContact={() => {
-                  setNewContactName('');
-                  setNewContactPhone('');
-                  setNewContactRole('client');
-                  setShowNewContactModal(true);
-                }}
-                onOpenAdmin={() => setShowAdminPanel(true)}
-                contratoSlot={
-                  <ProFeatureGuard isPro={userProfile?.isPro} trialEndsAt={userProfile?.trialEndsAt} subscriptionEndsAt={userProfile?.subscriptionEndsAt}>
-                    <ContractGenerator
-                      defaultContractorName={userProfile?.ownerName || userProfile?.businessName || ''}
-                      defaultContractorId={userProfile?.nit || ''}
-                      defaultLogo={businessLogo}
-                      digitalSignature={digitalSignature}
-                      documents={documents}
-                      contacts={contacts}
-                      onShareContractPdf={handleShareContractPdf}
-                      onUploadContractPdf={handleUploadContractPdf}
-                    />
-                  </ProFeatureGuard>
-                }
+                onGoogle={guardarEspacioConGoogle}
+                onCorreo={() => setShowProfileEditor(true)}
+                errorInicial={errorGuardarEspacio}
               />
+              ) : (
+                <InicioPanel
+                  contacts={contacts}
+                  totalSinLeer={totalSinLeer}
+                  userProfile={userProfile}
+                  productCount={products.length}
+                  folderCount={carpetasPrincipales(categories).length}
+                  onOpenChats={() => { setSelectedContactId(null); setMobileTab('chats'); }}
+                  onOpenChat={seleccionarContacto}
+                  onCrearDocumento={handleDocumentClick}
+                  onOpenFinancials={() => setShowFinancials(true)}
+                  onOpenCatalog={() => setShowCatalogManager(true)}
+                  onAddProduct={() => {
+                    // Entra a «todos los productos» con el formulario abierto: sin
+                    // carpeta elegida, que se escoge en el propio formulario.
+                    setCatalogView('products');
+                    setSelectedCategory(null);
+                    setNewProductCategory('');
+                    setShowProductForm(true);
+                    setShowCatalogManager(true);
+                  }}
+                  onShareQr={() => setShowCatalogShare(true)}
+                  onOpenWallet={() => setShowWallet(true)}
+                  onOpenGantt={() => setShowGanttChart(true)}
+                  onOpenStatus={(conCamara) => { setShowStatus(true); setStartCamera(conCamara); }}
+                  onOpenGroups={() => setShowGroupsManager(true)}
+                  onOpenTiendas={() => setShowTiendas(true)}
+                  onNewContact={() => {
+                    setNewContactName('');
+                    setNewContactPhone('');
+                    setNewContactRole('client');
+                    setShowNewContactModal(true);
+                  }}
+                  onOpenAdmin={() => setShowAdminPanel(true)}
+                  contratoSlot={
+                    <ProFeatureGuard isPro={userProfile?.isPro} trialEndsAt={userProfile?.trialEndsAt} subscriptionEndsAt={userProfile?.subscriptionEndsAt}>
+                      <ContractGenerator
+                        defaultContractorName={userProfile?.ownerName || userProfile?.businessName || ''}
+                        defaultContractorId={userProfile?.nit || ''}
+                        defaultLogo={businessLogo}
+                        digitalSignature={digitalSignature}
+                        documents={documents}
+                        contacts={contacts}
+                        onShareContractPdf={handleShareContractPdf}
+                        onUploadContractPdf={handleUploadContractPdf}
+                      />
+                    </ProFeatureGuard>
+                  }
+                />
+              )}
 
               <div className="mt-8 mb-2 text-slate-400 text-xs flex items-center gap-2">
                 <i className="fa-solid fa-lock text-[10px]"></i> Conexión segura cifrada.

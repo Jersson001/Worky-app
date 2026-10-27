@@ -29,7 +29,7 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useResumenInicio } from '../hooks/useResumenInicio';
-import { cifraCorta, familiaDeNegocio, Pendiente } from '../utils/inicio';
+import { aMs as ms, cifraCorta, familiaDeNegocio, horaCorta, Pendiente } from '../utils/inicio';
 import { fotoOIniciales } from '../utils/avatar';
 import { formatCurrency } from '../utils/currency';
 import { tieneCatalogo } from '../services/catalogShareService';
@@ -73,19 +73,6 @@ const ETIQUETA_DOCUMENTO: Record<Pendiente['tipo'], string> = {
   invoice: 'Factura',
   collection_account: 'Cuenta de cobro',
   quote: 'Cotización',
-};
-
-const ms = (v: Contact['lastMessageTime']): number => {
-  if (v instanceof Date) return v.getTime();
-  if (typeof v === 'number') return v;
-  const t = new Date(v as any).getTime();
-  return Number.isNaN(t) ? 0 : t;
-};
-
-const horaCorta = (v: Contact['lastMessageTime']): string => {
-  if (v instanceof Date) return v.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  if (typeof v === 'number') return new Date(v).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  return typeof v === 'string' ? v : '';
 };
 
 const diasDesde = (fecha: Date): number =>

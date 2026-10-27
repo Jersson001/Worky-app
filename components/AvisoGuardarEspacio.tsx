@@ -29,6 +29,11 @@ interface AvisoGuardarEspacioProps {
   onGoogle: () => Promise<boolean>;
   /** Abre el formulario de correo. */
   onCorreo: () => void;
+  /**
+   * Un error que ya pasó: quien intentó guardar con Google vuelve a una página
+   * nueva, y lo que falló hay que contárselo aquí, no dejarlo sin respuesta.
+   */
+  errorInicial?: string;
 }
 
 /** El error de Supabase dicho en palabras de quien chatea, con el camino de salida. */
@@ -44,9 +49,11 @@ const mensajeDe = (e: any): string => {
   return 'No se pudo conectar con Google. Puedes guardar tu espacio con tu correo.';
 };
 
-export const AvisoGuardarEspacio: React.FC<AvisoGuardarEspacioProps> = ({ onGoogle, onCorreo }) => {
+export const AvisoGuardarEspacio: React.FC<AvisoGuardarEspacioProps> = ({ onGoogle, onCorreo, errorInicial = '' }) => {
   const [cargando, setCargando] = useState(false);
-  const [error, setError] = useState('');
+  const [errorPropio, setError] = useState('');
+  // El propio de este intento manda; si no hay, el que llegó de la vuelta de Google.
+  const error = errorPropio || errorInicial;
 
   const guardar = async () => {
     setError('');

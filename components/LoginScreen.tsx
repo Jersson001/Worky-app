@@ -360,6 +360,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister, i
             ...(correo ? { correo_contacto: correo } : {}),
             ...(celular ? { celular_contacto: celular } : {}),
             ...(vendedor ? { vendedor } : {}),
+            // El alias solo se ofrece a quien llega por un QR: es un cliente. A
+            // diferencia de `vendedor`, que se borra al usarse, esta marca dura
+            // lo que la cuenta, y es lo que la mantiene como cliente al guardarla.
+            rol: 'cliente',
           },
         },
       });
@@ -445,7 +449,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister, i
               full_name: fullName,
               phone: fullPhone,
               ...constanciaDeAceptacion(),
-              ...(vendedor ? { vendedor } : {}),
+              ...(vendedor ? { vendedor, rol: 'cliente' } : {}),
               // La invitación de un contacto manual, por lo mismo que el vendedor:
               // si confirma el correo desde otro navegador, sigue ahí.
               ...(invitacion ? { invitacion } : {}),
