@@ -14,6 +14,8 @@ interface ChatListProps {
   onDeleteContact?: (id: string) => void;
   onLogout: () => void;
   onSearchUsers?: () => void;
+  /** Abre el directorio de contactos: por orden alfabético y con buscador. */
+  onOpenContactos?: () => void;
   onEditProfile?: () => void;
   hasUnreadNotifications?: boolean;
   // Group props
@@ -37,7 +39,7 @@ const FILTERS: { key: string; label: string; status?: UserStatus }[] = [
   { key: 'done', label: 'Finalizados', status: UserStatus.Completed },
 ];
 
-export const ChatList: React.FC<ChatListProps> = ({ contacts, selectedContactId, onSelectContact, onOpenFinancials, onOpenStatus, onOpenWallet, onOpenNotifications, onOpenHome, onDeleteContact, onLogout, onSearchUsers, onEditProfile, hasUnreadNotifications = false, groups = [], selectedGroupId, onSelectGroup, onOpenGroupsManager }) => {
+export const ChatList: React.FC<ChatListProps> = ({ contacts, selectedContactId, onSelectContact, onOpenFinancials, onOpenStatus, onOpenWallet, onOpenNotifications, onOpenHome, onDeleteContact, onLogout, onSearchUsers, onOpenContactos, onEditProfile, hasUnreadNotifications = false, groups = [], selectedGroupId, onSelectGroup, onOpenGroupsManager }) => {
   const [filter, setFilter] = useState<string>('all');
   const [showMenu, setShowMenu] = useState(false);
   const [hoveredContactId, setHoveredContactId] = useState<string | null>(null);
@@ -76,6 +78,15 @@ export const ChatList: React.FC<ChatListProps> = ({ contacts, selectedContactId,
         </div>
 
         <div className="flex gap-1 text-slate-500 items-start pt-1">
+          {onOpenContactos && (
+            <button
+              onClick={onOpenContactos}
+              title="Contactos"
+              className="hover:text-slate-900 hover:bg-slate-100 w-8 h-8 rounded-lg flex items-center justify-center transition"
+            >
+              <i className="fa-regular fa-address-book text-sm"></i>
+            </button>
+          )}
           {onSearchUsers && (
             <button
               onClick={onSearchUsers}

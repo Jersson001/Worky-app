@@ -46,6 +46,7 @@ import { Browser } from '@capacitor/browser';
 import { Capacitor } from '@capacitor/core';
 import { AvisoGuardarEspacio } from './components/AvisoGuardarEspacio';
 import { InicioCliente } from './components/InicioCliente';
+import { DirectorioContactos } from './components/DirectorioContactos';
 import { mensajeDeErrorDeGoogle, recordarChatParaVolver, tomarChatParaVolver, tomarErrorDeRetorno } from './utils/retornoDeGoogle';
 
 // Mock Data (usado como fallback o inicial)
@@ -998,6 +999,7 @@ const App: React.FC = () => {
   const [showStatus, setShowStatus] = useState(false);
   const [showWallet, setShowWallet] = useState(false);
   const [showTiendas, setShowTiendas] = useState(false);
+  const [showContactos, setShowContactos] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileEditor, setShowProfileEditor] = useState(false);
   const [showMenuPerfil, setShowMenuPerfil] = useState(false);
@@ -2987,6 +2989,7 @@ ${describeError(error)}
           contacts={contacts}
           selectedContactId={selectedContactId}
           onSelectContact={seleccionarContacto}
+          onOpenContactos={() => setShowContactos(true)}
           onOpenFinancials={() => { setShowFinancials(true); setSelectedContactId(null); setSelectedGroupId(null); setShowStatus(false); setShowNotifications(false); }}
           onOpenStatus={() => { setShowStatus(true); setSelectedContactId(null); setSelectedGroupId(null); setShowFinancials(false); setShowNotifications(false); }}
           onOpenWallet={() => setShowWallet(true)}
@@ -3158,6 +3161,7 @@ ${describeError(error)}
                     setNewContactRole('client');
                     setShowNewContactModal(true);
                   }}
+                  onOpenContactos={() => setShowContactos(true)}
                   onOpenAdmin={() => setShowAdminPanel(true)}
                   contratoSlot={
                     <ProFeatureGuard isPro={userProfile?.isPro} trialEndsAt={userProfile?.trialEndsAt} subscriptionEndsAt={userProfile?.subscriptionEndsAt}>
@@ -3375,6 +3379,21 @@ ${describeError(error)}
         onSearch={handleSearchUser}
         onAddContact={handleAddContactFromSearch}
       />
+
+      {showContactos && (
+        <DirectorioContactos
+          contacts={contacts}
+          onClose={() => setShowContactos(false)}
+          onOpenChat={(id) => { setShowContactos(false); seleccionarContacto(id); setMobileTab('chats'); }}
+          onNewContact={() => {
+            setShowContactos(false);
+            setNewContactName('');
+            setNewContactPhone('');
+            setNewContactRole('client');
+            setShowNewContactModal(true);
+          }}
+        />
+      )}
 
       {showTiendas && (
         <TiendasGuardadas

@@ -23,7 +23,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import Tip from './ui/Tip';
 import {
-  ArrowLeftRight, Camera, CheckCircle2, ChevronDown, ChevronRight, ChartGantt, ChartPie, CreditCard, Eye,
+  ArrowLeftRight, BookUser, Camera, CheckCircle2, ChevronDown, ChevronRight, ChartGantt, ChartPie, CreditCard, Eye,
   FileText, HandCoins, Heart, Images, MessageCircle, Plus, QrCode, Receipt, ShieldCheck, Store, UserPlus,
   Users, X,
 } from 'lucide-react';
@@ -61,6 +61,8 @@ interface InicioPanelProps {
   onOpenGroups: () => void;
   onOpenTiendas: () => void;
   onNewContact: () => void;
+  /** Abre el directorio: todos los contactos, por orden alfabético y con buscador. */
+  onOpenContactos: () => void;
   onOpenAdmin: () => void;
   /** El generador de contratos trae su propio botón y su propio modal. */
   contratoSlot: React.ReactNode;
@@ -268,7 +270,7 @@ const Vitrina: React.FC<{
 export const InicioPanel: React.FC<InicioPanelProps> = ({
   contacts, totalSinLeer, userProfile, productCount, folderCount,
   onOpenChats, onOpenChat, onCrearDocumento, onOpenFinancials, onOpenCatalog, onAddProduct, onShareQr, onOpenWallet,
-  onOpenGantt, onOpenStatus, onOpenGroups, onOpenTiendas, onNewContact, onOpenAdmin, contratoSlot,
+  onOpenGantt, onOpenStatus, onOpenGroups, onOpenTiendas, onNewContact, onOpenContactos, onOpenAdmin, contratoSlot,
 }) => {
   const familia = familiaDeNegocio(userProfile?.businessType);
 
@@ -344,6 +346,15 @@ export const InicioPanel: React.FC<InicioPanelProps> = ({
       clave: 'finanzas',
       peso: 0,
       nodo: <Herramienta key="finanzas" icono={ChartPie} titulo="Finanzas" tip="Ingresos, cobros y gastos del negocio" detalle={cajaDetalle} onClick={onOpenFinancials} />,
+    },
+    {
+      clave: 'contactos',
+      peso: 0.5,
+      nodo: (
+        <Herramienta key="contactos" icono={BookUser} titulo="Contactos" tip="Todos tus clientes y proveedores, con buscador"
+          detalle={<span className="text-slate-500">{contacts.length} {contacts.length === 1 ? 'contacto' : 'contactos'}</span>}
+          onClick={onOpenContactos} />
+      ),
     },
     {
       clave: 'gasto',
