@@ -1491,8 +1491,15 @@ const App: React.FC = () => {
   // estaba, y si falló se le cuenta. Se espera a tener contactos: antes no hay
   // chat que abrir.
   useEffect(() => {
-    if (!isAuthenticated || contacts.length === 0) return;
+    if (!isAuthenticated) return;
+    // El error se cuenta ya, haya o no chat al que volver: quien tocó Google desde
+    // el Inicio también merece saber por qué no pasó nada.
     const error = tomarErrorDeRetorno();
+    if (error) setErrorGuardarEspacio(mensajeDeErrorDeGoogle(error));
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (!isAuthenticated || contacts.length === 0) return;
     const volver = tomarChatParaVolver();
     if (volver && contacts.some(c => c.id === volver)) {
       setSelectedContactId(volver);
@@ -1500,7 +1507,6 @@ const App: React.FC = () => {
       setShowFinancials(false);
       setMobileTab('chats');
     }
-    if (error) setErrorGuardarEspacio(mensajeDeErrorDeGoogle(error));
   }, [isAuthenticated, contacts.length > 0]);
 
   /**

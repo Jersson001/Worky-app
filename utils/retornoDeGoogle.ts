@@ -26,6 +26,18 @@ export interface ErrorDeRetorno {
   description: string;
 }
 
+/** ¿Hubo un intento de guardar el espacio hace poco? Con o sin chat de por medio. */
+const hayIntentoReciente = (ahora: number = Date.now()): boolean => {
+  try {
+    const crudo = localStorage.getItem(CLAVE_VOLVER);
+    if (!crudo) return false;
+    const { cuando } = JSON.parse(crudo);
+    return typeof cuando === 'number' && ahora - cuando < VIGENCIA_MS;
+  } catch {
+    return false;
+  }
+};
+
 /** Lee los parámetros de error de una dirección, estén en `?` o tras el `#`. */
 export const errorEnLaDireccion = (search: string, hash: string): ErrorDeRetorno | null => {
   const q = new URLSearchParams(search);
@@ -48,33 +60,39 @@ export const capturarErrorDeRetorno = (): void => {
     const error = errorEnLaDireccion(window.location.search, window.location.hash);
     if (!error) return;
     // Solo si veníamos de pedir guardar el espacio: un error en la dirección por
-    // otra causa no es asunto de este aviso.
-    if (!sessionStorage.getItem(CLAVE_VOLVER) && !localStorage.getItem(CLAVE_VOLVER)) return;
-    sessionStorage.setItem(CLAVE_ERROR, JSON.stringify(error));
+    // otra causa no es asunto de este aviso. El intento se anota siempre, salga
+    // de un chat o del Inicio: la primera versión lo anotaba solo con un chat, y
+    // quien tocaba Google desde el Inicio volvía sin que nadie le contara el error.
+    if (!hayIntentoReciente()) return;
+    sessionStorage.setItem(CLAVE_ERROR, JSON.stringify({ ...error, cuando: Date.now() }));
     window.history.replaceState(null, '', window.location.pathname);
   } catch { /* sin almacenamiento no hay vuelta que contar */ }
 };
 
 /** Lo lee y lo gasta: se cuenta una vez, no cada vez que se abre la app. */
-export const tomarErrorDeRetorno = (): ErrorDeRetorno | null => {
+export const tomarErrorDeRetorno = (ahora: number = Date.now()): ErrorDeRetorno | null => {
   try {
     const crudo = sessionStorage.getItem(CLAVE_ERROR);
     sessionStorage.removeItem(CLAVE_ERROR);
-    return crudo ? (JSON.parse(crudo) as ErrorDeRetorno) : null;
+    if (!crudo) return null;
+    const { cuando, ...error } = JSON.parse(crudo);
+    // Uno viejo no se cuenta: sería un aviso de algo que ya nadie recuerda.
+    return typeof cuando === 'number' && ahora - cuando < VIGENCIA_MS ? (error as ErrorDeRetorno) : null;
   } catch {
     return null;
   }
 };
 
 /**
- * Anota en qué chat estaba. Va en `localStorage` y no en `sessionStorage`: en
+ * Anota que se va a guardar el espacio y, si estaba en un chat, cuál. Se anota
+ * SIEMPRE, también desde el Inicio —sin chat—: es lo que dice, a la vuelta, que
+ * el error de la dirección es de este intento. Va en `localStorage` y no en `sessionStorage`: en
  * la web la pestaña entera viaja a Google y vuelve, pero el navegador in-app de
  * la app de Android es otra ventana y no comparte la sesión.
  */
 export const recordarChatParaVolver = (contactId: string | null | undefined): void => {
   try {
-    if (!contactId) return;
-    localStorage.setItem(CLAVE_VOLVER, JSON.stringify({ id: contactId, cuando: Date.now() }));
+    localStorage.setItem(CLAVE_VOLVER, JSON.stringify({ id: contactId ?? null, cuando: Date.now() }));
   } catch { /* si no se puede anotar, se vuelve al Inicio y ya */ }
 };
 
@@ -85,7 +103,7 @@ export const tomarChatParaVolver = (ahora: number = Date.now()): string | null =
     localStorage.removeItem(CLAVE_VOLVER);
     if (!crudo) return null;
     const { id, cuando } = JSON.parse(crudo);
-    return typeof id === 'string' && typeof cuando === 'number' && ahora - cuando < VIGENCIA_MS ? id : null;
+    return typeof id === 'string' && id !== '' && typeof cuando === 'number' && ahora - cuando < VIGENCIA_MS ? id : null;
   } catch {
     return null;
   }
