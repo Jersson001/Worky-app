@@ -1,6 +1,6 @@
 # Estado de funcionalidades — Worky
 
-Última revisión: 15 de octubre de 2026.
+Última revisión: 27 de octubre de 2026.
 
 > Este documento describía el proyecto cuando corría sobre Firebase y decía que
 > los clientes no podían tener cuenta, que Storage no estaba implementado y que
@@ -158,8 +158,23 @@ la *misma* cuenta, no una nueva:
   obligatorios; ahora el celular es opcional.
 - **El vigilante de sesión** salía temprano cuando el id no cambiaba, y al volver
   de Google en la app de Android —donde la página no se recarga— el aviso se
-  quedaba puesto con la cuenta ya guardada. Ahora actualiza `esAnonimo` también en
-  ese caso.
+  quedaba puesto con la cuenta ya guardada. Ahora actualiza `esAnonimo` y la marca
+  de cliente también en ese caso.
+- **Si ese Google ya tiene cuenta en Worky**, Supabase responde «400: A user with
+  this email address has already been registered» y no se puede unir a una segunda:
+  es el caso normal, y la cuenta anónima sigue intacta. La probaron así el
+  27/10/2026, dos veces, con el mismo Google. Para ver el vínculo funcionar hace
+  falta un Google que nunca haya entrado a Worky; con correo sirve una variante
+  `+alias` de Gmail.
+- **La vuelta de Google** ([`utils/retornoDeGoogle.ts`](utils/retornoDeGoogle.ts)).
+  En la web la página entera sale a Google y vuelve de cero en el Inicio, y la
+  librería de sesión lee el error de la dirección y lo descarta sin que la app se
+  entere. Ahora se anota antes de irse en qué chat estaba y que se intentó
+  guardar —también desde el Inicio, sin chat—; `utils/capturarRetorno.ts`, el primer
+  import de `index.tsx`, lee el error antes de que arranque la sesión, y al volver
+  se regresa al chat y se le cuenta lo que pasó. Intento y error caducan a los 15
+  minutos. Guardar con Google en la app de Android abre un navegador aparte y vuelve
+  por `worky://auth-callback`: sin probar todavía en un teléfono.
 
 **Ninguna de esas catorce se ha registrado nunca**, lo que dice que la cinta
 sola no basta. De ahí que entrar con Google sea el mejor camino para el
@@ -177,6 +192,126 @@ Piezas: `sugerir_alias()` y `reservar_alias()` en
 Formulario corto: nombre, correo, celular y contraseña. Sin apellidos ni
 selector de país. El vendedor que se registra por su cuenta sigue viendo el
 formulario largo.
+
+---
+
+## El Inicio
+
+Desde el 27/10/2026 la pantalla de inicio cambia según quién la mire. Antes eran
+dos cuadrículas de baldosas iguales —seis «acciones rápidas» y once
+«herramientas»—, cada una de su color y sin un solo dato: Chats pesaba lo mismo
+que Cámara, y a un cliente que escaneaba un QR le salía la misma consola que a
+quien vende. Quién ve cuál lo decide `esCliente` (ver [El Inicio del
+cliente](#el-inicio-del-cliente)).
+
+### El Inicio del vendedor
+
+[`InicioPanel`](components/InicioPanel.tsx), en el orden en que se trabaja:
+
+1. **Hoy:** tres cifras que se tocan y abren su detalle —chats sin leer, **por
+   cobrar** y **cotizaciones**—.
+2. **Tu vitrina:** el catálogo y su QR, en una tarjeta grande y arriba. Cuenta lo
+   que se sabe —productos, carpetas y si ya está publicado— con **Ver QR**,
+   **Subir producto** (abre el administrador con el formulario ya abierto) y
+   **Ver catálogo**. Sin productos no enseña ceros: invita a subir el primero. Era
+   una baldosa más entre once, y es lo que trae clientes nuevos. **No muestra
+   escaneos ni «Live»: no se miden** (haría falta una tabla de visitas).
+3. **Chats:** los que esperan respuesta, con su último mensaje y «Responder».
+4. **Cotizar y cobrar:** cotización, cuenta de cobro, factura y contrato.
+5. **Mi negocio:** Finanzas (con la caja del mes), Contactos, Registrar gasto,
+   Datos de pago y, para quien cotiza obra, el Gantt.
+6. **Más herramientas**, plegado: Historias, Cámara, Grupos, Siguiendo, el Gantt
+   de quien no es de obra y el panel de administración.
+
+**De dónde salen las cifras** ([`utils/inicio.ts`](utils/inicio.ts),
+[`services/inicioService.ts`](services/inicioService.ts),
+[`hooks/useResumenInicio.ts`](hooks/useResumenInicio.ts)):
+
+- **Por cobrar:** facturas y cuentas de cobro que mandó el usuario y nadie ha
+  marcado como pagadas, sin contar lo enviado a un proveedor. La más vieja,
+  primero, que es la que más urge.
+- **Cotizaciones:** las de los últimos 90 días que el cliente no ha aceptado ni
+  rechazado. **La cifra grande cuenta solo las vigentes** y las vencidas se avisan
+  aparte («0 · 8 vencidas»): contarlas todas inflaba la urgencia, y una cuenta
+  real tenía 8 «sin respuesta» que estaban todas vencidas.
+- **Caja del mes:** la misma cuenta que Estados Financieros
+  (`cargarDatosFinancieros` + `resumir`), a propósito, para que no digan cifras
+  distintas del mismo mes.
+- **Si una lectura falla se ve «—», nunca «Al día»:** no saber no es no deber nada.
+  Se guarda lo último 20 segundos, para que ir y volver de un chat no repita las
+  consultas y, al mandar un documento, la cifra no se quede vieja.
+
+**Iconos y color.** Solo el Inicio usa iconos de línea fina (`lucide-react`, trazo
+de 1,75): los de Font Awesome gratis solo traen trazo grueso —el fino es de
+pago— y varios no se entendían. Y un **azul rey** propio, la paleta `rey` de
+`tailwind.config.js`, más hondo que el azul de Tailwind. El resto de la app
+conserva sus iconos y su azul.
+
+### El Inicio del cliente
+
+[`InicioCliente`](components/InicioCliente.tsx): dos bloques y una acción por
+tarjeta, sin jerga.
+
+- **Tus conversaciones:** con quién ha hablado y, si le contestaron, «Responder».
+- **Tiendas que sigues:** las que guardó al escanear, con «Ver catálogo» y
+  «Escribir».
+- **«Guarda tu espacio»**, si todavía no tiene cuenta.
+- Lo que recibe —una cotización, una cuenta de cobro— sigue donde ya estaba, en el
+  chat. No se inventó otra pantalla para eso.
+
+**Cómo se sabe que alguien es cliente.** `esCliente = esAnonimo ||
+((llegoDeUnCatalogo || rolCliente) && !businessType)`. La marca `vendedor` de la
+cuenta se **borra al usarse**, y quien se guardaba pasaba a tratarse como tienda y
+veía la consola de vendedor. Por eso el alias y el alta por un QR guardan además
+`rol: 'cliente'` en `user_metadata`, que dura lo que la cuenta.
+
+- **Se marcó lo ya existente el 27/10/2026**, directo en la base: las cuentas
+  anónimas —no pueden publicar ni crear productos— y las permanentes sin ninguna
+  señal de tienda (oficio, productos, carpetas, cuentas de pago, documentos
+  enviados, proyectos como contratista) y con una conversación con una tienda. Fueron
+  17 anónimas y 2 permanentes. Seis anónimas antiguas que se habían comportado
+  como vendedores se quedaron **sin** marca, y las 16 permanentes sin actividad no
+  se tocaron: no se sabe si son clientes o vendedores recién llegados.
+- **La salida de quien quede mal marcado:** «¿Tienes un negocio? Configúralo aquí»
+  lleva al editor de perfil; al escoger un tipo de negocio la cuenta pasa a ver la
+  consola de vendedor. No se ofrece a las anónimas.
+- Los clientes ya registrados que no entran en lo de arriba siguen viendo el Inicio
+  de vendedor hasta que tengan la marca.
+
+### El directorio de contactos
+
+[`DirectorioContactos`](components/DirectorioContactos.tsx), con su lógica en
+[`utils/directorio.ts`](utils/directorio.ts). La lista de Chats ordena por lo más
+reciente y busca solo por nombre: sirve para contestar, no para encontrar a
+alguien. El directorio va en orden alfabético con letras (la Ñ con la N; lo que
+empieza con un número, en «#»), busca por nombre, teléfono, correo, documento y
+usuario de WhatsApp —sin tildes y con las palabras en cualquier orden—, filtra
+entre clientes, proveedores y colaboradores, y cada fila enseña cómo localizar a la
+persona, con botones de **WhatsApp** y **llamar**.
+
+Se abre desde la baldosa «Contactos» de Mi negocio y desde el icono de libreta de
+la lista de Chats. **Los botones de WhatsApp le ponen el 57** al celular
+colombiano de diez cifras que se guardó sin indicativo: sin él WhatsApp abre un
+chat con un número que no existe. Quien tiene un usuario de WhatsApp (`@usuario`)
+no muestra botones. El mismo problema sigue en los enlaces para compartir
+documentos, que no se tocaron.
+
+**No lee la agenda del teléfono.** Elegir un contacto de ella al crear uno nuevo
+pide el selector del sistema y la app de Android; en la web solo existe en Chrome
+de Android, no en iPhone.
+
+### Enlace NFC por tienda
+
+El Panel de Suscripciones trae, en cada tienda, un botón **«Enlace NFC»**: el
+enlace del catálogo con `via=nfc`, su QR, copiar y probar, y un aviso si la tienda
+no tiene catálogo publicado. Es para grabar la etiqueta del sticker o el hablador
+de la vitrina. Va **siempre con el dominio publicado** y nunca con el origen
+actual (`catalogNfcUrl`): se graba para siempre, y generado desde un preview de
+Vercel quedaría una dirección temporal. Hay que **bloquear la etiqueta contra
+escritura** al final, y no se deshace: sin eso cualquiera con un teléfono podría
+reemplazar el enlace. `via=nfc` hoy lo ignora la app; servirá para contar visitas
+cuando exista esa tabla. En la ventana «Compartir catálogo» se probó una línea con
+el mismo enlace y se retiró: era el del QR con otro nombre.
 
 ---
 
@@ -1200,22 +1335,23 @@ llegue a publicarse, así que cada intento fallido quema un número:
 | 26100602 (2.10.1) | El ojito para ver la contraseña al iniciar sesión, al registrarse y al completar el registro. **Subida a Play**, número gastado |
 | 26101201 (2.11.0) | Subcarpetas en el catálogo (un nivel), «Seguir tienda» con corazón en vez de «Guardar», el comentario del producto en el catálogo público, carpetas sin números, el arreglo de seguridad del visor del catálogo y los enlaces de aplicación: el QR de una tienda abre la app instalada. **Subida a Play**, número gastado |
 | 26101401 (2.12.0) | Copiar y editar una cotización ya enviada desde su detalle, borradores para las copias y las ediciones, fotos de la cotización que se amplían con un click y calculadora en todos los campos de medida. Compilada y firmada el 14/10/2026. **Si se subió a Play, su número está gastado**; si no, sus cambios van dentro de la 2.13.0 |
-| **26101501 (2.13.0)** | La cuenta de cobro con RUT, cédula, celular y dirección, el concepto con viñetas, y vista previa, copiar, editar y borradores; los consecutivos con serie (`COT-A001`, `CC-A001`…) en vez de números al azar; y el mensaje de WhatsApp con un solo enlace. **Compilada y firmada el 15/10/2026. Subida a Play**, número gastado |
+| 26101501 (2.13.0) | La cuenta de cobro con RUT, cédula, celular y dirección, el concepto con viñetas, y vista previa, copiar, editar y borradores; los consecutivos con serie (`COT-A001`, `CC-A001`…) en vez de números al azar; y el mensaje de WhatsApp con un solo enlace. **En producción al 100 % desde el 15/10/2026**, número gastado |
+| **26102701 (2.14.0)** | El Inicio rehecho con jerarquía y la vitrina del catálogo, un Inicio simple para el cliente, «Guarda tu espacio» con Google, el directorio de contactos, iconos de línea fina con el azul rey, el enlace NFC por tienda en el panel de administración y la corrección de `[object PointerEvent]` en el catálogo público. **Compilada y firmada el 27/10/2026; es la que va a Play** |
 
 Play exige **API 36** desde el 1 de septiembre de 2026. El proyecto ya apunta a
 36 (`android/variables.gradle`); el aviso de Play Console habla de la versión
 que está en producción, que se subió antes y sigue en API 35. Se cierra
 publicando en producción una versión nueva.
 
-**La 2.13.0 (26101501) ya se subió a Play** —compilada y firmada el 15/10/2026—,
-así que el siguiente envío va con un número mayor (por fecha, `AAMMDDNN`). La
-26101401 (2.12.0)
-se compiló el 14/10 y, hasta donde consta aquí, no se subió: de haberse subido,
-su número está gastado y no se reutiliza.
+**La 2.13.0 (26101501) está en producción al 100 % desde el 15/10/2026**, y con
+ella cumple el requisito de API 36: el aviso de Play seguía porque dos paquetes
+viejos, la 1.1 y la 1.2, estaban activos en una **prueba cerrada**, con API 35. La
+siguiente va con la **26102701 (2.14.0)**, compilada y firmada el 27/10/2026. La
+26101401 (2.12.0) también se subió (14–15/10) y su número está gastado.
 Del 14 al 21 son números gastados —enviados o rechazados—, y también todos hasta
 el 26101201 (2.11.0). Las 2.6.0 a 2.8.7 están compiladas y nunca se enviaron por
 separado: sus cambios entraron en la 2.8.8, la 2.9.0, la 2.10.x, la 2.11.0, la
-2.12.0 y la 2.13.0.
+2.12.0, la 2.13.0 y la 2.14.0.
 
 **Enlaces de aplicación (12/10/2026).** Con la app instalada, escanear el QR de
 una tienda abre la app y no la web. El manifiesto declara `worky.ferryapp.co` y

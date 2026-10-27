@@ -1,6 +1,6 @@
 # Cómo funciona el chat
 
-Última revisión: 22 de septiembre de 2026.
+Última revisión: 27 de octubre de 2026.
 
 > Este documento describía el chat sobre Firebase Realtime Database, con un
 > `userIndex/` de claves escapadas y login por SMS. Nada de eso sigue siendo
@@ -218,12 +218,26 @@ cliente como `client` (fijo en
 | Vendedor con su proveedor | Archivo · Recibo · Registrar gasto |
 | Vendedor con su cliente | Cotización · Cuenta de Cobro · Factura · Recibo · Catálogo · Registrar gasto · Archivo |
 
-Quién es cliente se decide con `esAnonimo || (llegó de un catálogo && no tiene
-oficio)`. Mirar solo el oficio vacío **sería un error**: hay vendedores antiguos
-sin oficio declarado y les quitaría sus herramientas. La marca de haber llegado
-por un catálogo vive en la metadata de la cuenta, no en el navegador, así que
-aguanta cambiar de dispositivo. Ante la duda se le trata como vendedor: sobrarle
-un botón molesta, faltarle una herramienta es peor.
+Quién es cliente se decide con `esAnonimo || ((llegó de un catálogo || rol
+cliente) && no tiene oficio)`. Mirar solo el oficio vacío **sería un error**: hay
+vendedores antiguos sin oficio declarado y les quitaría sus herramientas. La marca
+de haber llegado por un catálogo (`vendedor`) vive en la metadata de la cuenta, no
+en el navegador, pero **se borra al usarse**; por eso el alias y el alta por un QR
+guardan también `rol: 'cliente'`, que dura. Ante la duda se le trata como
+vendedor: sobrarle un botón molesta, faltarle una herramienta es peor.
+
+Lo mismo vale para el **Inicio**: un cliente ve dos bloques —sus conversaciones y
+las tiendas que sigue— y no la consola de vendedor. Ver
+[ESTADO-FUNCIONALIDADES.md](ESTADO-FUNCIONALIDADES.md#el-inicio-del-cliente).
+
+### El directorio de contactos
+
+Además de la lista de Chats —lo más reciente arriba, para contestar—, hay un
+**directorio**: todos los contactos por orden alfabético, con buscador por
+nombre, teléfono, correo y documento, y filtros por cliente o proveedor. Cada fila
+trae sus botones de WhatsApp y llamar. Se abre desde «Contactos» en el Inicio y
+desde el icono de libreta de la lista de Chats. Ver
+[ESTADO-FUNCIONALIDADES.md](ESTADO-FUNCIONALIDADES.md#el-directorio-de-contactos).
 
 ---
 
@@ -269,7 +283,9 @@ Por correo sigue sin haber avisos.
 
 - **Avisos por correo.** Las push sí están; ver arriba.
 - **Búsqueda por nombre.** Solo por correo o celular exacto.
-- **Acceso a la agenda del teléfono.**
+- **Acceso a la agenda del teléfono.** El directorio es de los contactos de la
+  app. Elegir uno de la agenda al crear un contacto nuevo pide el selector del
+  sistema y la app de Android; en la web solo existe en Chrome de Android.
 - **Bloquear a alguien.**
 - **Grupos sincronizados.** Los grupos y sus mensajes se guardan en
   `localStorage` (`worky_chat_groups`, `worky_group_messages`): son de ese

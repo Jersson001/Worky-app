@@ -1,6 +1,6 @@
 # Vista general del proyecto
 
-Última revisión: 15 de octubre de 2026.
+Última revisión: 27 de octubre de 2026.
 
 > Este documento describía la app sobre Firebase (Authentication, Realtime
 > Database, Storage) y con Gemini analizando las fotos del catálogo. Nada de eso
@@ -23,7 +23,8 @@ repositorio: dónde está cada cosa.
 | Móvil | Capacitor 8, solo Android |
 
 Las únicas dependencias de producción son `react`, `react-dom`,
-`@supabase/supabase-js` y los paquetes de Capacitor.
+`@supabase/supabase-js`, los paquetes de Capacitor y `lucide-react` (los iconos de
+línea fina del Inicio; el resto de la app usa Font Awesome).
 
 `index.html` carga también `html2pdf` por CDN y trae un `importmap` de React
 heredado de AI Studio, que no hace falta porque Vite ya empaqueta React.
@@ -35,7 +36,7 @@ heredado de AI Studio, que no hace falta porque Vite ya empaqueta React.
 ```
 worky_app/
 ├── App.tsx                  # Componente raíz: estado, efectos y casi toda la lógica de pantalla
-├── index.tsx                # Entrada. Resuelve `?catalogo=` ANTES de montar la app
+├── index.tsx                # Entrada. Lee el error de Google de la dirección y resuelve `?catalogo=` ANTES de montar la app
 ├── types.ts                 # Contact, Message, Project, Product, Story, ChatGroup…
 │
 ├── components/
@@ -50,6 +51,9 @@ worky_app/
 │   ├── ProjectBoard.tsx · GanttChart.tsx
 │   ├── FinancialReport.tsx · WalletModal.tsx     # Finanzas: lee de la base, no de la pantalla
 │   ├── TiendasGuardadas.tsx                      # La agenda de tiendas que guarda quien escanea un QR
+│   ├── InicioPanel.tsx · InicioCliente.tsx         # El Inicio: el del vendedor (cifras, vitrina, chats) y el del cliente
+│   ├── DirectorioContactos.tsx                     # Contactos por orden alfabético, con buscador y filtros
+│   ├── AvisoGuardarEspacio.tsx                     # «Guarda tu espacio» con Google, para quien chatea sin cuenta
 │   ├── GroupsManager.tsx · GroupChatWindow.tsx     # Solo localStorage
 │   ├── StatusView.tsx                              # Historias, solo localStorage
 │   ├── AdminPanel.tsx · ProFeatureGuard.tsx
@@ -65,16 +69,18 @@ worky_app/
 │   ├── storageService.ts     # Subidas a Storage
 │   ├── catalogShareService.ts# Instantánea HTML del catálogo, QR y enlaces
 │   ├── consecutivosService.ts# Reserva el siguiente COT-A001, CC-A001… (metadata de la cuenta + teléfono)
+│   ├── inicioService.ts      # Por cobrar, cotizaciones y caja del mes para el Inicio
 │   ├── whatsappService.ts    # Documentos compartidos y enlaces de WhatsApp
 │   ├── documentHtml.ts       # HTML maquetado de los documentos
 │   ├── adminService.ts       # Panel de admin: Pro y prueba
 │   └── geminiService.ts      # Muerto: no lo importa nadie
 │
-├── hooks/          useChatFormState.ts · useFileUpload.ts
+├── hooks/          useChatFormState.ts · useFileUpload.ts · useResumenInicio.ts
 ├── utils/          currency · imagen · id · errorMessage · carpentryCalculations · taxCalculations
 │                   finanzas · tiendasGuardadas · contactoWhatsApp · legal · avatar · tallas · condicionesCotizacion · tiposDeNegocio
 │                  legal · tiposDeNegocio · condicionesCotizacion · tallas
 │                  consecutivos (formato y serie) · borradorCotizacion · borradorCuentaCobro
+│                  inicio · directorio · retornoDeGoogle · capturarRetorno (el primer import de index.tsx)
 ├── supabase/       functions/ (gemini, view-doc — ambas sin uso) y migrations/
 ├── android/        Proyecto Capacitor
 └── *.sql           Migraciones para el SQL Editor, idempotentes

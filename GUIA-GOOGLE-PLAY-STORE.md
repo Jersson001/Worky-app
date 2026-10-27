@@ -4,18 +4,26 @@ Esta guía te llevará paso a paso para publicar tu aplicación Worky en Google 
 
 ---
 
-## 📌 Dónde va esto — al 22 de octubre de 2026
+## 📌 Dónde va esto — al 27 de octubre de 2026
 
-La 2.13.0 (`versionCode` 26101501) **ya se subió a Play**, así que su número está
-gastado, igual que el de la 2.11.0 (26101201). Es la que cumple el aviso de API 36
-(el aviso mira lo que está en producción, que seguía en API 35): al publicarse
-se cierra. Quedó en el Escritorio como `Worky-2.13.0.aab`. El siguiente envío va
-con un número mayor, por fecha.
+La 2.13.0 (`versionCode` 26101501) **está en producción al 100 % desde el
+15/10/2026** (se ve en Producción → Panel de versiones), así que su número está
+gastado, igual que el de la 2.12.0 (26101401, en vivo del 14 al 15/10) y el de la
+2.11.0 (26101201). El siguiente envío va con el **`versionCode` 26102701 (versión
+2.14.0)**, compilado y firmado el 27/10/2026, en el Escritorio como
+`Worky-2.14.0.aab`.
 
-La 26101401 (2.12.0) se compiló el 14/10 y quedó en el Escritorio como
-`Worky-2.12.0.aab`; **si llegó a subirse, su número está gastado** y la 2.13.0 la
-reemplaza igual, porque lleva todo lo de la 2.12.0 más lo nuevo. Si no se subió,
-no hace falta subirla: se sube solo la 2.13.0.
+**El aviso de API 36 no era por la 2.13.0.** Esa ya apuntaba a 36 (Target SDK 36
+confirmado en Play). Seguía porque dos paquetes viejos —la **1.1** (código 3) y la
+**1.2** (código 4)— estaban **activos en una prueba cerrada**, con API 35. «Active»
+significa que está en la versión actual de algún canal, no solo en producción. Se
+ve en el Explorador de App Bundles, filtrando por estado Active; el detalle de un
+paquete dice en qué canal está. Se cierra publicando la versión nueva en ese
+canal, o pausándolo. Google dio una prórroga hasta el **1 de noviembre de 2026**.
+
+**Subir otra vez el mismo paquete da «Version code already used».** Un paquete ya
+subido no se vuelve a subir: se añade desde la biblioteca («Add from library») o se
+promueve entre canales. En el canal donde ya está, la biblioteca no lo ofrece.
 
 Ya se enviaron el 19, el 20, el 21, el
 26092201 (2.8.4), el 26092702 (2.8.8), el 26100501 (2.9.0), el 26100601 (2.10.0) y el
@@ -31,17 +39,23 @@ Ya se enviaron el 19, el 20, el 21, el
 2. **API 36.** El proyecto ya apunta a 36. El aviso se refiere a la versión en
    producción, que sigue en API 35: se cierra publicando una versión nueva.
 
-**Novedades de la 2.13.0 para la ficha de Play** (el tope de Play es 500
-caracteres; ésta no llega a 480):
+**Novedades de la 2.14.0 para la ficha de Play** (el tope de Play es 500
+caracteres; ésta no llega a 420):
 
 ```
 Novedades:
-• Cuenta de cobro más completa: RUT, cédula, celular y dirección, y el concepto en viñetas.
-• Cuenta de cobro con vista previa, copiar, editar y borradores, como la cotización.
-• Copia o edita una cotización ya enviada desde su detalle, y las fotos se amplían con un toque.
-• Cada documento lleva su consecutivo: COT-A001, CC-A001, FAC-A001, RC-A001.
-• Compartir por WhatsApp envía un solo enlace al documento.
+• Inicio renovado: tus chats, lo que tienes por cobrar y tus cotizaciones, de un vistazo.
+• Tu catálogo y su código QR, grandes y a la mano.
+• Directorio de contactos: busca por nombre, teléfono, correo o documento.
+• Si escribes a una tienda sin cuenta, guarda tu espacio con Google y no pierdas la conversación.
+• Iconos más claros y un azul nuevo.
 ```
+
+**Una cosa de la 2.14.0 sin probar en un teléfono:** guardar el espacio con Google
+dentro de la app de Android. Abre un navegador aparte y vuelve por
+`worky://auth-callback`, la misma ruta del «Entrar con Google», pero con
+`linkIdentity` en vez de `signInWithOAuth`. En la web sí se comprobó contra el
+servidor.
 
 **Los enlaces de aplicación dependen de Play.** Android verifica al instalar que
 `/.well-known/assetlinks.json` de `worky.ferryapp.co` y de
@@ -147,7 +161,8 @@ intento fallido gasta un número:
 | 26100602 (2.10.1) | El ojito para ver la contraseña. **Subida a Play**: número gastado |
 | 26101201 (2.11.0) | Subcarpetas en el catálogo, «Seguir tienda» con corazón, el comentario del producto en el catálogo público, el arreglo de seguridad del visor y los enlaces de aplicación (el QR de una tienda abre la app). **Subida a Play**: número gastado |
 | 26101401 (2.12.0) | Copiar y editar una cotización enviada, borradores para copias y ediciones, fotos de la cotización que se amplían y calculadora en todos los campos de medida. Compilada el 14/10; **si se subió, número gastado** |
-| **26101501 (2.13.0)** | La cuenta de cobro con RUT, cédula, celular, dirección, concepto con viñetas, vista previa, copiar, editar y borradores; consecutivos con serie (`COT-A001`…); un solo enlace en el mensaje de WhatsApp. **Subida a Play**: número gastado |
+| 26101501 (2.13.0) | La cuenta de cobro con RUT, cédula, celular, dirección, concepto con viñetas, vista previa, copiar, editar y borradores; consecutivos con serie (`COT-A001`…); un solo enlace en el mensaje de WhatsApp. **En producción al 100 % desde el 15/10**: número gastado |
+| **26102701 (2.14.0)** | Inicio rehecho con jerarquía y vitrina del catálogo, Inicio simple del cliente, «Guarda tu espacio» con Google, directorio de contactos, iconos de línea fina con azul rey, enlace NFC por tienda. **La que va a Play** |
 
 **Play exige API 36** desde el 1 de septiembre de 2026. Está en
 `android/variables.gradle`.
@@ -200,9 +215,9 @@ fue por el contenido de la app:
 - ✅ **Política de privacidad y términos** escritos, en `public/`, empaquetados con la app
 - ✅ **Página de eliminación de cuenta** en `public/eliminar-cuenta.html`, que es
   la URL que pide el formulario de Seguridad de los datos
-- ✅ VersionCode 26101501 (2.13.0) compilado y firmado el 15/10/2026 y **subido a Play**, con todo
-  lo anterior dentro (la 26101401, 2.12.0, se compiló el 14/10 y no consta que
-  se subiera). El 19, el 20, el 21, el 26092201 (2.8.4), el 26092702
+- ✅ VersionCode 26102701 (2.14.0) compilado y firmado el 27/10/2026, con todo
+  lo anterior dentro. La 26101501 (2.13.0) está en producción desde el 15/10; la
+  26101401 (2.12.0) también se subió. El 19, el 20, el 21, el 26092201 (2.8.4), el 26092702
   (2.8.8), el 26100501 (2.9.0), el 26100601 (2.10.0), el 26100602 (2.10.1) y el
   26101201 (2.11.0) ya se enviaron
 - ✅ **Notificaciones probadas en un teléfono de verdad** el 20/09/2026: llegan

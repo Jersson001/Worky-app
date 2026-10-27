@@ -176,7 +176,21 @@ android {
         // borradores como la cotización; los consecutivos con serie
         // (COT-A001, CC-A001, FAC-A001, RC-A001, RG-A001) en vez de números al
         // azar; y el mensaje de WhatsApp de cuenta de cobro y recibo con un solo
-        // enlace.
+        // enlace. Subida a Play y en producción desde el 15/10/2026: su número está
+        // gastado.
+        //
+        // El 26102701 (2.14.0): el Inicio rehecho con jerarquía —cifras de Hoy
+        // (sin leer, por cobrar, cotizaciones), la vitrina del catálogo grande y
+        // arriba, los chats que esperan respuesta— con iconos de línea fina y un
+        // azul rey propio; un Inicio simple para el cliente (sus conversaciones y
+        // las tiendas que sigue) que deja de ver la consola de vendedor;
+        // «Guarda tu espacio» con Google para quien chatea sin cuenta, sin perder
+        // la conversación; el directorio de contactos (alfabético, con buscador
+        // por teléfono, correo y documento); el enlace NFC por tienda en el panel
+        // de administración; y la corrección de «[object PointerEvent]» en el
+        // catálogo público. Guardar con Google en la app de Android abre un
+        // navegador aparte y vuelve por worky://auth-callback: sin probar en
+        // teléfono todavía.
         /*
          * Son dos cosas distintas y solo una es libre.
          *
@@ -214,8 +228,8 @@ android {
          * número de en medio —2.4, 2.5 y 2.6 en tres días— y a ese paso la 3.0
          * llegaba sin que hubiera cambiado nada grande.
          */
-        versionCode 26101501
-        versionName "2.13.0"
+        versionCode 26102701
+        versionName "2.14.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'

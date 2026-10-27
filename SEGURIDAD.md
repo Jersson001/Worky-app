@@ -304,6 +304,17 @@ acepta `http` o `https`.
 extraño. Texto de ahí, o de `localStorage`, nunca va a `innerHTML` sin
 `escaparHtml`; mejor `textContent`.
 
+### Lo que va en `user_metadata` es del usuario — 27 de octubre de 2026
+
+La marca `rol: 'cliente'`, la cuenta de los consecutivos (`consecutivos`) y el
+vendedor de un QR viven en `user_metadata`, que **el propio usuario puede
+reescribir** con `updateUser`. Sirven para decidir qué pantalla ver o cuál es el
+siguiente número de un documento; **nunca para dar o quitar un permiso**. Quien se
+quite la marca de cliente solo consigue ver la consola de vendedor, que ya puede
+ver cambiando su tipo de negocio, y las políticas de la base —no esa pantalla— son
+las que limitan lo que escribe. Si algún día algo de esto tiene que valer como
+autorización, va en `app_metadata`, que solo escribe el servidor.
+
 ---
 
 ## Restos conocidos
