@@ -23,6 +23,7 @@
     "@fortawesome/fontawesome-free": "^7.3.1",
     "@supabase/supabase-js": "^2.43.4",
     "html2pdf.js": "^0.14.0",
+    "lucide-react": "^1.62.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },

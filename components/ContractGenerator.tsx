@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 // @ts-ignore — el paquete no trae tipos.
 import html2pdf from 'html2pdf.js';
 import { createPortal } from 'react-dom';
+import { FileSignature } from 'lucide-react';
 
 interface ContractGeneratorProps {
   defaultContractorName?: string;
@@ -279,14 +280,15 @@ export default function ContractGenerator({
     <>
       <button
         onClick={() => setIsOpen(true)}
-        className="bg-white p-3.5 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2.5 w-full"
+        className="bg-white p-3.5 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2 w-full"
       >
-        <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center text-white shadow-md shadow-violet-500/30">
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-          </svg>
+        <div className="w-11 h-11 rounded-xl bg-slate-800 flex items-center justify-center text-white shadow-md shadow-slate-900/20">
+          <FileSignature size={22} strokeWidth={1.75} />
         </div>
-        <span className="text-slate-700 text-[12.5px] font-semibold">Contrato</span>
+        <div className="text-center">
+          <div className="text-slate-800 text-[12.5px] font-semibold leading-tight">Contrato</div>
+          <div className="text-slate-500 text-[11px] leading-tight mt-0.5">Acuerdo con firma</div>
+        </div>
       </button>
 
       {isOpen && createPortal(

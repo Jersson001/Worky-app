@@ -22,6 +22,12 @@
  */
 import React, { useEffect, useMemo, useState } from 'react';
 import Tip from './ui/Tip';
+import {
+  ArrowLeftRight, Camera, CheckCircle2, ChevronDown, ChevronRight, ChartGantt, ChartPie, CreditCard, Eye,
+  FileText, HandCoins, Heart, Images, MessageCircle, Plus, QrCode, Receipt, ShieldCheck, Store, UserPlus,
+  Users, X,
+} from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { useResumenInicio } from '../hooks/useResumenInicio';
 import { cifraCorta, familiaDeNegocio, Pendiente } from '../utils/inicio';
 import { fotoOIniciales } from '../utils/avatar';
@@ -60,6 +66,9 @@ interface InicioPanelProps {
   contratoSlot: React.ReactNode;
 }
 
+/** Trazo de todos los iconos del Inicio. Fino: con el grueso de Font Awesome varios no se entendían. */
+const TRAZO = 1.75;
+
 const ETIQUETA_DOCUMENTO: Record<Pendiente['tipo'], string> = {
   invoice: 'Factura',
   collection_account: 'Cuenta de cobro',
@@ -94,34 +103,34 @@ const hace = (fecha: Date): string => {
 
 const Titulo: React.FC<{ children: React.ReactNode; derecha?: React.ReactNode }> = ({ children, derecha }) => (
   <div className="flex items-center justify-between mb-2.5">
-    <h3 className="text-slate-400 text-[11px] font-bold uppercase tracking-wider">{children}</h3>
+    <h3 className="text-slate-500 text-[11px] font-bold uppercase tracking-wider">{children}</h3>
     {derecha}
   </div>
 );
 
 /** Una cifra de «Hoy». Sin nada que atender se apaga: no hay a dónde ir. */
 const Cifra: React.FC<{
-  icono: string;
+  icono: LucideIcon;
   etiqueta: string;
   valor: string;
   detalle?: string;
   urgente?: boolean;
   activa: boolean;
   onClick: () => void;
-}> = ({ icono, etiqueta, valor, detalle, urgente, activa, onClick }) => (
+}> = ({ icono: Icono, etiqueta, valor, detalle, urgente, activa, onClick }) => (
   <button
     type="button"
     onClick={onClick}
     disabled={!activa}
     className={`text-left rounded-2xl p-3 border transition min-w-0 ${
       urgente
-        ? 'bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-500/25'
+        ? 'bg-rey-600 border-rey-600 text-white shadow-md shadow-rey-600/30'
         : 'bg-white border-slate-200 text-slate-900 shadow-sm'
     } ${activa ? 'hover:shadow-md active:scale-[0.98]' : 'cursor-default'}`}
   >
     <div className="flex items-center gap-1.5 mb-1.5">
-      <i className={`fa-solid ${icono} text-[11px] ${urgente ? 'text-white/80' : 'text-slate-400'}`}></i>
-      <span className={`text-[11px] font-semibold ${urgente ? 'text-white/85' : 'text-slate-500'}`}>{etiqueta}</span>
+      <Icono size={15} strokeWidth={TRAZO} className={urgente ? 'text-white/85' : 'text-rey-600'} />
+      <span className={`text-[11px] font-semibold ${urgente ? 'text-white/90' : 'text-slate-500'}`}>{etiqueta}</span>
     </div>
     <div className="text-xl font-extrabold leading-tight truncate">{valor}</div>
     {detalle && <div className={`text-[11px] mt-0.5 truncate ${urgente ? 'text-white/80' : 'text-slate-500'}`}>{detalle}</div>}
@@ -134,18 +143,19 @@ const Documento: React.FC<{
   titulo: string;
   subtitulo: string;
   tip: string;
-  icono: string;
+  icono: LucideIcon;
+  /** Fondo del icono, sólido y saturado: es lo que distingue un documento de otro. */
   color: string;
   onClick: (t: DocumentoDelInicio) => void;
-}> = ({ tipo, titulo, subtitulo, tip, icono, color, onClick }) => (
+}> = ({ tipo, titulo, subtitulo, tip, icono: Icono, color, onClick }) => (
   <button
     type="button"
     onClick={() => onClick(tipo)}
     className="bg-white p-3.5 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2 relative group"
   >
     <Tip text={tip} />
-    <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${color} flex items-center justify-center text-white shadow-md`}>
-      <i className={`fa-solid ${icono} text-lg`}></i>
+    <div className={`w-11 h-11 rounded-xl ${color} flex items-center justify-center text-white shadow-md`}>
+      <Icono size={22} strokeWidth={TRAZO} />
     </div>
     <div className="text-center">
       <div className="text-slate-800 text-[12.5px] font-semibold leading-tight">{titulo}</div>
@@ -154,25 +164,25 @@ const Documento: React.FC<{
   </button>
 );
 
-/** Baldosa de herramienta: neutra. El color queda para lo que significa algo. */
+/** Baldosa de herramienta: el icono lleva el azul rey sobre un fondo suave; el color fuerte queda para los documentos. */
 const Herramienta: React.FC<{
-  icono: string;
+  icono: LucideIcon;
   titulo: string;
   detalle?: React.ReactNode;
   tip: string;
   destacada?: boolean;
   onClick: () => void;
-}> = ({ icono, titulo, detalle, tip, destacada, onClick }) => (
+}> = ({ icono: Icono, titulo, detalle, tip, destacada, onClick }) => (
   <button
     type="button"
     onClick={onClick}
     className={`p-3 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-1.5 relative group ${
-      destacada ? 'bg-blue-50 border border-blue-200' : 'bg-white'
+      destacada ? 'bg-rey-50 border border-rey-200' : 'bg-white'
     }`}
   >
     <Tip text={tip} />
-    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${destacada ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'}`}>
-      <i className={`fa-solid ${icono} text-base`}></i>
+    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${destacada ? 'bg-rey-600 text-white' : 'bg-rey-50 text-rey-600'}`}>
+      <Icono size={21} strokeWidth={TRAZO} />
     </div>
     <span className="text-slate-700 text-[11.5px] font-semibold leading-tight text-center">{titulo}</span>
     {detalle && <span className="text-[11px] leading-tight text-center">{detalle}</span>}
@@ -198,11 +208,11 @@ const Vitrina: React.FC<{
   onSubir: () => void;
   onVerCatalogo: () => void;
 }> = ({ productos, carpetas, publicado, onVerQr, onSubir, onVerCatalogo }) => (
-  <div className="bg-gradient-to-br from-blue-600 via-sky-600 to-cyan-600 text-white rounded-3xl p-4 shadow-lg shadow-blue-500/20">
+  <div className="bg-gradient-to-br from-rey-800 via-rey-700 to-rey-500 text-white rounded-3xl p-4 shadow-lg shadow-rey-700/30">
     <div className="flex items-start justify-between gap-3">
       <div className="flex items-center gap-3 min-w-0">
         <div className="w-11 h-11 rounded-2xl bg-white/20 flex items-center justify-center shrink-0">
-          <i className="fa-solid fa-box-open text-lg"></i>
+          <Store size={22} strokeWidth={TRAZO} />
         </div>
         <div className="min-w-0">
           <span className="text-[10px] font-extrabold uppercase tracking-wider bg-white/25 px-2 py-0.5 rounded-full">Tu vitrina</span>
@@ -212,9 +222,9 @@ const Vitrina: React.FC<{
       {productos > 0 && (
         <button
           type="button" onClick={onVerQr}
-          className="bg-white text-blue-700 hover:bg-sky-50 px-3 py-1.5 rounded-xl text-[12px] font-extrabold flex items-center gap-1.5 shrink-0 shadow-sm transition"
+          className="bg-white text-rey-700 hover:bg-rey-50 px-3 py-1.5 rounded-xl text-[12px] font-extrabold flex items-center gap-1.5 shrink-0 shadow-sm transition"
         >
-          <i className="fa-solid fa-qrcode"></i> Ver QR
+          <QrCode size={16} strokeWidth={TRAZO} /> Ver QR
         </button>
       )}
     </div>
@@ -228,22 +238,22 @@ const Vitrina: React.FC<{
           type="button" onClick={onSubir}
           className="mt-3 w-full bg-white text-slate-900 py-2.5 rounded-xl font-bold text-[13px] flex items-center justify-center gap-2 shadow-sm"
         >
-          <i className="fa-solid fa-plus text-blue-600"></i> Subir mi primer producto
+          <Plus size={17} strokeWidth={2} className="text-rey-600" /> Subir mi primer producto
         </button>
       </>
     ) : (
       <>
-        <div className="grid grid-cols-3 gap-2 my-3.5 bg-black/15 rounded-2xl p-2.5 border border-white/10">
+        <div className="grid grid-cols-3 gap-2 my-3.5 bg-rey-900/50 rounded-2xl p-2.5 border border-white/10">
           <div>
-            <p className="text-[11px] text-sky-100">Productos</p>
+            <p className="text-[11px] text-rey-100">Productos</p>
             <p className="text-sm font-black">{productos}</p>
           </div>
           <div className="border-x border-white/15 px-2">
-            <p className="text-[11px] text-sky-100">Carpetas</p>
+            <p className="text-[11px] text-rey-100">Carpetas</p>
             <p className="text-sm font-black">{carpetas}</p>
           </div>
           <div className="pl-1">
-            <p className="text-[11px] text-sky-100">Estado</p>
+            <p className="text-[11px] text-rey-100">Estado</p>
             <p className="text-sm font-black">{publicado === null ? '—' : publicado ? 'Publicado' : 'Sin publicar'}</p>
           </div>
         </div>
@@ -252,13 +262,13 @@ const Vitrina: React.FC<{
             type="button" onClick={onSubir}
             className="py-2.5 px-3 rounded-xl bg-white text-slate-900 font-bold text-[13px] flex items-center justify-center gap-1.5 shadow-sm"
           >
-            <i className="fa-solid fa-plus text-blue-600 text-xs"></i> Subir producto
+            <Plus size={16} strokeWidth={2} className="text-rey-600" /> Subir producto
           </button>
           <button
             type="button" onClick={onVerCatalogo}
-            className="py-2.5 px-3 rounded-xl bg-sky-950/40 text-white border border-white/20 font-bold text-[13px] flex items-center justify-center gap-1.5"
+            className="py-2.5 px-3 rounded-xl bg-rey-900/50 text-white border border-white/25 font-bold text-[13px] flex items-center justify-center gap-1.5"
           >
-            <i className="fa-regular fa-eye text-xs"></i> Ver catálogo
+            <Eye size={16} strokeWidth={TRAZO} /> Ver catálogo
           </button>
         </div>
       </>
@@ -337,22 +347,22 @@ export const InicioPanel: React.FC<InicioPanelProps> = ({
     {
       clave: 'finanzas',
       peso: 0,
-      nodo: <Herramienta key="finanzas" icono="fa-chart-pie" titulo="Finanzas" tip="Ingresos, cobros y gastos del negocio" detalle={cajaDetalle} onClick={onOpenFinancials} />,
+      nodo: <Herramienta key="finanzas" icono={ChartPie} titulo="Finanzas" tip="Ingresos, cobros y gastos del negocio" detalle={cajaDetalle} onClick={onOpenFinancials} />,
     },
     {
       clave: 'gasto',
       peso: 1,
-      nodo: <Herramienta key="gasto" icono="fa-money-bill-transfer" titulo="Registrar gasto" tip="Anota gastos según proyecto asignado" onClick={() => onCrearDocumento('expense')} />,
+      nodo: <Herramienta key="gasto" icono={ArrowLeftRight} titulo="Registrar gasto" tip="Anota gastos según proyecto asignado" onClick={() => onCrearDocumento('expense')} />,
     },
     ...(esObra ? [{
       clave: 'gantt',
       peso: 2,
-      nodo: <Herramienta key="gantt" icono="fa-bars-progress" titulo="Gantt" tip="Cronograma visual de tus proyectos" onClick={onOpenGantt} />,
+      nodo: <Herramienta key="gantt" icono={ChartGantt} titulo="Gantt" tip="Cronograma visual de tus proyectos" onClick={onOpenGantt} />,
     }] : []),
     {
       clave: 'pagos',
       peso: 4,
-      nodo: <Herramienta key="pagos" icono="fa-money-check-dollar" titulo="Datos de pago" tip="Tu número de cuenta y datos bancarios" onClick={onOpenWallet} />,
+      nodo: <Herramienta key="pagos" icono={CreditCard} titulo="Datos de pago" tip="Tu número de cuenta y datos bancarios" onClick={onOpenWallet} />,
     },
   ].sort((a, b) => a.peso - b.peso);
 
@@ -365,17 +375,17 @@ export const InicioPanel: React.FC<InicioPanelProps> = ({
         <Titulo>Hoy</Titulo>
         <div className="grid grid-cols-3 gap-2.5">
           <Cifra
-            icono="fa-comment-dots" etiqueta="Sin leer"
+            icono={MessageCircle} etiqueta="Sin leer"
             valor={String(totalSinLeer)} detalle={totalSinLeer === 0 ? 'Al día' : totalSinLeer === 1 ? 'chat' : 'mensajes'}
             urgente={totalSinLeer > 0} activa={true} onClick={onOpenChats}
           />
           <Cifra
-            icono="fa-hand-holding-dollar" etiqueta="Por cobrar"
+            icono={HandCoins} etiqueta="Por cobrar"
             valor={textoPorCobrar} detalle={detallePorCobrar}
             activa={nCobrar > 0} onClick={() => setHoja('cobrar')}
           />
           <Cifra
-            icono="fa-file-invoice-dollar" etiqueta="Cotizaciones"
+            icono={FileText} etiqueta="Cotizaciones"
             valor={textoCotizaciones} detalle={detalleCotizaciones}
             activa={nCotizaciones > 0} onClick={() => setHoja('cotizaciones')}
           />
@@ -395,8 +405,8 @@ export const InicioPanel: React.FC<InicioPanelProps> = ({
         <Titulo
           derecha={
             <div className="flex items-center gap-3">
-              <button type="button" onClick={onNewContact} className="text-[12px] font-bold text-blue-600 flex items-center gap-1" aria-label="Agregar un contacto">
-                <i className="fa-solid fa-user-plus text-[11px]"></i> Contacto
+              <button type="button" onClick={onNewContact} className="text-[12px] font-bold text-rey-600 flex items-center gap-1" aria-label="Agregar un contacto">
+                <UserPlus size={14} strokeWidth={TRAZO} /> Contacto
               </button>
               <button type="button" onClick={onOpenChats} className="text-[12px] font-bold text-slate-500">Ver todos</button>
             </div>
@@ -411,20 +421,20 @@ export const InicioPanel: React.FC<InicioPanelProps> = ({
             className="w-full bg-white rounded-2xl p-3.5 border border-slate-200 shadow-sm flex items-center gap-3 text-left hover:shadow-md transition"
           >
             <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-              <i className="fa-solid fa-circle-check"></i>
+              <CheckCircle2 size={21} strokeWidth={TRAZO} />
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold text-slate-900">Estás al día con tus clientes</p>
               <p className="text-[12px] text-slate-500">No hay chats esperando respuesta.</p>
             </div>
-            <i className="fa-solid fa-chevron-right text-[11px] text-slate-300"></i>
+            <ChevronRight size={16} strokeWidth={TRAZO} className="text-slate-300" />
           </button>
         ) : (
           <div className="space-y-2">
             {esperando.map(c => (
               <button
                 key={c.id} type="button" onClick={() => onOpenChat(c.id)}
-                className="w-full bg-white rounded-2xl p-3 border border-slate-200 shadow-sm flex items-center gap-3 text-left hover:shadow-md hover:border-blue-300 transition"
+                className="w-full bg-white rounded-2xl p-3 border border-slate-200 shadow-sm flex items-center gap-3 text-left hover:shadow-md hover:border-rey-300 transition"
               >
                 <div className="relative shrink-0">
                   <img src={fotoOIniciales(c.avatar, c.clientName)} alt="" className="w-11 h-11 rounded-full object-cover" />
@@ -439,7 +449,7 @@ export const InicioPanel: React.FC<InicioPanelProps> = ({
                   </div>
                   <p className="text-[12.5px] text-slate-600 truncate">{c.lastMessage}</p>
                 </div>
-                <span className="px-3 py-1.5 rounded-lg bg-emerald-500 text-white text-[12px] font-bold shrink-0">Responder</span>
+                <span className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-[12px] font-bold shrink-0">Responder</span>
               </button>
             ))}
           </div>
@@ -451,11 +461,11 @@ export const InicioPanel: React.FC<InicioPanelProps> = ({
         <Titulo>Cotizar y cobrar</Titulo>
         <div className="grid grid-cols-2 min-[480px]:grid-cols-4 gap-2.5">
           <Documento tipo="quote" titulo="Cotización" subtitulo="Propuesta con precios" tip="Crea ofertas en segundos con imágenes y en PDF"
-            icono="fa-file-invoice-dollar" color="from-blue-500 to-blue-600 shadow-blue-500/30" onClick={onCrearDocumento} />
+            icono={FileText} color="bg-rey-600 shadow-rey-600/30" onClick={onCrearDocumento} />
           <Documento tipo="collection_account" titulo="Cuenta de cobro" subtitulo="Cobro sin IVA" tip="Crea una cuenta de cobro según proyecto asignado"
-            icono="fa-hand-holding-dollar" color="from-emerald-500 to-emerald-600 shadow-emerald-500/30" onClick={onCrearDocumento} />
+            icono={HandCoins} color="bg-emerald-600 shadow-emerald-600/30" onClick={onCrearDocumento} />
           <Documento tipo="invoice" titulo="Factura" subtitulo="Con IVA, para empresas" tip="Documento con IVA para empresas"
-            icono="fa-file-invoice" color="from-indigo-500 to-indigo-600 shadow-indigo-500/30" onClick={onCrearDocumento} />
+            icono={Receipt} color="bg-violet-700 shadow-violet-700/30" onClick={onCrearDocumento} />
           {/* El botón del contrato es del generador: se estira para igualar la
               altura de las otras baldosas, que llevan un renglón más. */}
           <div className="relative group [&>button]:h-full [&>button]:justify-center">
@@ -481,16 +491,16 @@ export const InicioPanel: React.FC<InicioPanelProps> = ({
           aria-expanded={mas}
         >
           <span>Más herramientas</span>
-          <i className={`fa-solid fa-chevron-down text-[10px] transition-transform ${mas ? 'rotate-180' : ''}`}></i>
+          <ChevronDown size={16} strokeWidth={TRAZO} className={`transition-transform ${mas ? 'rotate-180' : ''}`} />
         </button>
         {mas && (
           <div className="grid grid-cols-3 gap-2.5 mt-1">
-            <Herramienta icono="fa-images" titulo="Historias" tip="Publica fotos de tus productos" onClick={() => onOpenStatus(false)} />
-            <Herramienta icono="fa-camera" titulo="Cámara" tip="Toma una foto para una historia nueva" onClick={() => onOpenStatus(true)} />
-            <Herramienta icono="fa-users-rectangle" titulo="Grupos" tip="Agrupa contactos por proyecto o categoría" onClick={onOpenGroups} />
-            <Herramienta icono="fa-heart" titulo="Siguiendo" tip="Tiendas que sigues desde sus QR" onClick={onOpenTiendas} />
-            {!esObra && <Herramienta icono="fa-bars-progress" titulo="Gantt" tip="Cronograma visual de tus proyectos" onClick={onOpenGantt} />}
-            {userProfile?.isAdmin && <Herramienta icono="fa-user-shield" titulo="Admin" tip="Panel de administración de la plataforma" onClick={onOpenAdmin} />}
+            <Herramienta icono={Images} titulo="Historias" tip="Publica fotos de tus productos" onClick={() => onOpenStatus(false)} />
+            <Herramienta icono={Camera} titulo="Cámara" tip="Toma una foto para una historia nueva" onClick={() => onOpenStatus(true)} />
+            <Herramienta icono={Users} titulo="Grupos" tip="Agrupa contactos por proyecto o categoría" onClick={onOpenGroups} />
+            <Herramienta icono={Heart} titulo="Siguiendo" tip="Tiendas que sigues desde sus QR" onClick={onOpenTiendas} />
+            {!esObra && <Herramienta icono={ChartGantt} titulo="Gantt" tip="Cronograma visual de tus proyectos" onClick={onOpenGantt} />}
+            {userProfile?.isAdmin && <Herramienta icono={ShieldCheck} titulo="Admin" tip="Panel de administración de la plataforma" onClick={onOpenAdmin} />}
           </div>
         )}
       </section>
@@ -516,7 +526,7 @@ export const InicioPanel: React.FC<InicioPanelProps> = ({
               </div>
               <button type="button" onClick={() => setHoja(null)} aria-label="Cerrar"
                 className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center shrink-0">
-                <i className="fa-solid fa-xmark"></i>
+                <X size={18} strokeWidth={TRAZO} />
               </button>
             </div>
             <div className="overflow-y-auto p-2">
@@ -535,7 +545,7 @@ export const InicioPanel: React.FC<InicioPanelProps> = ({
                   </div>
                   <div className="text-right shrink-0">
                     <p className="text-sm font-extrabold text-slate-900">{formatCurrency(p.monto)}</p>
-                    {p.contactoId && <p className="text-[11px] text-blue-600 font-semibold">Abrir chat</p>}
+                    {p.contactoId && <p className="text-[11px] text-rey-600 font-semibold">Abrir chat</p>}
                   </div>
                 </button>
               ))}
