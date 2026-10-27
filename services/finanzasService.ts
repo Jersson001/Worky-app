@@ -20,7 +20,7 @@ import {
 const PAGINA = 1000;
 
 /** Supabase devuelve como mucho mil filas por consulta: se piden por tandas. */
-const todas = async <T,>(consulta: (desde: number, hasta: number) => PromiseLike<{ data: T[] | null; error: any }>): Promise<T[]> => {
+export const todas = async <T,>(consulta: (desde: number, hasta: number) => PromiseLike<{ data: T[] | null; error: any }>): Promise<T[]> => {
   const filas: T[] = [];
   for (let desde = 0; ; desde += PAGINA) {
     const { data, error } = await consulta(desde, desde + PAGINA - 1);

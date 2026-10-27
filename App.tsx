@@ -4,6 +4,7 @@ import { ChatList } from './components/ChatList';
 import { ChatWindow } from './components/ChatWindow';
 import { FinancialReport } from './components/FinancialReport';
 import { TiendasGuardadas } from './components/TiendasGuardadas';
+import { InicioPanel } from './components/InicioPanel';
 import { rutaInternaDe, yaSeAbrioHace, recordarEnlaceAbierto } from './utils/enlacesDeLaApp';
 import { carpetasPrincipales, carpetasEnOrden, esPrincipal, etiquetaDeCarpeta, idsDeCarpeta, subcarpetasDe } from './utils/carpetas';
 import ContractGenerator from './components/ContractGenerator';
@@ -2758,6 +2759,16 @@ ${describeError(error)}
   };
 
   const handleDocumentClick = (type: any) => { setPendingDocumentAction(type); setShowClientSelectionModal(true); };
+  /** Abre el chat de un contacto y lo marca leído. Lo usan la lista lateral y el Inicio. */
+  const seleccionarContacto = (id: string) => {
+    setSelectedContactId(id);
+    setSelectedGroupId(null);
+    setShowFinancials(false);
+    setShowStatus(false);
+    setShowNotifications(false);
+    setContacts(prev => prev.map(c => c.id === id ? { ...c, unreadCount: 0 } : c));
+    void markChatAsRead(id);
+  };
   const handleSelectContactForDocument = (contactId: string) => { setSelectedContactId(contactId); if (pendingDocumentAction) { setChatAction(pendingDocumentAction); setPendingDocumentAction(null); } setShowClientSelectionModal(false); };
 
   // Mostrar visor de documento compartido si hay un documentId en la URL
@@ -2895,15 +2906,7 @@ ${describeError(error)}
         <ChatList
           contacts={contacts}
           selectedContactId={selectedContactId}
-          onSelectContact={(id) => {
-            setSelectedContactId(id);
-            setSelectedGroupId(null);
-            setShowFinancials(false);
-            setShowStatus(false);
-            setShowNotifications(false);
-            setContacts(prev => prev.map(c => c.id === id ? { ...c, unreadCount: 0 } : c));
-            void markChatAsRead(id);
-          }}
+          onSelectContact={seleccionarContacto}
           onOpenFinancials={() => { setShowFinancials(true); setSelectedContactId(null); setSelectedGroupId(null); setShowStatus(false); setShowNotifications(false); }}
           onOpenStatus={() => { setShowStatus(true); setSelectedContactId(null); setSelectedGroupId(null); setShowFinancials(false); setShowNotifications(false); }}
           onOpenWallet={() => setShowWallet(true)}
@@ -3026,162 +3029,45 @@ ${describeError(error)}
                 </div>
               </div>
 
-              {/* Dos columnas: lo que se hace a diario a la izquierda, lo que se
-                  consulta a la derecha. Desde 480px, que es donde las tarjetas
-                  siguen siendo legibles; por debajo —un móvil de verdad— se
-                  apilan, porque a dos columnas quedarían de unos 78px. */}
-              <div className="w-full grid grid-cols-1 min-[480px]:grid-cols-2 gap-6 items-start">
-                {/* Primary Actions */}
-                <div>
-                  <h3 className="text-slate-400 text-[11px] font-bold uppercase tracking-wider mb-3">Acciones rápidas</h3>
-                  <div className="grid grid-cols-2 gap-2.5">
-                    <button onClick={() => { setSelectedContactId(null); setMobileTab('chats'); }} className="bg-white p-3.5 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2.5 relative group">
-                      <Tip text="Mensajes con clientes y proveedores" />
-                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center text-white shadow-md shadow-green-500/30">
-                        <i className="fa-solid fa-comments text-xl"></i>
-                      </div>
-                      <span className="text-slate-700 text-[12.5px] font-semibold">Chats</span>
-                      {totalSinLeer > 0 && (
-                        <span className="absolute top-2 right-2 min-w-[20px] h-5 px-1.5 rounded-full bg-red-500 text-white text-[11px] font-bold flex items-center justify-center">
-                          {totalSinLeer > 99 ? '99+' : totalSinLeer}
-                        </span>
-                      )}
-                    </button>
-                    <button onClick={() => handleDocumentClick('quote')} className="bg-white p-3.5 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2.5 relative group">
-                      <Tip text="Crea ofertas en segundos con imágenes y en PDF" />
-                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white shadow-md shadow-blue-500/30">
-                        <i className="fa-solid fa-file-invoice-dollar text-xl"></i>
-                      </div>
-                      <span className="text-slate-700 text-[12.5px] font-semibold">Cotización</span>
-                    </button>
-                    <button onClick={() => handleDocumentClick('invoice')} className="bg-white p-3.5 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2.5 relative group">
-                      <Tip text="Documento con IVA para empresas" />
-                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-indigo-500/30">
-                        <i className="fa-solid fa-file-invoice text-xl"></i>
-                      </div>
-                      <span className="text-slate-700 text-[12.5px] font-semibold">Factura</span>
-                    </button>
-                    <button onClick={() => handleDocumentClick('collection_account')} className="bg-white p-3.5 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2.5 relative group">
-                      <Tip text="Crea una cuenta de cobro según proyecto asignado" />
-                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center text-white shadow-md shadow-emerald-500/30">
-                        <i className="fa-solid fa-hand-holding-dollar text-xl"></i>
-                      </div>
-                      <span className="text-slate-700 text-[12.5px] font-semibold">Cuenta Cobro</span>
-                    </button>
-                    <button onClick={() => handleDocumentClick('expense')} className="bg-white p-3.5 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2.5 relative group">
-                      <Tip text="Anota gastos según proyecto asignado" />
-                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-rose-500 to-rose-600 flex items-center justify-center text-white shadow-md shadow-rose-500/30">
-                        <i className="fa-solid fa-money-bill-transfer text-xl"></i>
-                      </div>
-                      <span className="text-slate-700 text-[12.5px] font-semibold">Reg. Gasto</span>
-                    </button>
-                    <div className="relative group">
-                      <Tip text="Genera contratos con firma digital" />
-                      <ProFeatureGuard isPro={userProfile?.isPro} trialEndsAt={userProfile?.trialEndsAt} subscriptionEndsAt={userProfile?.subscriptionEndsAt}>
-                        <ContractGenerator
-                          defaultContractorName={userProfile?.ownerName || userProfile?.businessName || ''}
-                          defaultContractorId={userProfile?.nit || ''}
-                          defaultLogo={businessLogo}
-                          digitalSignature={digitalSignature}
-                          documents={documents}
-                          contacts={contacts}
-                          onShareContractPdf={handleShareContractPdf}
-                          onUploadContractPdf={handleUploadContractPdf}
-                        />
-                      </ProFeatureGuard>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Tools Grid */}
-                <div>
-                  <h3 className="text-slate-400 text-[11px] font-bold uppercase tracking-wider mb-3">Herramientas</h3>
-                  {/* De tres en tres solo cuando hay sitio: compartiendo ancho
-                      con la otra columna, tres tarjetas caen a unos 75px. */}
-                  <div className="grid grid-cols-3 min-[480px]:grid-cols-2 md:grid-cols-3 gap-2.5">
-                    <button onClick={() => setShowFinancials(true)} className="bg-white p-3 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2 relative group">
-                      <Tip text="Ingresos, cobros y gastos del negocio" />
-                      <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center text-white shadow-sm shadow-teal-500/30">
-                        <i className="fa-solid fa-chart-pie text-lg"></i>
-                      </div>
-                      <span className="text-slate-700 text-[11.5px] font-semibold">Finanzas</span>
-                    </button>
-                    <button onClick={() => setShowCatalogManager(true)} className="bg-white p-3 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2 relative group">
-                      <Tip text="Gestiona, publica tus productos y compártelos por QR" />
-                      <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-fuchsia-500 to-fuchsia-600 flex items-center justify-center text-white shadow-sm shadow-fuchsia-500/30">
-                        <i className="fa-solid fa-box-open text-lg"></i>
-                      </div>
-                      <span className="text-slate-700 text-[11.5px] font-semibold">Catálogo</span>
-                    </button>
-                    {/* Las tiendas que sigue desde sus QR. Se le enseña a todo
-                        el mundo: quien vende también compra. El corazón es el
-                        mismo del botón «Seguir tienda» del catálogo. */}
-                    <button onClick={() => setShowTiendas(true)} className="bg-white p-3 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2 relative group">
-                      <Tip text="Tiendas que sigues desde sus QR" />
-                      <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-rose-500 to-pink-600 flex items-center justify-center text-white shadow-sm shadow-rose-500/30">
-                        <i className="fa-solid fa-heart text-lg"></i>
-                      </div>
-                      <span className="text-slate-700 text-[11.5px] font-semibold">Siguiendo</span>
-                    </button>
-                    <button onClick={() => setShowWallet(true)} className="bg-white p-3 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2 relative group">
-                      <Tip text="Tu número de cuenta y datos bancarios" />
-                      <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-sky-500 to-sky-600 flex items-center justify-center text-white shadow-sm shadow-sky-500/30">
-                        <i className="fa-solid fa-money-check-dollar text-lg"></i>
-                      </div>
-                      <span className="text-slate-700 text-[11.5px] font-semibold">Datos de pago</span>
-                    </button>
-                    <button onClick={() => { setShowStatus(true); setStartCamera(false); }} className="bg-white p-3 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2 relative group">
-                      <Tip text="Publica fotos de tus productos" />
-                      <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-pink-500 to-pink-600 flex items-center justify-center text-white shadow-sm shadow-pink-500/30">
-                        <i className="fa-solid fa-images text-lg"></i>
-                      </div>
-                      <span className="text-slate-700 text-[11.5px] font-semibold">Historias</span>
-                    </button>
-                    <button onClick={() => { setShowStatus(true); setStartCamera(true); }} className="bg-white p-3 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2 relative group">
-                      <Tip text="Toma una foto para una historia nueva" />
-                      <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center text-white shadow-sm shadow-orange-500/30">
-                        <i className="fa-solid fa-camera text-lg"></i>
-                      </div>
-                      <span className="text-slate-700 text-[11.5px] font-semibold">Cámara</span>
-                    </button>
-                    <button onClick={() => setShowGanttChart(true)} className="bg-white p-3 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2 relative group">
-                      <Tip text="Cronograma visual de tus proyectos" />
-                      <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center text-white shadow-sm shadow-purple-500/30">
-                        <i className="fa-solid fa-bars-progress text-lg"></i>
-                      </div>
-                      <span className="text-slate-700 text-[11.5px] font-semibold">Gantt</span>
-                    </button>
-                    <button onClick={() => setShowGroupsManager(true)} className="bg-white p-3 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2 relative group">
-                      <Tip text="Agrupa contactos por proyecto o categoría" />
-                      <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-cyan-500 to-cyan-600 flex items-center justify-center text-white shadow-sm shadow-cyan-500/30">
-                        <i className="fa-solid fa-users-rectangle text-lg"></i>
-                      </div>
-                      <span className="text-slate-700 text-[11.5px] font-semibold">Grupos</span>
-                    </button>
-                    <button onClick={() => {
-                      setNewContactName('');
-                      setNewContactPhone('');
-                      setNewContactRole('client');
-                      setShowNewContactModal(true);
-                    }} className="bg-gradient-to-br from-blue-600 to-blue-700 p-3 rounded-xl transition shadow-md shadow-blue-500/30 hover:shadow-lg flex flex-col items-center gap-2 relative group">
-                      <Tip text="Agrega un cliente o proveedor nuevo" />
-                      <div className="w-11 h-11 rounded-xl bg-white/15 flex items-center justify-center text-white">
-                        <i className="fa-solid fa-user-plus text-lg"></i>
-                      </div>
-                      <span className="text-white text-[11.5px] font-semibold">Contacto</span>
-                    </button>
-                    {userProfile?.isAdmin && (
-                      <button onClick={() => setShowAdminPanel(true)} className="bg-white p-3 rounded-xl transition shadow-sm hover:shadow-md flex flex-col items-center gap-2 relative group">
-                        <Tip text="Panel de administración de la plataforma" />
-                        <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center text-white shadow-sm shadow-amber-500/30">
-                          <i className="fa-solid fa-user-shield text-lg"></i>
-                        </div>
-                        <span className="text-slate-700 text-[11.5px] font-semibold">Admin</span>
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
+              {/* El cuerpo del Inicio vive en InicioPanel: lo que se hace a diario, en
+                  el orden en que se hace. Antes eran dos cuadrículas de baldosas
+                  iguales; ver el comentario de ese componente. */}
+              <InicioPanel
+                contacts={contacts}
+                totalSinLeer={totalSinLeer}
+                userProfile={userProfile}
+                onOpenChats={() => { setSelectedContactId(null); setMobileTab('chats'); }}
+                onOpenChat={seleccionarContacto}
+                onCrearDocumento={handleDocumentClick}
+                onOpenFinancials={() => setShowFinancials(true)}
+                onOpenCatalog={() => setShowCatalogManager(true)}
+                onOpenWallet={() => setShowWallet(true)}
+                onOpenGantt={() => setShowGanttChart(true)}
+                onOpenStatus={(conCamara) => { setShowStatus(true); setStartCamera(conCamara); }}
+                onOpenGroups={() => setShowGroupsManager(true)}
+                onOpenTiendas={() => setShowTiendas(true)}
+                onNewContact={() => {
+                  setNewContactName('');
+                  setNewContactPhone('');
+                  setNewContactRole('client');
+                  setShowNewContactModal(true);
+                }}
+                onOpenAdmin={() => setShowAdminPanel(true)}
+                contratoSlot={
+                  <ProFeatureGuard isPro={userProfile?.isPro} trialEndsAt={userProfile?.trialEndsAt} subscriptionEndsAt={userProfile?.subscriptionEndsAt}>
+                    <ContractGenerator
+                      defaultContractorName={userProfile?.ownerName || userProfile?.businessName || ''}
+                      defaultContractorId={userProfile?.nit || ''}
+                      defaultLogo={businessLogo}
+                      digitalSignature={digitalSignature}
+                      documents={documents}
+                      contacts={contacts}
+                      onShareContractPdf={handleShareContractPdf}
+                      onUploadContractPdf={handleUploadContractPdf}
+                    />
+                  </ProFeatureGuard>
+                }
+              />
 
               <div className="mt-8 mb-2 text-slate-400 text-xs flex items-center gap-2">
                 <i className="fa-solid fa-lock text-[10px]"></i> Conexión segura cifrada.
