@@ -16,6 +16,7 @@
  * catálogos publicados antes de todo esto, porque lo que se lee es su estructura.
  */
 import { fetchCatalogHtml, guardarPedidoPendiente } from '../services/catalogShareService';
+import { supabase } from '../services/supabaseConfig';
 import { guardarTienda, leerTiendas, quitarTienda } from '../utils/tiendasGuardadas';
 
 interface ProductoDelCatalogo {
@@ -217,6 +218,15 @@ export const mostrarCatalogo = async (userId: string): Promise<void> => {
 
   const cat = leerCatalogo(html);
   const enlace = window.location.href;
+
+  // Quien ya entró a Worky con correo o celular no necesita que le ofrezcan
+  // cuenta. La sesión está en el navegador aunque esta página no sea la app.
+  // Una cuenta anónima (solo alias) sí: ahí la invitación a registrarse vale.
+  let conCuenta = false;
+  try {
+    const { data } = await supabase.auth.getSession();
+    conCuenta = !!data.session && data.session.user.is_anonymous !== true;
+  } catch { /* sin sesión legible se trata como visitante */ }
 
   // ── Estado ────────────────────────────────────────────────────────────────
   const meGustan: FotoElegida[] = [];
@@ -766,8 +776,9 @@ export const mostrarCatalogo = async (userId: string): Promise<void> => {
     botones.append(boton('Seguir mirando', '#94a3b8', () => fondo.remove()), enviar);
 
     const avisoCuenta = document.createElement('p');
-    avisoCuenta.textContent =
-      'Para mandárselo necesitas una cuenta: la creas en un momento y sigues la conversación por el chat.';
+    avisoCuenta.textContent = conCuenta
+      ? 'Se lo mandamos por el chat y sigues la conversación allí.'
+      : 'Para mandárselo necesitas una cuenta: la creas en un momento y sigues la conversación por el chat.';
     avisoCuenta.style.cssText = 'font-size:.75rem;color:#94a3b8;margin-top:10px;text-align:right';
 
     pie.append(nota, botones, avisoCuenta);
@@ -869,6 +880,7 @@ export const mostrarCatalogo = async (userId: string): Promise<void> => {
    * «Ahora no» es una salida de verdad y no hay nada bloqueado detrás.
    */
   function invitarARegistrarse(): void {
+    if (conCuenta) return;
     const { fondo, panel } = capaConPanel();
     panel.innerHTML =
       `<p style="font-weight:800;font-size:1.05rem;margin:0 0 6px">Ahora sigues a ${escaparHtml(cat.negocio)}</p>` +
