@@ -40,6 +40,13 @@ interface InicioClienteProps {
   onGoogle: () => Promise<boolean>;
   onCorreo: () => void;
   errorInicial?: string;
+  /**
+   * La salida de quien se marcó como cliente y en realidad vende: lleva al editor
+   * de perfil, donde se escoge el tipo de negocio, y al tenerlo la cuenta pasa a
+   * ver la consola de vendedor. No se ofrece a una cuenta anónima: esas no pueden
+   * publicar ni crear productos.
+   */
+  onTengoUnNegocio?: () => void;
 }
 
 const Titulo: React.FC<{ children: React.ReactNode }> = ({ children }) => (
@@ -54,7 +61,7 @@ const Vacio: React.FC<{ icono: React.ReactNode; texto: string }> = ({ icono, tex
 );
 
 export const InicioCliente: React.FC<InicioClienteProps> = ({
-  contacts, nombre, esAnonimo, onOpenChat, onAbrirChatTienda, onGoogle, onCorreo, errorInicial,
+  contacts, nombre, esAnonimo, onOpenChat, onAbrirChatTienda, onGoogle, onCorreo, errorInicial, onTengoUnNegocio,
 }) => {
   // Las de ahora primero, y las que esperan respuesta por encima de las demás.
   const conversaciones = useMemo(
@@ -165,6 +172,15 @@ export const InicioCliente: React.FC<InicioClienteProps> = ({
           </div>
         )}
       </section>
+
+      {!esAnonimo && onTengoUnNegocio && (
+        <p className="text-center text-[12.5px] text-slate-500 pt-2 pb-4">
+          ¿Tienes un negocio?{' '}
+          <button type="button" onClick={onTengoUnNegocio} className="text-rey-600 font-bold underline underline-offset-2">
+            Configúralo aquí
+          </button>
+        </p>
+      )}
     </div>
   );
 };

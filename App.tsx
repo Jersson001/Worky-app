@@ -592,6 +592,9 @@ const App: React.FC = () => {
           // —donde la página no se recarga al volver— el aviso de «guarda tu espacio»
           // se quedaba puesto con la cuenta ya guardada.
           setEsAnonimo(user.is_anonymous === true);
+          // La marca de cliente también: se puede poner en la cuenta con la sesión
+          // ya abierta, y llega con el siguiente refresco del token.
+          setRolCliente(user.user_metadata?.rol === 'cliente');
           return;
         }
         subscribedUserId = user.id;
@@ -3120,6 +3123,7 @@ ${describeError(error)}
                 onGoogle={guardarEspacioConGoogle}
                 onCorreo={() => setShowProfileEditor(true)}
                 errorInicial={errorGuardarEspacio}
+                onTengoUnNegocio={() => setShowProfileEditor(true)}
               />
               ) : (
                 <InicioPanel

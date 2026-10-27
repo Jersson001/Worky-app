@@ -312,13 +312,22 @@ export const InicioPanel: React.FC<InicioPanelProps> = ({
   );
 
   const nCobrar = pendientes?.porCobrar.items.length ?? 0;
-  const nCotizaciones = pendientes?.cotizaciones.items.length ?? 0;
+  const cotizaciones = pendientes?.cotizaciones.items ?? [];
+  // La cifra grande cuenta las que siguen vigentes: es con las que el cliente aún
+  // puede contestar. Las vencidas se avisan aparte. Contarlas todas inflaba la
+  // urgencia: una cuenta real tenía 8 «sin respuesta» y las 8 estaban vencidas.
+  const nVigentes = cotizaciones.filter(c => !c.vencida).length;
+  const nVencidas = cotizaciones.length - nVigentes;
   const enCarga = cargando && !datos;
 
   const textoPorCobrar = enCarga || !pendientes ? '—' : nCobrar === 0 ? 'Al día' : cifraCorta(pendientes.porCobrar.total);
   const detallePorCobrar = !pendientes ? undefined : nCobrar === 0 ? 'Nada pendiente' : `${nCobrar} ${nCobrar === 1 ? 'documento' : 'documentos'}`;
-  const textoCotizaciones = enCarga || !pendientes ? '—' : String(nCotizaciones);
-  const detalleCotizaciones = !pendientes ? undefined : nCotizaciones === 0 ? 'Ninguna' : 'sin respuesta';
+  const textoCotizaciones = enCarga || !pendientes ? '—' : String(nVigentes);
+  const detalleCotizaciones = !pendientes
+    ? undefined
+    : nVigentes === 0 && nVencidas === 0 ? 'Ninguna'
+    : nVencidas === 0 ? 'sin respuesta'
+    : `${nVigentes === 0 ? '' : 'sin respuesta · '}${nVencidas} ${nVencidas === 1 ? 'vencida' : 'vencidas'}`;
 
   // ── Mi negocio: el Gantt es de quien cotiza obra ──
   // El catálogo ya no está aquí: tiene su propia tarjeta, la Vitrina.
@@ -353,7 +362,10 @@ export const InicioPanel: React.FC<InicioPanelProps> = ({
     },
   ].sort((a, b) => a.peso - b.peso);
 
-  const sheetItems: Pendiente[] = hoja === 'cobrar' ? (pendientes?.porCobrar.items ?? []) : hoja === 'cotizaciones' ? (pendientes?.cotizaciones.items ?? []) : [];
+  const sheetItems: Pendiente[] = hoja === 'cobrar'
+    ? (pendientes?.porCobrar.items ?? [])
+    // Las vigentes arriba: son las que todavía se pueden cerrar.
+    : hoja === 'cotizaciones' ? [...cotizaciones].sort((a, b) => Number(a.vencida) - Number(b.vencida)) : [];
 
   return (
     <div className="w-full max-w-2xl mx-auto space-y-6">
@@ -374,7 +386,7 @@ export const InicioPanel: React.FC<InicioPanelProps> = ({
           <Cifra
             icono={FileText} etiqueta="Cotizaciones"
             valor={textoCotizaciones} detalle={detalleCotizaciones}
-            activa={nCotizaciones > 0} onClick={() => setHoja('cotizaciones')}
+            activa={cotizaciones.length > 0} onClick={() => setHoja('cotizaciones')}
           />
         </div>
       </section>
@@ -508,7 +520,7 @@ export const InicioPanel: React.FC<InicioPanelProps> = ({
                 <p className="text-[12px] text-slate-500 mt-0.5">
                   {hoja === 'cobrar'
                     ? `${formatCurrency(pendientes?.porCobrar.total ?? 0)} en ${sheetItems.length} ${sheetItems.length === 1 ? 'documento' : 'documentos'}. Lo más viejo, primero.`
-                    : 'Las de los últimos 90 días que el cliente no ha aceptado ni rechazado.'}
+                    : 'Las de los últimos 90 días que el cliente no ha aceptado ni rechazado. Las vigentes, primero.'}
                 </p>
               </div>
               <button type="button" onClick={() => setHoja(null)} aria-label="Cerrar"
