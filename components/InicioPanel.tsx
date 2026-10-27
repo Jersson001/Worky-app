@@ -8,12 +8,13 @@
  *
  * 1. **Hoy:** tres cifras que se tocan —chats sin leer, por cobrar, cotizaciones
  *    esperando respuesta—. Es lo que se hace primero: responder, cobrar, cotizar.
- * 2. **Chats:** los que esperan respuesta, con su último mensaje y «Responder».
- * 3. **Cotizar y cobrar:** los documentos.
- * 4. **Mi negocio:** finanzas, datos de pago, catálogo. El orden cambia con el
- *    negocio: quien vende de catálogo lo tiene arriba; quien cotiza obra, las
- *    finanzas.
- * 5. **Más:** lo que se usa de vez en cuando, plegado.
+ * 2. **Vitrina:** el catálogo y su QR, en una tarjeta grande. Es lo que trae
+ *    clientes nuevos, y como baldosa era una más entre once.
+ * 3. **Chats:** los que esperan respuesta, con su último mensaje y «Responder».
+ * 4. **Cotizar y cobrar:** los documentos.
+ * 5. **Mi negocio:** finanzas, gastos, datos de pago y, para quien cotiza obra,
+ *    el Gantt.
+ * 6. **Más:** lo que se usa de vez en cuando, plegado.
  *
  * Todo lo que abre algo viene por props: el Inicio no sabe de modales, solo de
  * orden. Los datos son reales; mientras llegan se ve «—», y si fallan también:
@@ -25,6 +26,8 @@ import { useResumenInicio } from '../hooks/useResumenInicio';
 import { cifraCorta, familiaDeNegocio, Pendiente } from '../utils/inicio';
 import { fotoOIniciales } from '../utils/avatar';
 import { formatCurrency } from '../utils/currency';
+import { tieneCatalogo } from '../services/catalogShareService';
+import { getCurrentUserId } from '../services/messagingService';
 import type { Contact, UserProfileData } from '../types';
 
 export type DocumentoDelInicio = 'quote' | 'invoice' | 'collection_account' | 'expense';
@@ -33,11 +36,19 @@ interface InicioPanelProps {
   contacts: Contact[];
   totalSinLeer: number;
   userProfile?: UserProfileData | null;
+  /** Cuántos productos y carpetas tiene el catálogo: lo que la tarjeta cuenta. */
+  productCount: number;
+  folderCount: number;
   onOpenChats: () => void;
   onOpenChat: (contactId: string) => void;
   onCrearDocumento: (tipo: DocumentoDelInicio) => void;
   onOpenFinancials: () => void;
+  /** Abre el administrador del catálogo. */
   onOpenCatalog: () => void;
+  /** Abre el administrador con el formulario de producto nuevo ya abierto. */
+  onAddProduct: () => void;
+  /** Abre el QR y el enlace del catálogo. */
+  onShareQr: () => void;
   onOpenWallet: () => void;
   onOpenGantt: () => void;
   onOpenStatus: (conCamara: boolean) => void;
@@ -168,14 +179,113 @@ const Herramienta: React.FC<{
   </button>
 );
 
+/**
+ * La vitrina: el catálogo y su QR, grandes y arriba.
+ *
+ * Era una baldosa más entre once, y el catálogo es lo que trae clientes nuevos:
+ * es lo que se imprime, se pega en la vitrina y se manda por WhatsApp. Cuenta lo
+ * que de verdad se sabe —productos, carpetas y si ya se publicó— y no inventa
+ * lo que no se mide, como los escaneos del día.
+ *
+ * Sin productos no enseña cifras en cero: dice qué hacer primero.
+ */
+const Vitrina: React.FC<{
+  productos: number;
+  carpetas: number;
+  /** Null mientras se pregunta, o si no se pudo saber. */
+  publicado: boolean | null;
+  onVerQr: () => void;
+  onSubir: () => void;
+  onVerCatalogo: () => void;
+}> = ({ productos, carpetas, publicado, onVerQr, onSubir, onVerCatalogo }) => (
+  <div className="bg-gradient-to-br from-blue-600 via-sky-600 to-cyan-600 text-white rounded-3xl p-4 shadow-lg shadow-blue-500/20">
+    <div className="flex items-start justify-between gap-3">
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="w-11 h-11 rounded-2xl bg-white/20 flex items-center justify-center shrink-0">
+          <i className="fa-solid fa-box-open text-lg"></i>
+        </div>
+        <div className="min-w-0">
+          <span className="text-[10px] font-extrabold uppercase tracking-wider bg-white/25 px-2 py-0.5 rounded-full">Tu vitrina</span>
+          <h3 className="text-base font-extrabold leading-tight mt-1 truncate">Catálogo y QR</h3>
+        </div>
+      </div>
+      {productos > 0 && (
+        <button
+          type="button" onClick={onVerQr}
+          className="bg-white text-blue-700 hover:bg-sky-50 px-3 py-1.5 rounded-xl text-[12px] font-extrabold flex items-center gap-1.5 shrink-0 shadow-sm transition"
+        >
+          <i className="fa-solid fa-qrcode"></i> Ver QR
+        </button>
+      )}
+    </div>
+
+    {productos === 0 ? (
+      <>
+        <p className="text-[13px] text-white/90 mt-3 leading-snug">
+          Sube tu primer producto y comparte tu catálogo con un QR: quien lo escanee lo ve sin registrarse.
+        </p>
+        <button
+          type="button" onClick={onSubir}
+          className="mt-3 w-full bg-white text-slate-900 py-2.5 rounded-xl font-bold text-[13px] flex items-center justify-center gap-2 shadow-sm"
+        >
+          <i className="fa-solid fa-plus text-blue-600"></i> Subir mi primer producto
+        </button>
+      </>
+    ) : (
+      <>
+        <div className="grid grid-cols-3 gap-2 my-3.5 bg-black/15 rounded-2xl p-2.5 border border-white/10">
+          <div>
+            <p className="text-[11px] text-sky-100">Productos</p>
+            <p className="text-sm font-black">{productos}</p>
+          </div>
+          <div className="border-x border-white/15 px-2">
+            <p className="text-[11px] text-sky-100">Carpetas</p>
+            <p className="text-sm font-black">{carpetas}</p>
+          </div>
+          <div className="pl-1">
+            <p className="text-[11px] text-sky-100">Estado</p>
+            <p className="text-sm font-black">{publicado === null ? '—' : publicado ? 'Publicado' : 'Sin publicar'}</p>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button" onClick={onSubir}
+            className="py-2.5 px-3 rounded-xl bg-white text-slate-900 font-bold text-[13px] flex items-center justify-center gap-1.5 shadow-sm"
+          >
+            <i className="fa-solid fa-plus text-blue-600 text-xs"></i> Subir producto
+          </button>
+          <button
+            type="button" onClick={onVerCatalogo}
+            className="py-2.5 px-3 rounded-xl bg-sky-950/40 text-white border border-white/20 font-bold text-[13px] flex items-center justify-center gap-1.5"
+          >
+            <i className="fa-regular fa-eye text-xs"></i> Ver catálogo
+          </button>
+        </div>
+      </>
+    )}
+  </div>
+);
+
 // ── Panel ────────────────────────────────────────────────────────────────
 
 export const InicioPanel: React.FC<InicioPanelProps> = ({
-  contacts, totalSinLeer, userProfile,
-  onOpenChats, onOpenChat, onCrearDocumento, onOpenFinancials, onOpenCatalog, onOpenWallet,
+  contacts, totalSinLeer, userProfile, productCount, folderCount,
+  onOpenChats, onOpenChat, onCrearDocumento, onOpenFinancials, onOpenCatalog, onAddProduct, onShareQr, onOpenWallet,
   onOpenGantt, onOpenStatus, onOpenGroups, onOpenTiendas, onNewContact, onOpenAdmin, contratoSlot,
 }) => {
   const familia = familiaDeNegocio(userProfile?.businessType);
+
+  // ¿Ya se publicó? Solo se pregunta si hay productos: sin ellos no hay nada que
+  // publicar y la tarjeta ni lo muestra.
+  const [publicado, setPublicado] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (productCount === 0) { setPublicado(null); return; }
+    let vigente = true;
+    let uid: string;
+    try { uid = getCurrentUserId(); } catch { return; }
+    tieneCatalogo(uid).then(si => { if (vigente) setPublicado(si); }).catch(() => { if (vigente) setPublicado(null); });
+    return () => { vigente = false; };
+  }, [productCount > 0]);
 
   const conocidos = useMemo(
     () => contacts.map(c => ({ id: c.id, clientName: c.clientName, role: c.role })),
@@ -213,9 +323,9 @@ export const InicioPanel: React.FC<InicioPanelProps> = ({
   const textoCotizaciones = enCarga || !pendientes ? '—' : String(nCotizaciones);
   const detalleCotizaciones = !pendientes ? undefined : nCotizaciones === 0 ? 'Ninguna' : 'sin respuesta';
 
-  // ── Mi negocio: el orden depende de a qué se dedica ──
+  // ── Mi negocio: el Gantt es de quien cotiza obra ──
+  // El catálogo ya no está aquí: tiene su propia tarjeta, la Vitrina.
   const esObra = familia === 'obra';
-  const esComercio = familia === 'comercio';
 
   const cajaDetalle = (
     <span className={`font-bold ${cajaDelMes === null ? 'text-slate-400' : cajaDelMes >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
@@ -225,21 +335,13 @@ export const InicioPanel: React.FC<InicioPanelProps> = ({
 
   const negocio = [
     {
-      clave: 'catalogo',
-      peso: esComercio ? 0 : 3,
-      nodo: (
-        <Herramienta key="catalogo" icono="fa-box-open" titulo="Catálogo" tip="Gestiona, publica tus productos y compártelos por QR"
-          destacada={esComercio} detalle={esComercio ? <span className="text-blue-700 font-semibold">QR y enlace</span> : undefined} onClick={onOpenCatalog} />
-      ),
-    },
-    {
       clave: 'finanzas',
-      peso: esComercio ? 1 : 0,
+      peso: 0,
       nodo: <Herramienta key="finanzas" icono="fa-chart-pie" titulo="Finanzas" tip="Ingresos, cobros y gastos del negocio" detalle={cajaDetalle} onClick={onOpenFinancials} />,
     },
     {
       clave: 'gasto',
-      peso: esComercio ? 2 : 1,
+      peso: 1,
       nodo: <Herramienta key="gasto" icono="fa-money-bill-transfer" titulo="Registrar gasto" tip="Anota gastos según proyecto asignado" onClick={() => onCrearDocumento('expense')} />,
     },
     ...(esObra ? [{
@@ -278,6 +380,14 @@ export const InicioPanel: React.FC<InicioPanelProps> = ({
             activa={nCotizaciones > 0} onClick={() => setHoja('cotizaciones')}
           />
         </div>
+      </section>
+
+      {/* VITRINA: el catálogo y su QR, grandes y arriba. */}
+      <section>
+        <Vitrina
+          productos={productCount} carpetas={folderCount} publicado={publicado}
+          onVerQr={onShareQr} onSubir={onAddProduct} onVerCatalogo={onOpenCatalog}
+        />
       </section>
 
       {/* 2. CHATS */}

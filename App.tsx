@@ -3036,11 +3036,23 @@ ${describeError(error)}
                 contacts={contacts}
                 totalSinLeer={totalSinLeer}
                 userProfile={userProfile}
+                productCount={products.length}
+                folderCount={carpetasPrincipales(categories).length}
                 onOpenChats={() => { setSelectedContactId(null); setMobileTab('chats'); }}
                 onOpenChat={seleccionarContacto}
                 onCrearDocumento={handleDocumentClick}
                 onOpenFinancials={() => setShowFinancials(true)}
                 onOpenCatalog={() => setShowCatalogManager(true)}
+                onAddProduct={() => {
+                  // Entra a «todos los productos» con el formulario abierto: sin
+                  // carpeta elegida, que se escoge en el propio formulario.
+                  setCatalogView('products');
+                  setSelectedCategory(null);
+                  setNewProductCategory('');
+                  setShowProductForm(true);
+                  setShowCatalogManager(true);
+                }}
+                onShareQr={() => setShowCatalogShare(true)}
                 onOpenWallet={() => setShowWallet(true)}
                 onOpenGantt={() => setShowGanttChart(true)}
                 onOpenStatus={(conCamara) => { setShowStatus(true); setStartCamera(conCamara); }}
@@ -3826,6 +3838,21 @@ ${describeError(error)}
             </div>
           </div>
 
+          <CatalogShareModal
+            show={showCatalogShare}
+            onClose={() => setShowCatalogShare(false)}
+            profile={userProfile}
+            products={products}
+            categories={categories}
+          />
+        </div>
+      )}
+
+      {/* El QR también se abre desde el Inicio, sin pasar por el administrador del
+          catálogo. Con el administrador abierto sale el de arriba, que ya vive
+          dentro de él; nunca hay dos a la vez. */}
+      {!showCatalogManager && showCatalogShare && (
+        <div className="fixed inset-0 z-50">
           <CatalogShareModal
             show={showCatalogShare}
             onClose={() => setShowCatalogShare(false)}
