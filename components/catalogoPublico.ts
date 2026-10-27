@@ -672,7 +672,7 @@ export const mostrarCatalogo = async (userId: string): Promise<void> => {
       tiras.appendChild(t);
     });
 
-    const confirmar = boton(`Confirmar ${meGustan.length}`, '#e11d48', abrirMensaje);
+    const confirmar = boton(`Confirmar ${meGustan.length}`, '#e11d48', () => abrirMensaje());
     confirmar.style.flex = 'none';
     cinta.append(tiras, confirmar);
   }
