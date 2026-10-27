@@ -139,6 +139,28 @@ En la cinta de completar el registro sí son **obligatorios** los dos: eso ya no
 es entrar, es dejar la cuenta recuperable, y sin forma de encontrar a la persona
 no sirve de nada.
 
+**Guardar el espacio (27/10/2026).** El aviso del chat dice «Guarda tu espacio» y
+ofrece **Continuar con Google** y **Usar mi correo**
+([`AvisoGuardarEspacio`](components/AvisoGuardarEspacio.tsx)). Lo que se guarda es
+la *misma* cuenta, no una nueva:
+
+- **Google** usa `linkIdentity`: le añade Google a la cuenta anónima y el id de
+  usuario no cambia, así que sus mensajes y sus tiendas siguen siendo suyos.
+  «Entrar con Google» desde la pantalla de acceso hace lo contrario —abre una
+  cuenta nueva y deja atrás lo anterior—, y por eso no es este botón. Pide
+  **Allow manual linking** activo en Supabase (Authentication → Sign In /
+  Providers); apagado devuelve `manual_linking_disabled`. Si ese Google ya tiene
+  otra cuenta, `identity_already_exists`: se le dice que pruebe con otro o con el
+  correo.
+- **El correo** (`completarRegistro`, con `updateUser`) ya convertía la cuenta de
+  verdad. Lo confirman tres cuentas que estuvieron de 16 a 28 días como anónimas
+  y conservaron sus mensajes. Antes pedía correo, contraseña y celular, los tres
+  obligatorios; ahora el celular es opcional.
+- **El vigilante de sesión** salía temprano cuando el id no cambiaba, y al volver
+  de Google en la app de Android —donde la página no se recarga— el aviso se
+  quedaba puesto con la cuenta ya guardada. Ahora actualiza `esAnonimo` también en
+  ese caso.
+
 **Ninguna de esas catorce se ha registrado nunca**, lo que dice que la cinta
 sola no basta. De ahí que entrar con Google sea el mejor camino para el
 invitado: le deja cuenta recuperable y correo sin escribir una contraseña.
@@ -1077,9 +1099,6 @@ llamados igual.
   «Error al analizar la imagen» dentro del campo Descripción.
 - **Recuperación de las cuentas de alias.** Sin correo no hay forma. De ahí el
   aviso.
-- **Convertir una cuenta anónima en permanente de verdad.** El aviso lleva al
-  editor de perfil, que guarda el correo en el perfil pero no en la cuenta de
-  autenticación. Falta llamar a `updateUser` con correo y contraseña.
 - **Capítulos para oficios que no son de obra ni confección.** Un abogado o un
   peluquero usan la cotización básica. Confección ya tiene los suyos —uniformes
   empresariales y escolares, dotación y EPP, prendas a medida, personalización—.

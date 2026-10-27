@@ -12,7 +12,7 @@ import ProFeatureGuard from './components/ProFeatureGuard';
 import AdminPanel from './components/AdminPanel';
 import CatalogShareModal from './components/CatalogShareModal';
 import { getSharedDocument } from './services/whatsappService';
-import { recordarVendedorDeLaUrl, vendedorPendiente, olvidarVendedorPendiente, pedidoPendiente, olvidarPedidoPendiente, llegoInvitado, olvidarLlegadaInvitada, olvidarRegistroPedido, invitacionPendiente, olvidarInvitacion, reclamarInvitacion, recordarDocumentoDeLaUrl, documentoPendiente, olvidarDocumentoPendiente } from './services/catalogShareService';
+import { recordarVendedorDeLaUrl, vendedorPendiente, olvidarVendedorPendiente, pedidoPendiente, olvidarPedidoPendiente, llegoInvitado, olvidarLlegadaInvitada, olvidarRegistroPedido, invitacionPendiente, olvidarInvitacion, reclamarInvitacion, recordarDocumentoDeLaUrl, documentoPendiente, olvidarDocumentoPendiente, WORKY_APP_URL } from './services/catalogShareService';
 import { uploadFileForChat } from './services/storageService';
 import { describeError } from './utils/errorMessage';
 import { leerImagenReducida } from './utils/imagen';
@@ -43,6 +43,8 @@ import { normalizarContactoWhatsApp } from './utils/contactoWhatsApp';
 import { CurrencyInput } from './components/chat/modals/CurrencyInput';
 import { App as CapacitorApp } from '@capacitor/app';
 import { Browser } from '@capacitor/browser';
+import { Capacitor } from '@capacitor/core';
+import { AvisoGuardarEspacio } from './components/AvisoGuardarEspacio';
 
 // Mock Data (usado como fallback o inicial)
 const MOCK_CONTACTS: Contact[] = [
@@ -578,7 +580,14 @@ const App: React.FC = () => {
 
       const user = session?.user;
       if (user) {
-        if (subscribedUserId === user.id) return; // misma sesión, nada que hacer
+        if (subscribedUserId === user.id) {
+          // Misma cuenta: no se vuelve a suscribir nada. Pero sí se mira si dejó de
+          // ser anónima: al vincular Google el id no cambia, y en la app de Android
+          // —donde la página no se recarga al volver— el aviso de «guarda tu espacio»
+          // se quedaba puesto con la cuenta ya guardada.
+          setEsAnonimo(user.is_anonymous === true);
+          return;
+        }
         subscribedUserId = user.id;
 
         // User is signed in
@@ -1469,6 +1478,41 @@ const App: React.FC = () => {
       // por `datos_de_contacto`. Sin él, quien vende tiene un nombre y nada más.
       await saveUserProfile({ ...userProfile, email: correo, phone: celular || userProfile.phone });
     }
+  };
+
+  /**
+   * Guarda el espacio de quien entró sin cuenta vinculándole Google.
+   *
+   * `linkIdentity` le añade Google a la cuenta anónima actual: el id de usuario no
+   * cambia, así que sus mensajes y sus tiendas siguen siendo suyos. Es lo que la
+   * distingue de «Entrar con Google», que abre una cuenta nueva.
+   *
+   * Pide que «Allow manual linking» esté activo en Supabase (Authentication →
+   * Sign In / Providers); apagado, devuelve `manual_linking_disabled`.
+   *
+   * Devuelve true si la página se va a Google —en la web— y false si se abrió un
+   * navegador aparte, que es lo que pasa en la app de Android. La vuelta la
+   * recibe `manejarCallbackGoogle`, la misma del login: en la web la propia página
+   * lee la sesión al regresar.
+   */
+  const guardarEspacioConGoogle = async (): Promise<boolean> => {
+    const esNativo = Capacitor.isNativePlatform();
+    const { protocol, origin } = window.location;
+    const destino = esNativo
+      ? 'worky://auth-callback'
+      : (protocol === 'http:' || protocol === 'https:') ? origin : WORKY_APP_URL;
+
+    const { data, error } = await supabase.auth.linkIdentity({
+      provider: 'google',
+      options: { redirectTo: destino, skipBrowserRedirect: esNativo },
+    });
+    if (error) throw error;
+
+    if (esNativo && data?.url) {
+      await Browser.open({ url: data.url, presentationStyle: 'popover' });
+      return false;
+    }
+    return true;
   };
 
   const handleUpdateMessageMetadata = async (messageId: string, updatedMessage: any) => {
@@ -2940,18 +2984,10 @@ ${describeError(error)}
                cerrar— pero va encima del campo de escribir y no flotando, para
                no taparle el sitio donde escribe ni el botón de enviar. */
             avisoSobreElInput={esAnonimo ? (
-              <div className="bg-amber-50 border-t-2 border-amber-300 px-4 py-2.5 flex items-center gap-2.5">
-                <i className="fa-solid fa-triangle-exclamation text-amber-500 flex-shrink-0"></i>
-                <p className="text-amber-900 text-xs sm:text-sm font-semibold leading-snug">
-                  <button
-                    onClick={() => setShowProfileEditor(true)}
-                    className="underline font-bold hover:text-amber-700"
-                  >
-                    Completa el registro
-                  </button>
-                  {' '}para no perder la conversación y acceder a las herramientas de Worky.
-                </p>
-              </div>
+              <AvisoGuardarEspacio
+                onGoogle={guardarEspacioConGoogle}
+                onCorreo={() => setShowProfileEditor(true)}
+              />
             ) : null}
             esCliente={esCliente}
             contact={contacts.find(c => c.id === selectedContactId) as Contact}

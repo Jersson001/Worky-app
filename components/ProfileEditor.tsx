@@ -35,10 +35,6 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({
       setErrorRegistro('Escribe tu correo y una contraseña.');
       return;
     }
-    if (!celularNuevo.trim()) {
-      setErrorRegistro('Escribe tu celular o usuario de WhatsApp: es por donde te buscan si se pierde el chat.');
-      return;
-    }
     if (claveNueva.length < 6) {
       setErrorRegistro('La contraseña necesita al menos 6 caracteres.');
       return;
@@ -193,7 +189,7 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({
                       type="text"
                       value={celularNuevo}
                       onChange={e => setCelularNuevo(e.target.value)}
-                      placeholder="Celular o usuario de WhatsApp"
+                      placeholder="Celular o usuario de WhatsApp (opcional)"
                       autoComplete="tel"
                       className="w-full p-3 bg-white border border-amber-300 rounded-xl outline-none focus:border-amber-500 text-slate-900 font-medium placeholder-slate-400"
                     />
