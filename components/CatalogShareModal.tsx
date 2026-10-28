@@ -9,7 +9,7 @@ import React, { useEffect, useState } from 'react';
 import { Product, ProductCategory, UserProfileData } from '../types';
 import { getCurrentUserId } from '../services/messagingService';
 import { describeError } from '../utils/errorMessage';
-import { publishCatalog, qrImageUrl } from '../services/catalogShareService';
+import { publishCatalog, qrImageUrl, conViaQr } from '../services/catalogShareService';
 
 interface CatalogShareModalProps {
   show: boolean;
@@ -121,7 +121,7 @@ export const CatalogShareModal: React.FC<CatalogShareModalProps> = ({
               </div>
 
               <div className="bg-white border-2 border-slate-200 rounded-2xl p-4 flex justify-center mb-4">
-                <img src={qrImageUrl(enlace, 300)} alt="QR del catálogo" className="w-52 h-52" />
+                <img src={qrImageUrl(conViaQr(enlace), 300)} alt="QR del catálogo" className="w-52 h-52" />
               </div>
 
               <p className="text-xs text-center text-slate-500 mb-4">
@@ -147,7 +147,7 @@ export const CatalogShareModal: React.FC<CatalogShareModalProps> = ({
                   <i className="fa-brands fa-whatsapp"></i> Enviar
                 </button>
                 <a
-                  href={qrImageUrl(enlace, 600)}
+                  href={qrImageUrl(conViaQr(enlace), 600)}
                   target="_blank"
                   rel="noopener"
                   className="flex-1 bg-slate-800 text-white py-2.5 rounded-xl font-bold text-sm hover:bg-slate-900 transition flex items-center justify-center gap-2"

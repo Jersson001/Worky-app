@@ -32,7 +32,7 @@ import { useResumenInicio } from '../hooks/useResumenInicio';
 import { aMs as ms, cifraCorta, familiaDeNegocio, horaCorta, Pendiente } from '../utils/inicio';
 import { fotoOIniciales } from '../utils/avatar';
 import { formatCurrency } from '../utils/currency';
-import { tieneCatalogo } from '../services/catalogShareService';
+import { tieneCatalogo, resumenVisitas, type ResumenVisitas } from '../services/catalogShareService';
 import { getCurrentUserId } from '../services/messagingService';
 import type { Contact, UserProfileData } from '../types';
 
@@ -178,13 +178,21 @@ const Herramienta: React.FC<{
   </button>
 );
 
+/** «12 visitas en 30 días · QR 7 · NFC 3 · Enlace 2», o que aún no hay. */
+const textoVisitas = (v: ResumenVisitas[]): string => {
+  const total = v.reduce((s, f) => s + f.visitas, 0);
+  if (total === 0) return 'Aún nadie abre tu catálogo en estos 30 días.';
+  const de = (via: ResumenVisitas['via']) => v.find(f => f.via === via)?.visitas ?? 0;
+  return `${total} ${total === 1 ? 'visita' : 'visitas'} en 30 días · QR ${de('qr')} · NFC ${de('nfc')} · Enlace ${de('enlace')}`;
+};
+
 /**
  * La vitrina: el catálogo y su QR, grandes y arriba.
  *
  * Era una baldosa más entre once, y el catálogo es lo que trae clientes nuevos:
  * es lo que se imprime, se pega en la vitrina y se manda por WhatsApp. Cuenta lo
  * que de verdad se sabe —productos, carpetas y si ya se publicó— y no inventa
- * lo que no se mide, como los escaneos del día.
+ * lo que no se mide: las visitas son las que la base contó (QR, NFC o enlace).
  *
  * Sin productos no enseña cifras en cero: dice qué hacer primero.
  */
@@ -193,10 +201,12 @@ const Vitrina: React.FC<{
   carpetas: number;
   /** Null mientras se pregunta, o si no se pudo saber. */
   publicado: boolean | null;
+  /** Visitas de los últimos 30 días por origen. Null mientras llega. */
+  visitas: ResumenVisitas[] | null;
   onVerQr: () => void;
   onSubir: () => void;
   onVerCatalogo: () => void;
-}> = ({ productos, carpetas, publicado, onVerQr, onSubir, onVerCatalogo }) => (
+}> = ({ productos, carpetas, publicado, visitas, onVerQr, onSubir, onVerCatalogo }) => (
   <div className="bg-gradient-to-br from-rey-800 via-rey-700 to-rey-500 text-white rounded-3xl p-4 shadow-lg shadow-rey-700/30">
     <div className="flex items-start justify-between gap-3">
       <div className="flex items-center gap-3 min-w-0">
@@ -246,6 +256,11 @@ const Vitrina: React.FC<{
             <p className="text-sm font-black">{publicado === null ? '—' : publicado ? 'Publicado' : 'Sin publicar'}</p>
           </div>
         </div>
+        {visitas !== null && (
+          <p className="text-[12px] text-rey-100 -mt-1.5 mb-3 leading-snug">
+            {textoVisitas(visitas)}
+          </p>
+        )}
         <div className="grid grid-cols-2 gap-2">
           <button
             type="button" onClick={onSubir}
@@ -283,6 +298,15 @@ export const InicioPanel: React.FC<InicioPanelProps> = ({
     let uid: string;
     try { uid = getCurrentUserId(); } catch { return; }
     tieneCatalogo(uid).then(si => { if (vigente) setPublicado(si); }).catch(() => { if (vigente) setPublicado(null); });
+    return () => { vigente = false; };
+  }, [productCount > 0]);
+
+  // Visitas al catálogo de los últimos 30 días. Null mientras llega.
+  const [visitas, setVisitas] = useState<ResumenVisitas[] | null>(null);
+  useEffect(() => {
+    if (productCount === 0) { setVisitas(null); return; }
+    let vigente = true;
+    resumenVisitas(30).then(v => { if (vigente) setVisitas(v); });
     return () => { vigente = false; };
   }, [productCount > 0]);
 
@@ -405,7 +429,7 @@ export const InicioPanel: React.FC<InicioPanelProps> = ({
       {/* VITRINA: el catálogo y su QR, grandes y arriba. */}
       <section>
         <Vitrina
-          productos={productCount} carpetas={folderCount} publicado={publicado}
+          productos={productCount} carpetas={folderCount} publicado={publicado} visitas={visitas}
           onVerQr={onShareQr} onSubir={onAddProduct} onVerCatalogo={onOpenCatalog}
         />
       </section>

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { AdminProfileRow, adminSetPro, adminSetSubscriptionEndsAt, listAllUserProfiles, mesDespuesDe } from '../services/adminService';
 import { tieneAcceso } from './ProFeatureGuard';
-import { catalogNfcUrl, qrImageUrl, tieneCatalogo } from '../services/catalogShareService';
+import { catalogNfcUrl, qrImageUrl, tieneCatalogo, resumenVisitas, type ResumenVisitas } from '../services/catalogShareService';
 
 interface AdminPanelProps {
   onClose: () => void;
@@ -22,6 +22,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
   const [nfcAbierto, setNfcAbierto] = useState<string | null>(null);
   /** Si cada tienda tiene catálogo publicado; null mientras se pregunta. */
   const [conCatalogo, setConCatalogo] = useState<Record<string, boolean | null>>({});
+  const [visitas, setVisitas] = useState<Record<string, ResumenVisitas[]>>({});
   const [copiadoId, setCopiadoId] = useState<string | null>(null);
 
   const load = async () => {
@@ -98,6 +99,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
   const toggleNfc = (row: AdminProfileRow) => {
     if (nfcAbierto === row.id) { setNfcAbierto(null); return; }
     setNfcAbierto(row.id);
+    if (visitas[row.id] === undefined) {
+      resumenVisitas(30, row.id).then((v) => setVisitas((prev) => ({ ...prev, [row.id]: v })));
+    }
     if (conCatalogo[row.id] === undefined) {
       setConCatalogo((prev) => ({ ...prev, [row.id]: null }));
       tieneCatalogo(row.id).then((si) => setConCatalogo((prev) => ({ ...prev, [row.id]: si })));
@@ -271,6 +275,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                               </div>
                             </div>
                           </div>
+
+                          {visitas[row.id] !== undefined && (
+                            <p className="text-xs text-slate-700 bg-white border border-slate-200 rounded-lg p-2">
+                              <b>Últimos 30 días:</b>{' '}
+                              {(['qr', 'nfc', 'enlace'] as const).map((via) => {
+                                const f = visitas[row.id].find((x) => x.via === via);
+                                return `${via === 'qr' ? 'QR' : via === 'nfc' ? 'NFC' : 'Enlace'} ${f?.visitas ?? 0}`;
+                              }).join(' · ')}
+                            </p>
+                          )}
 
                           <p className="text-[11px] text-slate-500 leading-snug">
                             Graba este enlace en la etiqueta, <b>pruébala en un Android y en un iPhone</b> y

@@ -153,6 +153,80 @@ export const catalogPageUrl = (userId: string): string =>
   `${WORKY_APP_URL}/?catalogo=${userId}`;
 
 /**
+ * El mismo enlace, marcado como venido de un QR. Solo se le pone al QR que se
+ * pinta o imprime a partir de ahora; los ya impresos entran como «enlace».
+ */
+export const conViaQr = (url: string): string =>
+  `${url}${url.includes('?') ? '&' : '?'}via=qr`;
+
+const VISITANTE_KEY = 'worky:visitante';
+
+/**
+ * Anota que alguien abrió el catálogo, y por dónde llegó: `via=qr`, `via=nfc` o
+ * nada (un enlace). Va sin sesión, así que la base lo cuenta con una función
+ * propia (supabase_visitas_catalogo.sql). El visitante es un texto al azar que
+ * se guarda en el navegador para no contar dos veces la misma visita; no es una
+ * cuenta ni se cruza con ninguna.
+ *
+ * Nunca falla hacia afuera: contar visitas no puede estorbar a quien mira.
+ */
+export const registrarVisita = async (vendedorId: string): Promise<void> => {
+  try {
+    if (!/^[0-9a-f-]{36}$/i.test(vendedorId)) return;
+    // La tienda mirando su propio catálogo no es una visita.
+    const { data } = await supabase.auth.getSession();
+    if (data.session?.user.id === vendedorId) return;
+
+    const via = new URLSearchParams(window.location.search).get('via');
+    let visitante = '';
+    try {
+      visitante = localStorage.getItem(VISITANTE_KEY) ?? '';
+      if (!visitante) {
+        visitante = crypto.randomUUID();
+        localStorage.setItem(VISITANTE_KEY, visitante);
+      }
+    } catch {
+      visitante = crypto.randomUUID();
+    }
+
+    await supabase.rpc('registrar_visita', {
+      p_vendedor: vendedorId,
+      p_via: via === 'qr' || via === 'nfc' ? via : 'enlace',
+      p_visitante: visitante,
+    });
+  } catch {
+    /* sin conexión o sin la migración: la visita no se cuenta y ya */
+  }
+};
+
+/** Visitas de los últimos días, por origen. Vacío si falla. */
+export interface ResumenVisitas {
+  via: 'qr' | 'nfc' | 'enlace';
+  visitas: number;
+  visitantes: number;
+}
+
+export const resumenVisitas = async (
+  dias = 30,
+  vendedorId?: string,
+): Promise<ResumenVisitas[]> => {
+  try {
+    const { data, error } = await supabase.rpc('resumen_visitas', {
+      p_vendedor: vendedorId ?? null,
+      p_dias: dias,
+    });
+    if (error || !Array.isArray(data)) return [];
+    return data.map((f: { via: ResumenVisitas['via']; visitas: number | string; visitantes: number | string }) => ({
+      via: f.via,
+      visitas: Number(f.visitas),
+      visitantes: Number(f.visitantes),
+    }));
+  } catch {
+    return [];
+  }
+};
+
+/**
  * Enlace para grabar en una etiqueta NFC —el sticker o el hablador de la
  * vitrina—.
  *

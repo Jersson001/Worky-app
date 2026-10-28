@@ -6,7 +6,7 @@ import { formatCurrency } from '../utils/currency';
 import { describeError } from '../utils/errorMessage';
 import { esUsuarioDeWhatsApp } from '../utils/contactoWhatsApp';
 import { shareQuoteViaWhatsApp, shareInvoiceViaWhatsApp, openWhatsApp, generateDocumentId, saveSharedDocument, generateDocumentViewLink } from '../services/whatsappService';
-import { publishCatalogForCurrentUser, catalogPageUrl, qrImageUrl, WORKY_APP_URL, crearInvitacionContacto } from '../services/catalogShareService';
+import { publishCatalogForCurrentUser, catalogPageUrl, qrImageUrl, conViaQr, WORKY_APP_URL, crearInvitacionContacto } from '../services/catalogShareService';
 import { getCurrentUserId } from '../services/messagingService';
 import { computeLineSubtotal, computeMaterialSubtotal, computeManoDeObraTotal, computeMaterialesTotal, computeGroupSubtotal, computeSectionSubtotal, seccionesConContenido, describeCantidad, describeMaterial } from '../utils/carpentryCalculations';
 import { ORDEN_CONDICIONES, lineasDe, hayCondiciones, repartoDePago } from '../utils/condicionesCotizacion';
@@ -372,7 +372,7 @@ const QuoteTemplate = ({ data, businessLogo, userProfile, catalogoUrl, ampliar, 
         return WORKY_APP_URL;
       }
     })();
-    const qrCodeUrl = qrImageUrl(enlaceCatalogo, 120);
+    const qrCodeUrl = qrImageUrl(conViaQr(enlaceCatalogo), 120);
     
     return (
     <div className="p-16 h-full relative bg-white cuerpo-doc">

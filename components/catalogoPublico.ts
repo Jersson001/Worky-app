@@ -15,7 +15,7 @@
  * usuario: ese HTML nunca se ejecuta, solo se lee. Y sigue funcionando con los
  * catálogos publicados antes de todo esto, porque lo que se lee es su estructura.
  */
-import { fetchCatalogHtml, guardarPedidoPendiente } from '../services/catalogShareService';
+import { fetchCatalogHtml, guardarPedidoPendiente, registrarVisita } from '../services/catalogShareService';
 import { supabase } from '../services/supabaseConfig';
 import { guardarTienda, leerTiendas, quitarTienda } from '../utils/tiendasGuardadas';
 
@@ -215,6 +215,8 @@ export const mostrarCatalogo = async (userId: string): Promise<void> => {
     aviso('No encontramos este catálogo. Puede que su dueño aún no lo haya publicado.');
     return;
   }
+
+  void registrarVisita(userId);
 
   const cat = leerCatalogo(html);
   const enlace = window.location.href;
