@@ -11,8 +11,9 @@ La 2.13.0 (`versionCode` 26101501) **está en producción al 100 % desde el
 gastado, igual que el de la 2.12.0 (26101401, en vivo del 14 al 15/10) y el de la
 2.11.0 (26101201). La **2.14.0 (`versionCode` 26102701)**, compilada y firmada el 27/10/2026, **ya
 se subió a Play** y su número está gastado (el `.aab` sigue en el Escritorio como
-`Worky-2.14.0.aab`). El siguiente envío es la **2.14.1 (`versionCode` 26102801)**, compilada y firmada el
-28/10/2026 como `Worky-2.14.1.aab` en el Escritorio.
+`Worky-2.14.0.aab`). La **2.14.1 (`versionCode` 26102801)**, compilada y firmada el 28/10/2026 como
+`Worky-2.14.1.aab`, **ya se subió a Play** y su número está gastado. El siguiente
+envío necesita un código nuevo, desde 26102802.
 
 **El aviso de API 36 no era por la 2.13.0.** Esa ya apuntaba a 36 (Target SDK 36
 confirmado en Play). Seguía porque dos paquetes viejos —la **1.1** (código 3) y la
@@ -164,7 +165,7 @@ intento fallido gasta un número:
 | 26101401 (2.12.0) | Copiar y editar una cotización enviada, borradores para copias y ediciones, fotos de la cotización que se amplían y calculadora en todos los campos de medida. Compilada el 14/10; **si se subió, número gastado** |
 | 26101501 (2.13.0) | La cuenta de cobro con RUT, cédula, celular, dirección, concepto con viñetas, vista previa, copiar, editar y borradores; consecutivos con serie (`COT-A001`…); un solo enlace en el mensaje de WhatsApp. **En producción al 100 % desde el 15/10**: número gastado |
 | **26102701 (2.14.0)** | Inicio rehecho con jerarquía y vitrina del catálogo, Inicio simple del cliente, «Guarda tu espacio» con Google, directorio de contactos, iconos de línea fina con azul rey, enlace NFC por tienda. **Subida a Play**, número gastado |
-| **26102801 (2.14.1)** | El contador de visitas al catálogo (QR, NFC, enlace) y los códigos de referido con su reporte, que ya corrían en la web pero no dentro de la app. **Compilada y firmada el 28/10/2026; es la que va a Play** |
+| **26102801 (2.14.1)** | El contador de visitas al catálogo (QR, NFC, enlace) y los códigos de referido con su reporte, que ya corrían en la web pero no dentro de la app. **Compilada y firmada el 28/10/2026 y subida a Play**, número gastado |
 
 **Play exige API 36** desde el 1 de septiembre de 2026. Está en
 `android/variables.gradle`.
