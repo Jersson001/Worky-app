@@ -1,6 +1,6 @@
 # Vista general del proyecto
 
-Última revisión: 27 de octubre de 2026.
+Última revisión: 28 de octubre de 2026.
 
 > Este documento describía la app sobre Firebase (Authentication, Realtime
 > Database, Storage) y con Gemini analizando las fotos del catálogo. Nada de eso
@@ -69,6 +69,7 @@ worky_app/
 │   ├── storageService.ts     # Subidas a Storage
 │   ├── catalogShareService.ts# Instantánea HTML del catálogo, QR y enlaces
 │   ├── consecutivosService.ts# Reserva el siguiente COT-A001, CC-A001… (metadata de la cuenta + teléfono)
+│   ├── referidosService.ts   # Admin: crear códigos de referido y el reporte
 │   ├── inicioService.ts      # Por cobrar, cotizaciones y caja del mes para el Inicio
 │   ├── whatsappService.ts    # Documentos compartidos y enlaces de WhatsApp
 │   ├── documentHtml.ts       # HTML maquetado de los documentos
@@ -80,7 +81,7 @@ worky_app/
 │                   finanzas · tiendasGuardadas · contactoWhatsApp · legal · avatar · tallas · condicionesCotizacion · tiposDeNegocio
 │                  legal · tiposDeNegocio · condicionesCotizacion · tallas
 │                  consecutivos (formato y serie) · borradorCotizacion · borradorCuentaCobro
-│                  inicio · directorio · retornoDeGoogle · capturarRetorno (el primer import de index.tsx)
+│                  inicio · directorio · referido (`?ref=`) · retornoDeGoogle · capturarRetorno (el primer import de index.tsx)
 ├── supabase/       functions/ (gemini, view-doc — ambas sin uso) y migrations/
 ├── android/        Proyecto Capacitor
 └── *.sql           Migraciones para el SQL Editor, idempotentes
@@ -107,6 +108,8 @@ Tablas de `public` que toca la app:
 | `projects` · `expenses` | Proyectos y sus gastos. El vendedor los ve si él mandó la cotización con ese código |
 | `push_tokens` | Un aparato por fila, para las notificaciones con la app cerrada. Cada quien solo ve los suyos |
 | `invitaciones_contacto` | Para que un contacto manual, al registrarse, pase a ser su cuenta. Nadie la lee por la API: solo `crear_invitacion_contacto` y `reclamar_contacto` |
+| `visitas_catalogo` | Una fila por visita al catálogo público (`qr`, `nfc` o `enlace`). Nadie la lee por la API: solo `registrar_visita` (abierta sin sesión) y `resumen_visitas` |
+| `codigos_referido` · `referidos` | Los códigos (`LEO`) y a quién trajo cada uno. Solo las funciones `reclamar_referido`, `crear_codigo_referido` y `reporte_referidos` (las dos últimas, de admin) |
 | `payment_accounts` | Cuentas propias donde le consignan, con su QR de cobro en `qr_image` |
 | `third_party_accounts` | Las cuentas a las que él paga. Vivían en el `localStorage` y se perdían al reinstalar |
 

@@ -113,6 +113,25 @@ llegara sin la marca, `is false` daría NULL y **bloquearía a un usuario normal
 [supabase_limites_anonimos.sql](supabase_limites_anonimos.sql) ·
 [pruebas](supabase_limites_anonimos.test.mjs)
 
+### Visitas y referidos (28/10/2026)
+
+Tres tablas nuevas —`visitas_catalogo`, `codigos_referido`, `referidos`— con RLS
+activado, **sin políticas y con los permisos revocados** a `anon` y `authenticated`:
+por la API nadie las lee ni las escribe. Todo pasa por funciones `SECURITY DEFINER`
+con `search_path` fijo:
+
+- `registrar_visita` es la única abierta a quien no tiene sesión. Solo acepta tres
+  orígenes, un visitante de 8 a 64 caracteres y un vendedor que exista, y no suma
+  dos veces lo mismo en 30 minutos. Un abuso masivo llenaría la tabla, no robaría
+  datos: no devuelve nada.
+- `resumen_visitas` exige sesión; cada quien ve lo suyo y solo el admin lo de otros.
+- `reclamar_referido` exige cuenta permanente creada en los últimos 7 días y no
+  deja cambiar un referido ya puesto. `crear_codigo_referido` y `reporte_referidos`
+  comprueban `is_current_user_admin()`.
+
+[supabase_visitas_catalogo.sql](supabase_visitas_catalogo.sql) ·
+[supabase_referidos.sql](supabase_referidos.sql)
+
 ---
 
 ## Estado al cerrar la auditoría

@@ -1,6 +1,6 @@
 # Estado de funcionalidades — Worky
 
-Última revisión: 27 de octubre de 2026.
+Última revisión: 28 de octubre de 2026.
 
 > Este documento describía el proyecto cuando corría sobre Firebase y decía que
 > los clientes no podían tener cuenta, que Storage no estaba implementado y que
@@ -309,9 +309,51 @@ de la vitrina. Va **siempre con el dominio publicado** y nunca con el origen
 actual (`catalogNfcUrl`): se graba para siempre, y generado desde un preview de
 Vercel quedaría una dirección temporal. Hay que **bloquear la etiqueta contra
 escritura** al final, y no se deshace: sin eso cualquiera con un teléfono podría
-reemplazar el enlace. `via=nfc` hoy lo ignora la app; servirá para contar visitas
-cuando exista esa tabla. En la ventana «Compartir catálogo» se probó una línea con
+reemplazar el enlace. En la ventana «Compartir catálogo» se probó una línea con
 el mismo enlace y se retiró: era el del QR con otro nombre.
+
+### Visitas al catálogo
+
+Cada vez que alguien abre un catálogo público se anota **por dónde llegó**:
+`via=qr` (el QR que se pinta o imprime desde «Compartir catálogo» y desde la
+cotización), `via=nfc` (la etiqueta) o ninguna marca, que cuenta como **enlace**
+(el que se manda por WhatsApp). Los QR ya impresos antes del 28/10/2026 no llevan
+la marca y entran como «enlace».
+
+- Se registra con la función `registrar_visita`, abierta a quien no tiene sesión;
+  la tabla `visitas_catalogo` no se puede leer ni escribir por la API.
+- Una misma persona (un texto al azar guardado en su navegador, sin cuenta ni
+  datos) no suma dos veces por el mismo origen en 30 minutos, y la tienda mirando
+  su propio catálogo no cuenta.
+- La vitrina del Inicio muestra «N visitas en 30 días · QR · NFC · Enlace»; el
+  bloque «Enlace NFC» del panel admin muestra lo mismo de cada tienda. Cada tienda
+  lee solo lo suyo (`resumen_visitas`); el admin, lo de cualquiera.
+- **La app instalada solo cuenta con un `.aab` que lleve este código**: la web va
+  empaquetada dentro. Quien escanea con Worky instalado abre la app, no el navegador.
+
+[supabase_visitas_catalogo.sql](supabase_visitas_catalogo.sql) ·
+[pruebas](supabase_visitas_catalogo.test.mjs)
+
+### Referidos y comisiones
+
+Un código (`LEO`) identifica a quien trae gente. Se reparte como
+`https://worky.ferryapp.co/?ref=LEO`. La app lo guarda al llegar (`utils/referido.ts`)
+y lo **reclama** cuando la cuenta ya es permanente, también al guardar el espacio
+con Google. La base decide si vale:
+
+- el código existe;
+- la cuenta no es anónima y se creó hace **menos de 7 días**;
+- la cuenta aún no tenía referido: queda uno solo y no se cambia.
+
+Los códigos los crea solo el admin, en **Panel de Suscripciones → «Referidos y
+comisiones»**, donde también se copia el enlace y se ve, por código: registrados,
+**con membresía pagada** (la fecha `subscription_ends_at` vigente que se pone al
+confirmar el pago; la prueba gratuita no cuenta) y llegados en 30 días. La comisión
+se calcula afuera con el porcentaje que se acuerde: la app no la calcula ni la paga.
+Primer código: `LEO` (Leo contra el tiempo), creado el 28/10/2026.
+
+[supabase_referidos.sql](supabase_referidos.sql) ·
+[pruebas](supabase_referidos.test.mjs)
 
 ---
 
@@ -1226,6 +1268,8 @@ llamados igual.
 - **Avisos por correo o en el navegador.** Las push existen desde el
   11/09/2026, pero solo en la app instalada —ver [Notificaciones](#notificaciones)—
   y todavía sin probar en un teléfono de verdad.
+- **Pago ni liquidación de comisiones.** El reporte de referidos cuenta; cobrar
+  y pagar sigue siendo manual (Nequi). Tampoco hay códigos que den descuento.
 - **Verificación del teléfono.** El número se guarda como texto y sirve para
   buscar, pero nadie comprueba que sea suyo. El código de SMS se retiró: no lo
   llamaba nadie y hacía creer que agregar contactos por celular costaba una
