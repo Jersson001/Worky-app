@@ -12,6 +12,7 @@ import ProFeatureGuard from './components/ProFeatureGuard';
 import AdminPanel from './components/AdminPanel';
 import CatalogShareModal from './components/CatalogShareModal';
 import { getSharedDocument } from './services/whatsappService';
+import { referidoPendiente, olvidarReferido } from './utils/referido';
 import { recordarVendedorDeLaUrl, vendedorPendiente, olvidarVendedorPendiente, pedidoPendiente, olvidarPedidoPendiente, llegoInvitado, olvidarLlegadaInvitada, olvidarRegistroPedido, invitacionPendiente, olvidarInvitacion, reclamarInvitacion, recordarDocumentoDeLaUrl, documentoPendiente, olvidarDocumentoPendiente, WORKY_APP_URL } from './services/catalogShareService';
 import { uploadFileForChat } from './services/storageService';
 import { describeError } from './utils/errorMessage';
@@ -580,6 +581,18 @@ const App: React.FC = () => {
     // lo pone en carrera consigo mismo. Solo actuar cuando cambia el usuario.
     let subscribedUserId: string | null = null;
 
+    // Quien llegó con un código de referido lo reclama al tener cuenta
+    // permanente (también al guardar su espacio con Google, que no cambia el
+    // id). La base dice si vale; con cualquier respuesta se olvida el código
+    // para no reintentarlo en cada arranque. Si falla la red, se conserva.
+    const reclamarReferidoSiHay = (anonimo: boolean) => {
+      const referido = referidoPendiente();
+      if (!referido || anonimo) return;
+      supabase.rpc('reclamar_referido', { p_codigo: referido }).then(({ error }) => {
+        if (!error) olvidarReferido();
+      });
+    };
+
     const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
       // El enlace del correo trae sesión: sin esto entraría directo a la
       // aplicación y la contraseña se quedaría sin cambiar.
@@ -596,6 +609,7 @@ const App: React.FC = () => {
           // La marca de cliente también: se puede poner en la cuenta con la sesión
           // ya abierta, y llega con el siguiente refresco del token.
           setRolCliente(user.user_metadata?.rol === 'cliente');
+          reclamarReferidoSiHay(user.is_anonymous === true);
           return;
         }
         subscribedUserId = user.id;
@@ -608,6 +622,8 @@ const App: React.FC = () => {
         setEsAnonimo(user.is_anonymous === true);
         setLlegoDeUnCatalogo(!!user.user_metadata?.vendedor);
         setRolCliente(user.user_metadata?.rol === 'cliente');
+
+        reclamarReferidoSiHay(user.is_anonymous === true);
 
         // El teléfono se engancha aquí y no al abrir la app: el token se cuelga
         // de una cuenta, y sin sesión no hay de quién. En el navegador no hace

@@ -23,7 +23,7 @@ import { carpetasPrincipales, subcarpetasDe } from '../utils/carpetas';
  * los QR impresos y los enlaces ya repartidos apuntan ahí, y un QR en papel no
  * se puede corregir. Vercel mantiene los dos a la vez.
  */
-const APP_PUBLICADA = 'https://worky.ferryapp.co';
+export const APP_PUBLICADA = 'https://worky.ferryapp.co';
 
 /**
  * El origen actual, si sirve para compartirlo con alguien.

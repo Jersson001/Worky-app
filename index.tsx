@@ -7,6 +7,7 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { mostrarCatalogo } from './components/catalogoPublico';
+import { recordarReferidoDeLaUrl } from './utils/referido';
 
 // Manejo de errores global
 window.addEventListener('error', (event) => {
@@ -16,6 +17,9 @@ window.addEventListener('error', (event) => {
 window.addEventListener('unhandledrejection', (event) => {
   console.error('Promise rechazada:', event.reason);
 });
+
+// `?ref=CODIGO`: se guarda ya, antes de que el registro lo pueda perder.
+recordarReferidoDeLaUrl();
 
 // Ruta pública del catálogo: `?catalogo=<userId>`. Se resuelve antes de montar
 // la app porque el visitante no tiene sesión y no debe toparse con el login.

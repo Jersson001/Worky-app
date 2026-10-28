@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { AdminProfileRow, adminSetPro, adminSetSubscriptionEndsAt, listAllUserProfiles, mesDespuesDe } from '../services/adminService';
 import { tieneAcceso } from './ProFeatureGuard';
+import { crearCodigoReferido, enlaceDeReferido, reporteReferidos, type FilaReferidos } from '../services/referidosService';
 import { catalogNfcUrl, qrImageUrl, tieneCatalogo, resumenVisitas, type ResumenVisitas } from '../services/catalogShareService';
 
 interface AdminPanelProps {
@@ -24,6 +25,44 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
   const [conCatalogo, setConCatalogo] = useState<Record<string, boolean | null>>({});
   const [visitas, setVisitas] = useState<Record<string, ResumenVisitas[]>>({});
   const [copiadoId, setCopiadoId] = useState<string | null>(null);
+
+  // Referidos: códigos que reparte quien trae gente, y cuánto trajo cada uno.
+  const [refAbierto, setRefAbierto] = useState(false);
+  const [referidos, setReferidos] = useState<FilaReferidos[] | null>(null);
+  const [refError, setRefError] = useState<string | null>(null);
+  const [nuevoCodigo, setNuevoCodigo] = useState('');
+  const [nuevoNombre, setNuevoNombre] = useState('');
+
+  const cargarReferidos = () =>
+    reporteReferidos()
+      .then((f) => { setReferidos(f); setRefError(null); })
+      .catch((e: Error) => setRefError(e.message));
+
+  const toggleReferidos = () => {
+    setRefAbierto((a) => !a);
+    if (referidos === null) void cargarReferidos();
+  };
+
+  const crearReferido = async () => {
+    try {
+      const creado = await crearCodigoReferido(nuevoCodigo, nuevoNombre);
+      setRefError(creado ? null : 'Ese código ya existe.');
+      if (creado) { setNuevoCodigo(''); setNuevoNombre(''); }
+      await cargarReferidos();
+    } catch (e) {
+      setRefError((e as Error).message);
+    }
+  };
+
+  const copiarReferido = async (codigo: string) => {
+    try {
+      await navigator.clipboard.writeText(enlaceDeReferido(codigo));
+      setCopiadoId(`ref:${codigo}`);
+      setTimeout(() => setCopiadoId((a) => (a === `ref:${codigo}` ? null : a)), 2000);
+    } catch {
+      /* sin portapapeles el enlace se puede armar a mano: ?ref=CODIGO */
+    }
+  };
 
   const load = async () => {
     setLoading(true);
@@ -146,6 +185,62 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
             placeholder="Buscar por nombre, correo o teléfono..."
             className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 placeholder-slate-400 outline-none focus:border-blue-500"
           />
+        </div>
+
+        {/* Referidos */}
+        <div className="px-4 py-2 border-b border-slate-100">
+          <button onClick={toggleReferidos} className="text-xs font-bold text-slate-600 flex items-center gap-2">
+            <i className={`fa-solid fa-chevron-${refAbierto ? 'down' : 'right'} text-[10px]`}></i>
+            Referidos y comisiones
+          </button>
+          {refAbierto && (
+            <div className="mt-3 space-y-3 pb-2">
+              {refError && <p className="text-xs text-rose-600">{refError}</p>}
+              <div className="flex flex-wrap gap-2">
+                <input
+                  value={nuevoCodigo} onChange={(e) => setNuevoCodigo(e.target.value)} placeholder="CÓDIGO (LEO)"
+                  className="w-32 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs uppercase outline-none focus:border-blue-500"
+                />
+                <input
+                  value={nuevoNombre} onChange={(e) => setNuevoNombre(e.target.value)} placeholder="Quién es"
+                  className="flex-1 min-w-[8rem] bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs outline-none focus:border-blue-500"
+                />
+                <button
+                  onClick={crearReferido} disabled={!nuevoCodigo.trim()}
+                  className="text-xs font-bold px-3 py-1.5 rounded-lg bg-blue-600 text-white disabled:opacity-40"
+                >
+                  Crear
+                </button>
+              </div>
+              {referidos === null ? (
+                <p className="text-xs text-slate-400">Cargando…</p>
+              ) : referidos.length === 0 ? (
+                <p className="text-xs text-slate-400">Aún no hay códigos.</p>
+              ) : (
+                <div className="space-y-1.5">
+                  {referidos.map((f) => (
+                    <div key={f.codigo} className="flex items-center justify-between gap-2 bg-slate-50 rounded-lg px-3 py-2">
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-slate-800 truncate">{f.codigo} <span className="font-normal text-slate-500">· {f.nombre}</span></p>
+                        <p className="text-[11px] text-slate-600">
+                          {f.registrados} registrados · <b>{f.conMembresia} con membresía pagada</b> · {f.nuevos30d} en 30 días
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => copiarReferido(f.codigo)}
+                        className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-slate-700 shrink-0"
+                      >
+                        {copiadoId === `ref:${f.codigo}` ? '¡Copiado!' : 'Copiar enlace'}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <p className="text-[11px] text-slate-500 leading-snug">
+                «Membresía pagada» es quien hoy tiene vigente la fecha de suscripción que pones al confirmar el pago; la prueba gratuita no cuenta. La comisión se calcula con ese número y el porcentaje que acuerden.
+              </p>
+            </div>
+          )}
         </div>
 
         {/* List */}
