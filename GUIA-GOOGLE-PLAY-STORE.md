@@ -9,9 +9,9 @@ Esta guía te llevará paso a paso para publicar tu aplicación Worky en Google 
 La 2.13.0 (`versionCode` 26101501) **está en producción al 100 % desde el
 15/10/2026** (se ve en Producción → Panel de versiones), así que su número está
 gastado, igual que el de la 2.12.0 (26101401, en vivo del 14 al 15/10) y el de la
-2.11.0 (26101201). El siguiente envío va con el **`versionCode` 26102701 (versión
-2.14.0)**, compilado y firmado el 27/10/2026, en el Escritorio como
-`Worky-2.14.0.aab`.
+2.11.0 (26101201). La **2.14.0 (`versionCode` 26102701)**, compilada y firmada el 27/10/2026, **ya
+se subió a Play** y su número está gastado (el `.aab` sigue en el Escritorio como
+`Worky-2.14.0.aab`). El siguiente envío necesita un código nuevo, desde 26102801.
 
 **El aviso de API 36 no era por la 2.13.0.** Esa ya apuntaba a 36 (Target SDK 36
 confirmado en Play). Seguía porque dos paquetes viejos —la **1.1** (código 3) y la
@@ -162,7 +162,7 @@ intento fallido gasta un número:
 | 26101201 (2.11.0) | Subcarpetas en el catálogo, «Seguir tienda» con corazón, el comentario del producto en el catálogo público, el arreglo de seguridad del visor y los enlaces de aplicación (el QR de una tienda abre la app). **Subida a Play**: número gastado |
 | 26101401 (2.12.0) | Copiar y editar una cotización enviada, borradores para copias y ediciones, fotos de la cotización que se amplían y calculadora en todos los campos de medida. Compilada el 14/10; **si se subió, número gastado** |
 | 26101501 (2.13.0) | La cuenta de cobro con RUT, cédula, celular, dirección, concepto con viñetas, vista previa, copiar, editar y borradores; consecutivos con serie (`COT-A001`…); un solo enlace en el mensaje de WhatsApp. **En producción al 100 % desde el 15/10**: número gastado |
-| **26102701 (2.14.0)** | Inicio rehecho con jerarquía y vitrina del catálogo, Inicio simple del cliente, «Guarda tu espacio» con Google, directorio de contactos, iconos de línea fina con azul rey, enlace NFC por tienda. **La que va a Play** |
+| **26102701 (2.14.0)** | Inicio rehecho con jerarquía y vitrina del catálogo, Inicio simple del cliente, «Guarda tu espacio» con Google, directorio de contactos, iconos de línea fina con azul rey, enlace NFC por tienda. **Subida a Play**, número gastado |
 
 **Play exige API 36** desde el 1 de septiembre de 2026. Está en
 `android/variables.gradle`.
@@ -215,7 +215,7 @@ fue por el contenido de la app:
 - ✅ **Política de privacidad y términos** escritos, en `public/`, empaquetados con la app
 - ✅ **Página de eliminación de cuenta** en `public/eliminar-cuenta.html`, que es
   la URL que pide el formulario de Seguridad de los datos
-- ✅ VersionCode 26102701 (2.14.0) compilado y firmado el 27/10/2026, con todo
+- ✅ VersionCode 26102701 (2.14.0) compilado, firmado y **subido a Play**, con todo
   lo anterior dentro. La 26101501 (2.13.0) está en producción desde el 15/10; la
   26101401 (2.12.0) también se subió. El 19, el 20, el 21, el 26092201 (2.8.4), el 26092702
   (2.8.8), el 26100501 (2.9.0), el 26100601 (2.10.0), el 26100602 (2.10.1) y el

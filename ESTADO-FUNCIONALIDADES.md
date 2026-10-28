@@ -1380,7 +1380,7 @@ llegue a publicarse, así que cada intento fallido quema un número:
 | 26101201 (2.11.0) | Subcarpetas en el catálogo (un nivel), «Seguir tienda» con corazón en vez de «Guardar», el comentario del producto en el catálogo público, carpetas sin números, el arreglo de seguridad del visor del catálogo y los enlaces de aplicación: el QR de una tienda abre la app instalada. **Subida a Play**, número gastado |
 | 26101401 (2.12.0) | Copiar y editar una cotización ya enviada desde su detalle, borradores para las copias y las ediciones, fotos de la cotización que se amplían con un click y calculadora en todos los campos de medida. Compilada y firmada el 14/10/2026. **Si se subió a Play, su número está gastado**; si no, sus cambios van dentro de la 2.13.0 |
 | 26101501 (2.13.0) | La cuenta de cobro con RUT, cédula, celular y dirección, el concepto con viñetas, y vista previa, copiar, editar y borradores; los consecutivos con serie (`COT-A001`, `CC-A001`…) en vez de números al azar; y el mensaje de WhatsApp con un solo enlace. **En producción al 100 % desde el 15/10/2026**, número gastado |
-| **26102701 (2.14.0)** | El Inicio rehecho con jerarquía y la vitrina del catálogo, un Inicio simple para el cliente, «Guarda tu espacio» con Google, el directorio de contactos, iconos de línea fina con el azul rey, el enlace NFC por tienda en el panel de administración y la corrección de `[object PointerEvent]` en el catálogo público. **Compilada y firmada el 27/10/2026; es la que va a Play** |
+| **26102701 (2.14.0)** | El Inicio rehecho con jerarquía y la vitrina del catálogo, un Inicio simple para el cliente, «Guarda tu espacio» con Google, el directorio de contactos, iconos de línea fina con el azul rey, el enlace NFC por tienda en el panel de administración y la corrección de `[object PointerEvent]` en el catálogo público. **Compilada y firmada el 27/10/2026 y subida a Play** (número gastado). No trae el contador de visitas ni los referidos: eso es web y va en la siguiente |
 
 Play exige **API 36** desde el 1 de septiembre de 2026. El proyecto ya apunta a
 36 (`android/variables.gradle`); el aviso de Play Console habla de la versión
@@ -1390,7 +1390,8 @@ publicando en producción una versión nueva.
 **La 2.13.0 (26101501) está en producción al 100 % desde el 15/10/2026**, y con
 ella cumple el requisito de API 36: el aviso de Play seguía porque dos paquetes
 viejos, la 1.1 y la 1.2, estaban activos en una **prueba cerrada**, con API 35. La
-siguiente va con la **26102701 (2.14.0)**, compilada y firmada el 27/10/2026. La
+**26102701 (2.14.0)**, compilada y firmada el 27/10/2026, ya se subió a Play: su
+número está gastado, y el siguiente es el 26102801 en adelante. La
 26101401 (2.12.0) también se subió (14–15/10) y su número está gastado.
 Del 14 al 21 son números gastados —enviados o rechazados—, y también todos hasta
 el 26101201 (2.11.0). Las 2.6.0 a 2.8.7 están compiladas y nunca se enviaron por
