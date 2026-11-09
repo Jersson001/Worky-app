@@ -38,3 +38,29 @@ export const etiquetaDeCarpeta = (c: ProductCategory, todas: ProductCategory[]):
 /** Las carpetas en orden de lectura: cada principal seguida de sus subcarpetas. */
 export const carpetasEnOrden = (todas: ProductCategory[]): ProductCategory[] =>
   carpetasPrincipales(todas).flatMap(c => [c, ...subcarpetasDe(todas, c.id)]);
+
+/** Lo que se «abre» para ver los productos que no están en ninguna carpeta. */
+export const SIN_CARPETA = '__sin_carpeta__';
+
+/** Un producto cuya carpeta ya no existe cuenta como «sin carpeta»: no se pierde de vista. */
+export const estaSinCarpeta = (p: { categoryId?: string | null }, todas: ProductCategory[]): boolean =>
+  !p.categoryId || !todas.some(c => c.id === p.categoryId);
+
+/**
+ * Los productos que se ven al tener algo abierto.
+ * Nada abierto (`null`) = todos; `SIN_CARPETA` = los que no están en ninguna; una
+ * carpeta = solo los suyos, sin los de sus subcarpetas (esas se abren aparte).
+ */
+export const productosVisibles = <P extends { categoryId?: string | null }>(
+  productos: P[],
+  abierta: string | null,
+  todas: ProductCategory[],
+): P[] => {
+  if (abierta === null) return productos;
+  if (abierta === SIN_CARPETA) return productos.filter(p => estaSinCarpeta(p, todas));
+  return productos.filter(p => p.categoryId === abierta);
+};
+
+/** La carpeta donde se guarda un producto nuevo según lo que esté abierto. Vacío = ninguna. */
+export const carpetaParaProductoNuevo = (abierta: string | null): string =>
+  abierta && abierta !== SIN_CARPETA ? abierta : '';
