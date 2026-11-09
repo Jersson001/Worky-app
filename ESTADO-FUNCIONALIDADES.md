@@ -1,6 +1,6 @@
 # Estado de funcionalidades — Worky
 
-Última revisión: 28 de octubre de 2026.
+Última revisión: 8 de noviembre de 2026.
 
 > Este documento describía el proyecto cuando corría sobre Firebase y decía que
 > los clientes no podían tener cuenta, que Storage no estaba implementado y que
@@ -356,6 +356,87 @@ Primer código: `LEO` (Leo contra el tiempo), creado el 28/10/2026.
 [pruebas](supabase_referidos.test.mjs)
 
 ---
+
+### Avisos de la tienda a sus seguidores
+
+La tienda publica un **descuento, un producto nuevo u otro aviso** y les llega a quienes
+la siguen: como notificación en el teléfono a quien tiene la app instalada, y en
+«Novedades de tus tiendas» del Inicio de cualquiera que abra Worky.
+
+- **Dónde:** Inicio de la tienda → «Mi negocio» → **Avisos** (con cuántos la siguen).
+  Tres botones grandes para el tipo, título, detalles y fecha límite opcionales, **foto
+  opcional**, vista previa y confirmación con el número de personas: un aviso enviado no se
+  retira. Tope de **2 avisos cada 24 horas**. Va detrás del mismo acceso que Pro.
+- **Seguir ahora llega al servidor.** «Seguir tienda» nació en el teléfono (`localStorage`) y
+  la tienda no sabía quién la seguía. Al abrir Worky con sesión, lo que ya se seguía se copia
+  a `seguidores` (`sincronizarSeguidas`), y cada seguir o dejar de seguir se refleja allá. La
+  tienda ve **cuántos** la siguen, no quiénes.
+- **El cliente** ve «Novedades de tus tiendas» con «Nuevo», la foto y «Ver su catálogo». Las
+  ofertas con fecha límite desaparecen solas; todo sale a los 60 días.
+- **La notificación solo llega a quien tiene la app instalada** (FCM, como los mensajes). Quien
+  usa solo la web la ve en la bandeja, no le suena el teléfono. Tocarla abre el catálogo de la
+  tienda (`worky://tienda?id=`).
+- **La foto** se reduce a 800 px y se sube a `chat_media/<id de la tienda>/avisos/`. La base solo
+  acepta imágenes de ese lugar y de esa misma tienda: una dirección ajena se rechaza.
+- **La función `notificar-aviso`** recibe solo el id del aviso y lee el contenido de la base; cada
+  aviso se envía una sola vez. Para que la foto salga dentro de la notificación hay que desplegar
+  su versión más reciente (la desplegada al 08/11/2026 todavía no la lleva).
+
+[supabase_avisos.sql](supabase_avisos.sql) · [pruebas](supabase_avisos.test.mjs)
+
+### Calificaciones y opiniones
+
+Quien escanea el QR ve en la cabecera del catálogo **«★ 4,6 · 12 opiniones»** (o «Sé el primero
+en calificar»). Tocarlo abre el promedio, el reparto de 5 a 1 estrellas y los comentarios, con el
+nombre recortado («Ana M.»), cuándo lo dijeron y la **respuesta de la tienda**. Se lee de la base
+en vivo: los catálogos ya publicados lo estrenan sin republicar.
+
+- **Quién puede calificar:** solo quien **le escribió a la tienda** por el chat, al menos un mensaje.
+  Sin eso no se pueden inventar estrellas con cuentas nuevas. No es infalible, y deja fuera a quien
+  compró en persona sin escribir nunca.
+- **Una calificación por persona y tienda**, que se cambia o se quita. Nadie califica su tienda.
+- **La tienda responde pero no borra ni edita:** Inicio → «Mi negocio» → **Opiniones**. Un abuso lo
+  oculta el administrador con `admin_ocultar_calificacion` (sin pantalla todavía).
+- Todo lo que escribe un tercero entra con `textContent`, nunca como HTML.
+
+[supabase_calificaciones.sql](supabase_calificaciones.sql) · [pruebas](supabase_calificaciones.test.mjs)
+
+### El kit NFC con el primer mes de Pro
+
+Oferta: **$15.000 = la etiqueta NFC + el primer mes de Pro**; desde el segundo mes, $29.900.
+Por ahora solo en Bogotá (entrega en mano) y cobrada a mano por Nequi.
+
+- La venta suele ser de palabra: el administrador la registra en **Panel de Suscripciones →
+  «Enlace NFC» de la tienda → «Vender el kit a esta tienda»**; con «Ya pagó» la tienda queda Pro
+  un mes. También hay «Pedidos del kit NFC» para moverlos de estado (sin pagar → por enviar →
+  enviado) y un formulario que la tienda puede llenar sola desde la pantalla de bloqueo, que **no
+  ofrece el kit a quien ya lo tiene**.
+- Una cuenta tiene a lo sumo un pedido vivo. Wompi y el cobro automático no están: es la siguiente fase.
+
+[supabase_pedidos_kit.sql](supabase_pedidos_kit.sql) · [pruebas](supabase_pedidos_kit.test.mjs)
+
+### Carpetas del catálogo, más simples
+
+El gestor del catálogo se rehízo pensando en quien no es de tecnología: **sin carpetas abre
+directo en «Mis productos»**; con ellas, dos botones grandes con texto («Agregar producto», «Nueva
+carpeta»), «Ver todos mis productos» y una tarjeta «Sin carpeta». Las tarjetas son solo foto,
+nombre y cuántos productos; **editar y borrar viven dentro de la carpeta**, con su nombre escrito;
+crear una carpeta pide solo el nombre; los productos van primero y las carpetas de adentro al
+final. «Categoría» pasó a llamarse «carpeta» en todas partes.
+
+### Entrar con la cuenta desde un catálogo («Ya tengo cuenta»)
+
+El aviso «Ahora sigues a…» trae un tercer botón, **«Ya tengo cuenta»**: abre el acceso directo en
+«Iniciar sesión» y, al entrar, **vuelve al catálogo de esa tienda** (no abre ningún chat), con lo
+que seguía ya en su cuenta. El destino caduca a la media hora (`utils/destinoTrasEntrar.ts`).
+Existe porque en el iPhone el navegador no siempre recuerda la sesión: el de la cámara no es el
+mismo donde se inició, y Safari borra lo guardado de las páginas que no se abren en unos días.
+
+### El chat en el teléfono
+
+Con un chat abierto la barra de abajo se esconde por diseño. La cabecera del chat trae, arriba a
+la derecha y solo en el teléfono, **← Volver** y **🏠 Inicio** (también «Ir al inicio» en el menú
+de los tres puntos). La lupa de esa cabecera no tiene función y se esconde en el teléfono.
 
 ## Chat
 
@@ -1268,6 +1349,7 @@ llamados igual.
 - **Avisos por correo o en el navegador.** Las push existen desde el
   11/09/2026, pero solo en la app instalada —ver [Notificaciones](#notificaciones)—
   y todavía sin probar en un teléfono de verdad.
+- **Cobro automático.** Ni Wompi ni la renovación sola: el mes de Pro se activa a mano desde el panel.
 - **Pago ni liquidación de comisiones.** El reporte de referidos cuenta; cobrar
   y pagar sigue siendo manual (Nequi). Tampoco hay códigos que den descuento.
 - **Verificación del teléfono.** El número se guarda como texto y sirve para
@@ -1382,6 +1464,7 @@ llegue a publicarse, así que cada intento fallido quema un número:
 | 26101501 (2.13.0) | La cuenta de cobro con RUT, cédula, celular y dirección, el concepto con viñetas, y vista previa, copiar, editar y borradores; los consecutivos con serie (`COT-A001`, `CC-A001`…) en vez de números al azar; y el mensaje de WhatsApp con un solo enlace. **En producción al 100 % desde el 15/10/2026**, número gastado |
 | **26102701 (2.14.0)** | El Inicio rehecho con jerarquía y la vitrina del catálogo, un Inicio simple para el cliente, «Guarda tu espacio» con Google, el directorio de contactos, iconos de línea fina con el azul rey, el enlace NFC por tienda en el panel de administración y la corrección de `[object PointerEvent]` en el catálogo público. **Compilada y firmada el 27/10/2026 y subida a Play** (número gastado). No trae el contador de visitas ni los referidos: eso es web y va en la siguiente |
 | **26102801 (2.14.1)** | El contador de visitas al catálogo (QR, NFC, enlace) y los códigos de referido con su reporte, que ya corrían en la web pero no dentro de la app. **Compilada y firmada el 28/10/2026 y subida a Play**, número gastado |
+| **26110801 (2.15.0)** | Avisos de la tienda a sus seguidores (descuentos y productos nuevos, con foto opcional), su bandeja «Novedades» para el cliente, calificaciones de 5 estrellas con opiniones y respuesta de la tienda, las carpetas del catálogo más simples, el kit NFC con el primer mes de Pro (venta desde el panel de administración), el botón «Ya tengo cuenta» al seguir una tienda y el botón «Inicio» en el chat del teléfono. **Compilada y firmada el 08/11/2026; es la que va a Play** |
 
 Play exige **API 36** desde el 1 de septiembre de 2026. El proyecto ya apunta a
 36 (`android/variables.gradle`); el aviso de Play Console habla de la versión

@@ -132,6 +132,30 @@ con `search_path` fijo:
 [supabase_visitas_catalogo.sql](supabase_visitas_catalogo.sql) ·
 [supabase_referidos.sql](supabase_referidos.sql)
 
+### Avisos, calificaciones y kit (08/11/2026)
+
+Cuatro tablas más —`seguidores`, `avisos`, `calificaciones`, `pedidos_kit`— con RLS activado, sin
+políticas y con los permisos revocados: por la API nadie las toca; todo pasa por funciones
+`SECURITY DEFINER` con `search_path` fijo.
+
+- **Avisos:** solo cuentas permanentes publican, con tope de 2 cada 24 horas. La imagen tiene que
+  ser un archivo subido por esa misma tienda a `chat_media/<su id>/…`: una dirección ajena se
+  rechaza, para que un aviso no sirva de pixel de seguimiento ni de vitrina de imágenes ajenas.
+  La función que manda la notificación es pública (la llama el disparador sin credenciales), así
+  que recibe **solo el id** del aviso, lee el contenido de la base y lo «reclama» una vez.
+- **Calificaciones:** la lectura es pública y sale con el nombre recortado; calificar exige haberle
+  escrito a la tienda; la tienda responde pero no edita ni borra; un abuso lo oculta el
+  administrador. Los textos de terceros se pintan con `textContent`.
+- **Kit:** `actualizar_pedido_kit` y `admin_vender_kit` comprueban `is_current_user_admin()`; al
+  marcar un pedido como pagado se extiende un mes de Pro corriendo con la sesión del admin, así
+  que el blindaje de `protect_subscription_fields` lo deja pasar.
+- **Pendiente:** `notificar-mensaje` acepta el texto de la notificación en la llamada y su
+  dirección es pública: se pueden fabricar notificaciones falsas a quien se conozca el id. La de
+  avisos ya lo evita; esa se puede endurecer igual.
+
+[supabase_avisos.sql](supabase_avisos.sql) · [supabase_calificaciones.sql](supabase_calificaciones.sql) ·
+[supabase_pedidos_kit.sql](supabase_pedidos_kit.sql)
+
 ---
 
 ## Estado al cerrar la auditoría
