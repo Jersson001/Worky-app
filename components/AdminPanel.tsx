@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { AdminProfileRow, adminSetPro, adminSetSubscriptionEndsAt, listAllUserProfiles, mesDespuesDe } from '../services/adminService';
 import { tieneAcceso } from './ProFeatureGuard';
+import { actualizarPedidoKit, pedidosKitAdmin, venderKit, type PedidoKitAdmin } from '../services/kitNfcService';
+import { enPesos } from '../utils/datosDeCobro';
 import { crearCodigoReferido, enlaceDeReferido, reporteReferidos, type FilaReferidos } from '../services/referidosService';
 import { catalogNfcUrl, qrImageUrl, tieneCatalogo, resumenVisitas, type ResumenVisitas } from '../services/catalogShareService';
 
@@ -32,6 +34,48 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
   const [refError, setRefError] = useState<string | null>(null);
   const [nuevoCodigo, setNuevoCodigo] = useState('');
   const [nuevoNombre, setNuevoNombre] = useState('');
+
+  // Pedidos del kit NFC: se cobran a mano (Nequi) y se marcan aquí.
+  const [kitAbierto, setKitAbierto] = useState(false);
+  const [pedidosKit, setPedidosKit] = useState<PedidoKitAdmin[] | null>(null);
+  const [kitError, setKitError] = useState<string | null>(null);
+
+  // Venta del kit en persona, desde el bloque «Enlace NFC» de una tienda.
+  const [venta, setVenta] = useState({ nombre: '', celular: '', direccion: 'En mano', yaPago: true });
+  const [ventaMsg, setVentaMsg] = useState<{ id: string; texto: string; ok: boolean } | null>(null);
+
+  const registrarVenta = async (row: AdminProfileRow) => {
+    try {
+      await venderKit(row.id, { nombre: venta.nombre, celular: venta.celular, direccion: venta.direccion, barrio: '' }, venta.yaPago);
+      setVentaMsg({ id: row.id, ok: true, texto: venta.yaPago ? 'Venta registrada: la tienda quedó Pro un mes. Ya puedes grabar su etiqueta.' : 'Venta registrada, falta marcar el pago en «Pedidos del kit NFC».' });
+      void cargarPedidosKit();
+      void load();
+    } catch (e) {
+      setVentaMsg({ id: row.id, ok: false, texto: (e as Error).message });
+    }
+  };
+
+  const cargarPedidosKit = () =>
+    pedidosKitAdmin()
+      .then((f) => { setPedidosKit(f); setKitError(null); })
+      .catch((e: Error) => setKitError(e.message));
+
+  const toggleKit = () => {
+    setKitAbierto((a) => !a);
+    if (pedidosKit === null) void cargarPedidosKit();
+  };
+
+  const moverPedido = async (p: PedidoKitAdmin, estado: 'pagado' | 'enviado' | 'cancelado') => {
+    if (estado === 'pagado' && !window.confirm(`¿Ya llegaron los ${enPesos(p.monto)} de ${p.negocio || p.nombre}? Se le activa un mes de Pro.`)) return;
+    try {
+      await actualizarPedidoKit(p.id, estado);
+      await cargarPedidosKit();
+      // El mes de Pro cambió: la lista de tiendas de abajo debe reflejarlo.
+      if (estado === 'pagado') void load();
+    } catch (e) {
+      setKitError((e as Error).message);
+    }
+  };
 
   const cargarReferidos = () =>
     reporteReferidos()
@@ -138,6 +182,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
   const toggleNfc = (row: AdminProfileRow) => {
     if (nfcAbierto === row.id) { setNfcAbierto(null); return; }
     setNfcAbierto(row.id);
+    setVentaMsg(null);
+    setVenta({ nombre: row.ownerName || row.businessName || '', celular: row.phone || '', direccion: 'En mano', yaPago: true });
     if (visitas[row.id] === undefined) {
       resumenVisitas(30, row.id).then((v) => setVisitas((prev) => ({ ...prev, [row.id]: v })));
     }
@@ -185,6 +231,70 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
             placeholder="Buscar por nombre, correo o teléfono..."
             className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 placeholder-slate-400 outline-none focus:border-blue-500"
           />
+        </div>
+
+        {/* Pedidos del kit NFC */}
+        <div className="px-4 py-2 border-b border-slate-100">
+          <button onClick={toggleKit} className="text-xs font-bold text-slate-600 flex items-center gap-2">
+            <i className={`fa-solid fa-chevron-${kitAbierto ? 'down' : 'right'} text-[10px]`}></i>
+            Pedidos del kit NFC
+            {pedidosKit && pedidosKit.some((p) => p.estado === 'solicitado' || p.estado === 'pagado') && (
+              <span className="text-[10px] font-bold bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full">
+                {pedidosKit.filter((p) => p.estado === 'solicitado' || p.estado === 'pagado').length} por atender
+              </span>
+            )}
+          </button>
+          {kitAbierto && (
+            <div className="mt-3 space-y-2 pb-2">
+              {kitError && <p className="text-xs text-rose-600">{kitError}</p>}
+              {pedidosKit === null ? (
+                <p className="text-xs text-slate-400">Cargando…</p>
+              ) : pedidosKit.length === 0 ? (
+                <p className="text-xs text-slate-400">Aún no hay pedidos.</p>
+              ) : (
+                pedidosKit.map((p) => (
+                  <div key={p.id} className={`rounded-lg px-3 py-2 ${p.estado === 'cancelado' || p.estado === 'enviado' ? 'bg-slate-50 opacity-70' : 'bg-amber-50/60 border border-amber-100'}`}>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-slate-800 truncate">{p.negocio || p.nombre}</p>
+                        <p className="text-[11px] text-slate-600">
+                          {p.nombre} · {p.celular}
+                        </p>
+                        <p className="text-[11px] text-slate-600">
+                          {p.direccion}{p.barrio ? `, ${p.barrio}` : ''} · {p.ciudad}
+                        </p>
+                      </div>
+                      <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-white border border-slate-200 text-slate-600 whitespace-nowrap">
+                        {p.estado === 'solicitado' ? 'Sin pagar' : p.estado === 'pagado' ? 'Por enviar' : p.estado === 'enviado' ? 'Enviado' : 'Cancelado'}
+                      </span>
+                    </div>
+                    {(p.estado === 'solicitado' || p.estado === 'pagado') && (
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {p.estado === 'solicitado' && (
+                          <>
+                            <button onClick={() => moverPedido(p, 'pagado')} className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-emerald-600 text-white">
+                              Marcar pagado ({enPesos(p.monto)}) · +1 mes Pro
+                            </button>
+                            <button onClick={() => moverPedido(p, 'cancelado')} className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-slate-600">
+                              Cancelar
+                            </button>
+                          </>
+                        )}
+                        {p.estado === 'pagado' && (
+                          <button onClick={() => moverPedido(p, 'enviado')} className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-blue-600 text-white">
+                            Marcar enviado
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+              <p className="text-[11px] text-slate-500 leading-snug">
+                Al marcar un pedido como pagado, la tienda queda Pro un mes más (desde hoy, o desde su vencimiento si aún está vigente). El enlace de la etiqueta lo sacas del botón «Enlace NFC» de esa tienda.
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Referidos */}
@@ -369,6 +479,28 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                                 </a>
                               </div>
                             </div>
+                          </div>
+
+                          <div className="bg-white border border-slate-200 rounded-lg p-2 space-y-2">
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Vender el kit a esta tienda</p>
+                            <div className="grid grid-cols-2 gap-2">
+                              <input value={venta.nombre} onChange={(e) => setVenta({ ...venta, nombre: e.target.value })} placeholder="Quién recibe"
+                                className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs outline-none focus:border-blue-500" />
+                              <input value={venta.celular} onChange={(e) => setVenta({ ...venta, celular: e.target.value })} placeholder="Celular" inputMode="tel"
+                                className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs outline-none focus:border-blue-500" />
+                            </div>
+                            <input value={venta.direccion} onChange={(e) => setVenta({ ...venta, direccion: e.target.value })} placeholder="Dirección o «En mano»"
+                              className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs outline-none focus:border-blue-500" />
+                            <label className="flex items-center gap-2 text-xs text-slate-700">
+                              <input type="checkbox" checked={venta.yaPago} onChange={(e) => setVenta({ ...venta, yaPago: e.target.checked })} />
+                              Ya pagó {enPesos(15000)}: activarle un mes de Pro
+                            </label>
+                            <button onClick={() => registrarVenta(row)} className="text-xs font-bold px-3 py-1.5 rounded-lg bg-emerald-600 text-white">
+                              Registrar venta
+                            </button>
+                            {ventaMsg?.id === row.id && (
+                              <p className={`text-xs ${ventaMsg.ok ? 'text-emerald-700' : 'text-rose-600'}`}>{ventaMsg.texto}</p>
+                            )}
                           </div>
 
                           {visitas[row.id] !== undefined && (
