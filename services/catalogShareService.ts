@@ -295,6 +295,16 @@ export const recordarVendedorDeLaUrl = (): string | null => {
     // se anota aquí porque esta función limpia la URL y el dato se perdería
     // antes de que la pantalla de acceso llegue a mirarla. Con una invitación,
     // igual: solo una cuenta con correo puede reclamarla.
+    // Quien ya tiene cuenta y llegó desde un catálogo (con `entrar=1`) quiere el
+    // acceso, no el registro. Se anota por lo mismo: esta función limpia la URL.
+    if (url.searchParams.get('entrar') === '1') {
+      try { localStorage.setItem(ENTRAR_KEY, '1'); } catch { /* sin sitio, se sigue */ }
+      url.searchParams.delete('entrar');
+      window.history.replaceState({}, '', url.toString());
+    } else if (vendedor) {
+      // Un enlace nuevo sin `entrar` no hereda la marca de una visita anterior.
+      try { localStorage.removeItem(ENTRAR_KEY); } catch { /* nada que borrar */ }
+    }
     if (url.searchParams.get('registro') === '1' || invitacion) {
       try { localStorage.setItem(REGISTRO_KEY, '1'); } catch { /* sin sitio, se sigue */ }
       url.searchParams.delete('registro');
@@ -336,6 +346,21 @@ const INVITADO_KEY = 'worky:llego-invitado';
  * sin correo no se puede recuperar.
  */
 const REGISTRO_KEY = 'worky:quiere-registro';
+
+/** Pidió entrar con la cuenta que ya tiene —botón «Ya tengo cuenta» del catálogo—. */
+const ENTRAR_KEY = 'worky:quiere-entrar';
+
+export const quiereEntrarConCuenta = (): boolean => {
+  try {
+    // Manda la URL si todavía la trae: la marca se escribe en un efecto de la app
+    // que corre después de que la pantalla de acceso ya preguntó.
+    const params = new URLSearchParams(window.location.search);
+    if (params.has('vendedor')) return params.get('entrar') === '1';
+    return localStorage.getItem(ENTRAR_KEY) === '1';
+  } catch {
+    return false;
+  }
+};
 
 export const quiereRegistroConCorreo = (): boolean => {
   try {

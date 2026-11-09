@@ -3,7 +3,7 @@ import { Capacitor } from '@capacitor/core';
 import { Browser } from '@capacitor/browser';
 import { supabase } from '../services/supabaseConfig';
 import { setCurrentUserId } from '../services/messagingService';
-import { llegoInvitado, olvidarRegistroPedido, quiereRegistroConCorreo, vendedorPendiente, invitacionPendiente } from '../services/catalogShareService';
+import { llegoInvitado, olvidarRegistroPedido, quiereRegistroConCorreo, quiereEntrarConCuenta, vendedorPendiente, invitacionPendiente } from '../services/catalogShareService';
 import { URL_PRIVACIDAD, URL_TERMINOS, constanciaDeAceptacion } from '../utils/legal';
 import { WORKY_APP_URL } from '../services/catalogShareService';
 import { avatarDeIniciales } from '../utils/avatar';
@@ -124,7 +124,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister, i
   // Quien llega invitado desde un catálogo casi nunca tiene cuenta: se le abre
   // directamente en «Registrarse», que si no acaba mirando un formulario de
   // acceso que no puede rellenar.
-  const [authMode, setAuthMode] = useState<AuthMode>(invitadoPor ? 'register' : 'login');
+  // Quien ya tiene cuenta y pulsó «Ya tengo cuenta» en un catálogo abre en el acceso.
+  const [authMode, setAuthMode] = useState<AuthMode>(invitadoPor && !quiereEntrarConCuenta() ? 'register' : 'login');
 
   /**
    * Quien llega escaneando un QR ve un registro corto: nombre, correo, celular
@@ -149,6 +150,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister, i
   useEffect(() => {
     if (!invitadoPor || pestanaAjustada.current) return;
     pestanaAjustada.current = true;
+    // Pidió entrar con su cuenta: se respeta, no se le cambia a «Registrarse».
+    if (quiereEntrarConCuenta()) return;
     setAuthMode('register');
   }, [invitadoPor]);
 

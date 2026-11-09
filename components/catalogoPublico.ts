@@ -921,7 +921,8 @@ export const mostrarCatalogo = async (userId: string): Promise<void> => {
       '<p style="color:#475569;font-size:.9rem;margin:0 0 4px">La sigues <b>solo en este teléfono</b>.' +
       ' Si lo cambias o borras los datos del navegador, dejas de verla.</p>' +
       '<p style="color:#475569;font-size:.9rem;margin:0 0 16px">Con una cuenta de Worky la tienes' +
-      ' siempre a mano y puedes escribirle por el chat.</p>';
+      ' siempre a mano y puedes escribirle por el chat. ¿Ya tienes una? Entra con ella y esta tienda' +
+      ' pasa a tu cuenta.</p>';
 
     const acciones = document.createElement('div');
     acciones.style.cssText = 'display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap';
@@ -933,7 +934,15 @@ export const mostrarCatalogo = async (userId: string): Promise<void> => {
     const crearCuenta = boton('Crear mi cuenta', '#2563eb', () => {
       window.location.href = `/?vendedor=${encodeURIComponent(userId)}&registro=1`;
     });
-    acciones.append(ahoraNo, crearCuenta);
+    // Quien ya tiene cuenta pero este navegador no la recuerda —en el iPhone, el
+    // navegador de la cámara no es el mismo donde entró, y Safari además borra lo
+    // guardado de las páginas que no abre en unos días— necesita una puerta que
+    // no sea «crear otra». Al entrar, lo que ya seguía en este teléfono pasa a su
+    // cuenta.
+    const yaTengoCuenta = boton('Ya tengo cuenta', '#0f766e', () => {
+      window.location.href = `/?vendedor=${encodeURIComponent(userId)}&entrar=1`;
+    });
+    acciones.append(ahoraNo, yaTengoCuenta, crearCuenta);
     panel.appendChild(acciones);
   }
 
