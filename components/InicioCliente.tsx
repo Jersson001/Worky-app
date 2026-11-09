@@ -20,6 +20,8 @@ import React, { useMemo, useState } from 'react';
 import { ChevronRight, Heart, MessageCircle, Store } from 'lucide-react';
 import AvisoGuardarEspacio from './AvisoGuardarEspacio';
 import { NovedadesDeTiendas } from './NovedadesDeTiendas';
+import { Capacitor } from '@capacitor/core';
+import { avisoDeNotificaciones, detectarPlataforma } from '../utils/notificaciones';
 import { aMs, horaCorta } from '../utils/inicio';
 import { fotoOIniciales } from '../utils/avatar';
 import { leerTiendas } from '../utils/tiendasGuardadas';
@@ -72,6 +74,18 @@ export const InicioCliente: React.FC<InicioClienteProps> = ({
     [contacts],
   );
   const [tiendas] = useState(() => leerTiendas());
+
+  // En el navegador del celular las notificaciones con la página cerrada no
+  // existen: se dice una vez, para que nadie espere un aviso que no va a llegar.
+  const textoNotificaciones = avisoDeNotificaciones(
+    detectarPlataforma(navigator.userAgent, navigator.maxTouchPoints), Capacitor.isNativePlatform());
+  const [notaVista, setNotaVista] = useState(() => {
+    try { return localStorage.getItem('worky:nota-notificaciones') === '1'; } catch { return false; }
+  });
+  const cerrarNota = () => {
+    setNotaVista(true);
+    try { localStorage.setItem('worky:nota-notificaciones', '1'); } catch { /* sin sitio: reaparece */ }
+  };
 
   const verCatalogo = (id: string) => { window.location.href = `/?catalogo=${encodeURIComponent(id)}`; };
   const escribir = (id: string) => {
@@ -139,6 +153,15 @@ export const InicioCliente: React.FC<InicioClienteProps> = ({
         logos={Object.fromEntries(tiendas.map(t => [t.id, t.logo]))}
         onVerTienda={verCatalogo}
       />
+
+      {tiendas.length > 0 && textoNotificaciones && !notaVista && (
+        <div className="bg-slate-100 border border-slate-200 rounded-2xl p-3.5 flex items-start gap-3">
+          <p className="text-[13px] text-slate-700 leading-snug flex-1">{textoNotificaciones}</p>
+          <button type="button" onClick={cerrarNota} className="shrink-0 text-[13px] font-bold text-rey-700 underline underline-offset-2 py-1">
+            Entendido
+          </button>
+        </div>
+      )}
 
       {/* 3. TIENDAS QUE SIGUES */}
       <section>

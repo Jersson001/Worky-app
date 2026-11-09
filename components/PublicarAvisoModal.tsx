@@ -86,7 +86,7 @@ export const PublicarAvisoModal: React.FC<Props> = ({ onClose, isPro, trialEndsA
         }
       }
       await publicarAviso({ tipo, titulo, texto, venceEn, imagenUrl });
-      setMensaje({ ok: true, texto: 'Listo, tu aviso salió. Les llega como notificación a quienes tienen Worky instalado, y a todos en sus novedades.' });
+      setMensaje({ ok: true, texto: 'Listo, tu aviso salió. Les suena el teléfono a quienes tienen la app de Worky para Android; todos los demás lo ven en sus novedades al abrir Worky.' });
       setTitulo('');
       setTexto('');
       setVenceEn('');
@@ -259,6 +259,10 @@ export const PublicarAvisoModal: React.FC<Props> = ({ onClose, isPro, trialEndsA
                 </div>
               )}
               <p className="text-xs text-slate-500 text-center -mt-2">Puedes enviar hasta 2 avisos al día.</p>
+              <p className="text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded-xl p-3 leading-snug">
+                <b>Cómo les llega:</b> como notificación en el teléfono, a quienes tienen la app de Worky para Android.
+                A quien usa iPhone o el navegador no le suena el teléfono: lo ve en sus «Novedades» cuando abre Worky.
+              </p>
             </div>
           </ProFeatureGuard>
 

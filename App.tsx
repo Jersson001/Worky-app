@@ -50,6 +50,7 @@ import { CurrencyInput } from './components/chat/modals/CurrencyInput';
 import { App as CapacitorApp } from '@capacitor/app';
 import { Browser } from '@capacitor/browser';
 import { Capacitor } from '@capacitor/core';
+import { convienePedirPermiso, detectarPlataforma } from './utils/notificaciones';
 import { AvisoGuardarEspacio } from './components/AvisoGuardarEspacio';
 import { InicioCliente } from './components/InicioCliente';
 import { DirectorioContactos } from './components/DirectorioContactos';
@@ -1382,8 +1383,16 @@ const App: React.FC = () => {
     }
   }, [digitalSignature, uidSesion, localCargadoDe]);
 
-  // Solicitar permisos de notificación nativa
+  // Solicitar permisos de notificación nativa.
+  //
+  // Solo donde sirve: en el navegador de escritorio, que enseña el aviso mientras
+  // la página está abierta. En el celular no entrega nada —iPhone no tiene
+  // `Notification` fuera de una web instalada, y Chrome de Android lanza un error—,
+  // y pedirlo hacía creer que llegarían avisos con la página cerrada. La app de
+  // Android usa FCM y no pasa por aquí. Ver utils/notificaciones.ts.
   const requestNotificationPermission = useCallback(async () => {
+    const plataforma = detectarPlataforma(navigator.userAgent, navigator.maxTouchPoints);
+    if (!convienePedirPermiso(plataforma, Capacitor.isNativePlatform(), typeof window !== 'undefined' && 'Notification' in window)) return;
     if (typeof window !== 'undefined' && 'Notification' in window) {
       if (Notification.permission === 'default') {
         try {
