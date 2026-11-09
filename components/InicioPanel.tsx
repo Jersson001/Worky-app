@@ -25,7 +25,7 @@ import Tip from './ui/Tip';
 import {
   ArrowLeftRight, BookUser, Camera, CheckCircle2, ChevronDown, ChevronRight, ChartGantt, ChartPie, CreditCard, Eye,
   FileText, HandCoins, Heart, Images, Megaphone, MessageCircle, Plus, QrCode, Receipt, ShieldCheck, Store, UserPlus,
-  Users, X,
+  Star, Users, X,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useResumenInicio } from '../hooks/useResumenInicio';
@@ -34,7 +34,9 @@ import { fotoOIniciales } from '../utils/avatar';
 import { formatCurrency } from '../utils/currency';
 import { tieneCatalogo, resumenVisitas, type ResumenVisitas } from '../services/catalogShareService';
 import { cuantosMeSiguen } from '../services/avisosService';
+import { resumenDeCalificaciones, type ResumenDeCalificaciones } from '../services/calificacionesService';
 import { getCurrentUserId } from '../services/messagingService';
+import { promedioEnTexto, textoDeOpiniones } from '../utils/calificaciones';
 import type { Contact, UserProfileData } from '../types';
 
 export type DocumentoDelInicio = 'quote' | 'invoice' | 'collection_account' | 'expense';
@@ -63,6 +65,8 @@ interface InicioPanelProps {
   onOpenTiendas: () => void;
   /** Abre los avisos a quienes siguen la tienda. */
   onOpenAvisos: () => void;
+  /** Abre lo que dicen los clientes de la tienda, con respuesta. */
+  onOpenOpiniones: () => void;
   onNewContact: () => void;
   /** Abre el directorio: todos los contactos, por orden alfabético y con buscador. */
   onOpenContactos: () => void;
@@ -288,7 +292,7 @@ const Vitrina: React.FC<{
 export const InicioPanel: React.FC<InicioPanelProps> = ({
   contacts, totalSinLeer, userProfile, productCount, folderCount,
   onOpenChats, onOpenChat, onCrearDocumento, onOpenFinancials, onOpenCatalog, onAddProduct, onShareQr, onOpenWallet,
-  onOpenGantt, onOpenStatus, onOpenGroups, onOpenTiendas, onOpenAvisos, onNewContact, onOpenContactos, onOpenAdmin, contratoSlot,
+  onOpenGantt, onOpenStatus, onOpenGroups, onOpenTiendas, onOpenAvisos, onOpenOpiniones, onNewContact, onOpenContactos, onOpenAdmin, contratoSlot,
 }) => {
   const familia = familiaDeNegocio(userProfile?.businessType);
 
@@ -303,6 +307,16 @@ export const InicioPanel: React.FC<InicioPanelProps> = ({
     tieneCatalogo(uid).then(si => { if (vigente) setPublicado(si); }).catch(() => { if (vigente) setPublicado(null); });
     return () => { vigente = false; };
   }, [productCount > 0]);
+
+  // Su calificación, para la ficha «Opiniones». Null mientras llega o si no se pudo saber.
+  const [calificacion, setCalificacion] = useState<ResumenDeCalificaciones | null>(null);
+  useEffect(() => {
+    let vigente = true;
+    let id: string;
+    try { id = getCurrentUserId(); } catch { return; }
+    resumenDeCalificaciones(id).then(r => { if (vigente) setCalificacion(r); });
+    return () => { vigente = false; };
+  }, []);
 
   // Cuántas personas la siguen, para la ficha «Avisos». Null mientras llega.
   const [seguidores, setSeguidores] = useState<number | null>(null);
@@ -398,6 +412,19 @@ export const InicioPanel: React.FC<InicioPanelProps> = ({
         <Herramienta key="avisos" icono={Megaphone} titulo="Avisos" tip="Avisa de un descuento o un producto nuevo a quienes siguen tu tienda"
           detalle={<span className="text-slate-500">{seguidores === null ? 'A tus seguidores' : `${seguidores} ${seguidores === 1 ? 'te sigue' : 'te siguen'}`}</span>}
           onClick={onOpenAvisos} />
+      ),
+    },
+    {
+      clave: 'opiniones',
+      peso: 0.8,
+      nodo: (
+        <Herramienta key="opiniones" icono={Star} titulo="Opiniones" tip="Lo que dicen tus clientes de tu tienda, y tu respuesta"
+          detalle={<span className="text-slate-500">{
+            calificacion === null ? 'Calificación'
+              : calificacion.total === 0 ? 'Sin opiniones'
+                : `★ ${promedioEnTexto(calificacion.promedio)} · ${textoDeOpiniones(calificacion.total)}`
+          }</span>}
+          onClick={onOpenOpiniones} />
       ),
     },
     {

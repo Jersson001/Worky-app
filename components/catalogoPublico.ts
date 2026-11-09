@@ -17,6 +17,13 @@
  */
 import { fetchCatalogHtml, guardarPedidoPendiente, registrarVisita } from '../services/catalogShareService';
 import { seguirEnServidor, dejarDeSeguirEnServidor } from '../services/avisosService';
+import {
+  calificarTienda, miCalificacion, opinionesDe, puedeCalificar, quitarMiCalificacion, resumenDeCalificaciones,
+} from '../services/calificacionesService';
+import {
+  estrellasEnTexto, promedioEnTexto, repartoEnPorcentajes, textoDeLaCabecera, textoDeOpiniones,
+} from '../utils/calificaciones';
+import { haceCuanto } from '../utils/avisos';
 import { supabase } from '../services/supabaseConfig';
 import { guardarTienda, leerTiendas, quitarTienda } from '../utils/tiendasGuardadas';
 
@@ -303,6 +310,26 @@ export const mostrarCatalogo = async (userId: string): Promise<void> => {
   const barraInferior = document.createElement('div');
 
   document.body.append(cabecera, barraChat, contenido, cinta, barraInferior);
+
+  // ── Opiniones: la calificación de la tienda, a la vista ──────────────────────
+  //
+  // La ve cualquiera que escanee el QR, sin cuenta: es lo que le dice a un
+  // desconocido si puede fiarse. Se lee de la base en vivo y no del HTML
+  // publicado, así que los catálogos ya publicados la estrenan sin republicar.
+  const chipOpiniones = document.createElement('button');
+  chipOpiniones.style.cssText =
+    'border:0;cursor:pointer;margin-top:12px;padding:8px 16px;border-radius:999px;font-weight:700;' +
+    `font-size:.9rem;background:rgba(255,255,255,.2);color:#fff;font-family:${FUENTE};display:none`;
+  chipOpiniones.onclick = () => abrirOpiniones();
+  cabecera.appendChild(chipOpiniones);
+
+  const pintarChipOpiniones = async () => {
+    const r = await resumenDeCalificaciones(userId);
+    if (!r) return; // sin la migración o sin red: la página se ve igual, sin estrellas
+    chipOpiniones.textContent = textoDeLaCabecera(r.total, r.promedio);
+    chipOpiniones.style.display = 'inline-block';
+  };
+  void pintarChipOpiniones();
 
   // ── Visor de una foto, con el «me gusta» encima ───────────────────────────
   //
@@ -959,6 +986,203 @@ export const mostrarCatalogo = async (userId: string): Promise<void> => {
 
     pintar();
     panel.append(cab, nota, lista);
+  }
+
+  /**
+   * El panel de opiniones: el promedio, el reparto, lo que dice la gente y, si le
+   * toca, el lugar para dejar la suya.
+   *
+   * Todo lo que escribe un cliente o una tienda entra con `textContent`, nunca
+   * como HTML: son textos de terceros que ve cualquiera que abra el catálogo.
+   */
+  async function abrirOpiniones(): Promise<void> {
+    const { fondo, panel } = capaConPanel();
+    panel.style.maxHeight = '88vh';
+
+    const cargando = document.createElement('p');
+    cargando.textContent = 'Cargando opiniones…';
+    cargando.style.cssText = 'color:#64748b;text-align:center;padding:24px 0';
+    panel.appendChild(cargando);
+
+    const [resumen, opiniones, puede, mia] = await Promise.all([
+      resumenDeCalificaciones(userId),
+      opinionesDe(userId, 20),
+      puedeCalificar(userId),
+      miCalificacion(userId),
+    ]);
+    panel.innerHTML = '';
+
+    const titulo = document.createElement('p');
+    titulo.textContent = `Opiniones de ${cat.negocio}`;
+    titulo.style.cssText = 'font-weight:800;font-size:1.1rem;margin:0 0 12px';
+    panel.appendChild(titulo);
+
+    // — Promedio y reparto —
+    const total = resumen?.total ?? 0;
+    const promedio = resumen?.promedio ?? 0;
+    const resumenCaja = document.createElement('div');
+    resumenCaja.style.cssText = 'display:flex;gap:16px;align-items:center;margin-bottom:16px';
+    const grande = document.createElement('div');
+    grande.style.cssText = 'text-align:center;flex:0 0 auto;min-width:92px';
+    grande.innerHTML =
+      `<div style="font-size:2.4rem;font-weight:800;line-height:1">${total ? promedioEnTexto(promedio) : '–'}</div>` +
+      `<div style="color:#f59e0b;font-size:1.05rem;letter-spacing:1px;margin-top:4px">${estrellasEnTexto(total ? promedio : 0)}</div>` +
+      `<div style="color:#64748b;font-size:.78rem;margin-top:2px">${textoDeOpiniones(total)}</div>`;
+    const barras = document.createElement('div');
+    barras.style.cssText = 'flex:1;display:flex;flex-direction:column;gap:5px';
+    const reparto = resumen ? repartoEnPorcentajes(resumen.porEstrella) : [0, 0, 0, 0, 0];
+    [5, 4, 3, 2, 1].forEach((n, i) => {
+      const fila = document.createElement('div');
+      fila.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:.78rem;color:#475569';
+      fila.innerHTML =
+        `<span style="width:10px;text-align:right">${n}</span><span style="color:#f59e0b">★</span>` +
+        `<span style="flex:1;height:8px;background:#e2e8f0;border-radius:99px;overflow:hidden">` +
+        `<span style="display:block;height:100%;width:${reparto[i]}%;background:#f59e0b"></span></span>`;
+      barras.appendChild(fila);
+    });
+    resumenCaja.append(grande, barras);
+    panel.appendChild(resumenCaja);
+
+    // — Dejar la propia —
+    const caja = document.createElement('div');
+    caja.style.cssText = 'border:1px solid #e2e8f0;border-radius:14px;padding:14px;margin-bottom:16px;background:#f8fafc';
+    panel.appendChild(caja);
+
+    if (!puede) {
+      const nota = document.createElement('p');
+      nota.textContent = `Para calificar a ${cat.negocio}, primero escríbele por el chat. Así las opiniones son de gente que de verdad habló con la tienda.`;
+      nota.style.cssText = 'margin:0 0 10px;color:#475569;font-size:.88rem;line-height:1.4';
+      const escribir = boton('💬 Escribirle a la tienda', '#2563eb', () => {
+        window.location.href = `/?vendedor=${encodeURIComponent(userId)}`;
+      });
+      caja.append(nota, escribir);
+    } else {
+      let elegidas = mia?.estrellas ?? 0;
+      const rotulo = document.createElement('p');
+      rotulo.textContent = mia ? 'Tu calificación (puedes cambiarla)' : '¿Cómo te fue con esta tienda?';
+      rotulo.style.cssText = 'margin:0 0 8px;font-weight:700;font-size:.92rem';
+      const filaEstrellas = document.createElement('div');
+      filaEstrellas.style.cssText = 'display:flex;gap:4px;margin-bottom:10px';
+      const botonesEstrella: HTMLButtonElement[] = [];
+      const pintarEstrellasElegidas = () => {
+        botonesEstrella.forEach((b, i) => {
+          b.style.color = i < elegidas ? '#f59e0b' : '#cbd5e1';
+          b.setAttribute('aria-pressed', String(i + 1 === elegidas));
+        });
+      };
+      for (let i = 1; i <= 5; i++) {
+        const b = document.createElement('button');
+        b.textContent = '★';
+        b.setAttribute('aria-label', `${i} ${i === 1 ? 'estrella' : 'estrellas'}`);
+        b.style.cssText = 'border:0;background:none;cursor:pointer;font-size:2.4rem;line-height:1;padding:2px 4px';
+        b.onclick = () => { elegidas = i; pintarEstrellasElegidas(); };
+        botonesEstrella.push(b);
+        filaEstrellas.appendChild(b);
+      }
+      pintarEstrellasElegidas();
+
+      const comentario = document.createElement('textarea');
+      comentario.rows = 3;
+      comentario.maxLength = 300;
+      comentario.placeholder = 'Cuenta cómo fue tu experiencia (opcional)';
+      comentario.value = mia?.comentario ?? '';
+      comentario.style.cssText =
+        `width:100%;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:10px;padding:10px;font-size:1rem;` +
+        `font-family:${FUENTE};resize:none`;
+
+      const mensaje = document.createElement('p');
+      mensaje.style.cssText = 'margin:8px 0 0;font-size:.85rem;min-height:1em';
+
+      const publicar = boton(mia ? 'Guardar mi calificación' : 'Publicar mi calificación', '#16a34a', async () => {
+        if (elegidas < 1) {
+          mensaje.textContent = 'Toca las estrellas para elegir de 1 a 5.';
+          mensaje.style.color = '#b91c1c';
+          return;
+        }
+        publicar.disabled = true;
+        try {
+          await calificarTienda(userId, elegidas, comentario.value);
+          fondo.remove();
+          void pintarChipOpiniones();
+          void abrirOpiniones();
+        } catch (e) {
+          publicar.disabled = false;
+          mensaje.textContent = (e as Error).message;
+          mensaje.style.color = '#b91c1c';
+        }
+      });
+      publicar.style.cssText += ';width:100%;padding:13px 18px;font-size:1rem;margin-top:10px';
+      caja.append(rotulo, filaEstrellas, comentario, publicar);
+
+      if (mia) {
+        const quitar = document.createElement('button');
+        quitar.textContent = 'Quitar mi calificación';
+        quitar.style.cssText =
+          `border:0;background:none;cursor:pointer;color:#b91c1c;font-weight:700;font-size:.85rem;margin-top:8px;font-family:${FUENTE};padding:6px 0`;
+        quitar.onclick = async () => {
+          try {
+            await quitarMiCalificacion(userId);
+            fondo.remove();
+            void pintarChipOpiniones();
+            void abrirOpiniones();
+          } catch (e) {
+            mensaje.textContent = (e as Error).message;
+            mensaje.style.color = '#b91c1c';
+          }
+        };
+        caja.appendChild(quitar);
+      }
+      caja.appendChild(mensaje);
+    }
+
+    // — Lo que dice la gente —
+    if (opiniones.length > 0) {
+      const sub = document.createElement('p');
+      sub.textContent = 'Comentarios';
+      sub.style.cssText = 'font-weight:800;font-size:.95rem;margin:0 0 8px';
+      panel.appendChild(sub);
+      for (const o of opiniones) {
+        const tarjeta = document.createElement('div');
+        tarjeta.style.cssText = 'border-bottom:1px solid #e2e8f0;padding:12px 0';
+        const cab = document.createElement('div');
+        cab.style.cssText = 'display:flex;justify-content:space-between;align-items:baseline;gap:8px';
+        const quien = document.createElement('span');
+        quien.textContent = o.nombre;
+        quien.style.cssText = 'font-weight:700;font-size:.9rem';
+        const cuando = document.createElement('span');
+        cuando.textContent = haceCuanto(o.creado);
+        cuando.style.cssText = 'color:#94a3b8;font-size:.76rem;flex:0 0 auto';
+        cab.append(quien, cuando);
+        const est = document.createElement('div');
+        est.textContent = estrellasEnTexto(o.estrellas);
+        est.style.cssText = 'color:#f59e0b;font-size:.95rem;letter-spacing:1px;margin:2px 0 4px';
+        const texto = document.createElement('p');
+        texto.textContent = o.comentario;
+        texto.style.cssText = 'margin:0;font-size:.92rem;line-height:1.4;color:#1e293b;white-space:pre-wrap;overflow-wrap:anywhere';
+        tarjeta.append(cab, est, texto);
+        if (o.respuesta) {
+          const resp = document.createElement('div');
+          resp.style.cssText = 'margin-top:8px;padding:8px 10px;background:#eff6ff;border-radius:10px;font-size:.86rem;color:#1e3a8a';
+          const quienResp = document.createElement('b');
+          quienResp.textContent = `Respuesta de ${cat.negocio}: `;
+          const textoResp = document.createElement('span');
+          textoResp.textContent = o.respuesta;
+          textoResp.style.cssText = 'white-space:pre-wrap;overflow-wrap:anywhere';
+          resp.append(quienResp, textoResp);
+          tarjeta.appendChild(resp);
+        }
+        panel.appendChild(tarjeta);
+      }
+    } else if (total > 0) {
+      const solo = document.createElement('p');
+      solo.textContent = 'Por ahora solo hay estrellas, sin comentarios.';
+      solo.style.cssText = 'color:#94a3b8;font-style:italic;text-align:center;padding:8px 0';
+      panel.appendChild(solo);
+    }
+
+    const cerrar = boton('Cerrar', '#94a3b8', () => fondo.remove());
+    cerrar.style.cssText += ';display:block;margin:16px auto 0';
+    panel.appendChild(cerrar);
   }
 
   pintarContenido();

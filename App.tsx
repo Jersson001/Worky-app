@@ -5,6 +5,7 @@ import { ChatWindow } from './components/ChatWindow';
 import { FinancialReport } from './components/FinancialReport';
 import { TiendasGuardadas } from './components/TiendasGuardadas';
 import { PublicarAvisoModal } from './components/PublicarAvisoModal';
+import { OpinionesModal } from './components/OpinionesModal';
 import { InicioPanel } from './components/InicioPanel';
 import { rutaInternaDe, yaSeAbrioHace, recordarEnlaceAbierto } from './utils/enlacesDeLaApp';
 import { carpetasPrincipales, carpetasEnOrden, esPrincipal, etiquetaDeCarpeta, idsDeCarpeta, subcarpetasDe, SIN_CARPETA, estaSinCarpeta, productosVisibles, carpetaParaProductoNuevo } from './utils/carpetas';
@@ -1032,6 +1033,7 @@ const App: React.FC = () => {
   const [showWallet, setShowWallet] = useState(false);
   const [showTiendas, setShowTiendas] = useState(false);
   const [showAvisos, setShowAvisos] = useState(false);
+  const [showOpiniones, setShowOpiniones] = useState(false);
   const [showContactos, setShowContactos] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileEditor, setShowProfileEditor] = useState(false);
@@ -3076,6 +3078,7 @@ ${describeError(error)}
                   onOpenGroups={() => setShowGroupsManager(true)}
                   onOpenTiendas={() => setShowTiendas(true)}
                   onOpenAvisos={() => setShowAvisos(true)}
+                  onOpenOpiniones={() => setShowOpiniones(true)}
                   onNewContact={() => {
                     setNewContactName('');
                     setNewContactPhone('');
@@ -3313,6 +3316,13 @@ ${describeError(error)}
             setNewContactRole('client');
             setShowNewContactModal(true);
           }}
+        />
+      )}
+
+      {showOpiniones && (
+        <OpinionesModal
+          onClose={() => setShowOpiniones(false)}
+          onCompartirQr={() => { setShowOpiniones(false); setShowCatalogShare(true); }}
         />
       )}
 
