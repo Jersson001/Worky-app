@@ -10,6 +10,13 @@ interface ChatHeaderProps {
   displayProjectName: string;
   hasMultipleProjects: boolean;
   onBack: () => void;
+  /**
+   * Va al Inicio. Solo se pinta en el teléfono: con un chat abierto la barra de
+   * abajo se esconde, y quien llegó directo al chat —por un QR, o tocando una
+   * notificación— no tenía ninguna señal de cómo salir de ahí. La flecha de atrás
+   * es un icono gris pequeño que no dice adónde lleva.
+   */
+  onGoHome?: () => void;
   onToggleInfo: () => void;
   showInfo: boolean;
   onOpenGantt?: (projectId?: string) => void;
@@ -23,7 +30,7 @@ interface ChatHeaderProps {
 
 export const ChatHeader: React.FC<ChatHeaderProps> = React.memo(({
   contact, approvedProjectsCount, displayProjectName, hasMultipleProjects,
-  onBack, onToggleInfo, showInfo, onOpenGantt, onOpenProductPicker, onVerCatalogo,
+  onBack, onGoHome, onToggleInfo, showInfo, onOpenGantt, onOpenProductPicker, onVerCatalogo,
 }) => {
   const [showChatMenu, setShowChatMenu] = useState(false);
 
@@ -32,9 +39,10 @@ export const ChatHeader: React.FC<ChatHeaderProps> = React.memo(({
       <div className="flex items-center cursor-pointer" onClick={onToggleInfo}>
         <button
           onClick={(e) => { e.stopPropagation(); onBack(); }}
-          className="md:hidden mr-3 text-slate-500 hover:text-slate-900 transition w-8 h-8 rounded-lg flex items-center justify-center hover:bg-slate-100"
+          aria-label="Volver"
+          className="md:hidden mr-2 text-slate-700 hover:text-slate-900 transition w-10 h-10 rounded-lg flex items-center justify-center hover:bg-slate-100"
         >
-          <i className="fa-solid fa-arrow-left"></i>
+          <i className="fa-solid fa-arrow-left text-lg"></i>
         </button>
         <div className="relative">
           <img src={contact.avatar} alt={contact.clientName} className="w-10 h-10 rounded-full object-cover mr-3" />
@@ -59,6 +67,17 @@ export const ChatHeader: React.FC<ChatHeaderProps> = React.memo(({
             title="Ver cronograma Gantt"
           >
             <i className="fa-solid fa-chart-gantt text-base"></i>
+          </button>
+        )}
+        {/* Inicio: la salida a la pantalla principal, a la vista y con su nombre. */}
+        {onGoHome && (
+          <button
+            onClick={onGoHome}
+            className="md:hidden w-10 h-10 rounded-lg flex items-center justify-center bg-blue-50 text-blue-600 hover:bg-blue-100 transition"
+            title="Ir al inicio"
+            aria-label="Ir al inicio"
+          >
+            <i className="fa-solid fa-house text-lg"></i>
           </button>
         )}
         {/* Su catálogo: para volver a ver lo que vende quien está al otro lado.
@@ -87,7 +106,8 @@ export const ChatHeader: React.FC<ChatHeaderProps> = React.memo(({
             <i className="fa-solid fa-box-open text-base"></i>
           </button>
         )}
-        <button className="hover:text-blue-600 transition w-8 h-8 rounded-lg flex items-center justify-center hover:bg-slate-100">
+        {/* Sin función todavía. En el teléfono se esconde: el sitio lo necesita «Inicio». */}
+        <button className="hidden md:flex hover:text-blue-600 transition w-8 h-8 rounded-lg items-center justify-center hover:bg-slate-100">
           <i className="fa-solid fa-magnifying-glass text-base"></i>
         </button>
         <div className="relative">
@@ -113,6 +133,15 @@ export const ChatHeader: React.FC<ChatHeaderProps> = React.memo(({
                 >
                   <i className="fa-solid fa-chart-gantt text-violet-600"></i>
                   Ver cronograma Gantt
+                </button>
+              )}
+              {onGoHome && (
+                <button
+                  onClick={() => { setShowChatMenu(false); onGoHome(); }}
+                  className="md:hidden w-full text-left px-4 py-3 text-slate-700 hover:bg-slate-50 text-sm flex items-center gap-3 transition"
+                >
+                  <i className="fa-solid fa-house text-blue-600"></i>
+                  Ir al inicio
                 </button>
               )}
               <button

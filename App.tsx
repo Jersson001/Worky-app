@@ -2976,6 +2976,7 @@ ${describeError(error)}
             paymentAccounts={paymentAccounts}
             onAddExpense={handleAddExpense}
             onBack={() => setSelectedContactId(null)}
+            onGoHome={() => { setSelectedContactId(null); setSelectedGroupId(null); setShowFinancials(false); setShowStatus(false); setShowNotifications(false); setMobileTab('home'); }}
             activeAction={chatAction}
             onClearAction={() => setChatAction(null)}
             onUpdateMessage={handleUpdateMessageMetadata}

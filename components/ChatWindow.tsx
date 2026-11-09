@@ -59,6 +59,8 @@ interface ChatWindowProps {
   categories: ProductCategory[];
   paymentAccounts: PaymentAccount[];
   onBack: () => void;
+  /** Cierra el chat y va al Inicio. */
+  onGoHome?: () => void;
   activeAction?: 'invoice' | 'quote' | 'collection_account' | 'expense' | null;
   onClearAction?: () => void;
   onUpdateMessage: (messageId: string, metadata: any) => void;
@@ -109,7 +111,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = (props) => {
 
 const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
   contact, allContacts, messages, onSendMessage, onUpdateStage, onAddExpense,
-  onUpdateProjectInfo, onAddProject, onDeleteProject, onRenameContact, onSetContactDocumento, products, categories, paymentAccounts, onBack, activeAction, onClearAction,
+  onUpdateProjectInfo, onAddProject, onDeleteProject, onRenameContact, onSetContactDocumento, products, categories, paymentAccounts, onBack, onGoHome, activeAction, onClearAction,
   onUpdateMessage, businessLogo, digitalSignature, userProfile, onOpenGantt, onDeleteMessage,
   avisoSobreElInput,
   esCliente = false,
@@ -1125,6 +1127,7 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
           displayProjectName={displayProjectName}
           hasMultipleProjects={hasMultipleProjects}
           onBack={onBack}
+          onGoHome={onGoHome}
           onToggleInfo={() => setShowInfo(!showInfo)}
           showInfo={showInfo}
           onOpenGantt={onOpenGantt}
