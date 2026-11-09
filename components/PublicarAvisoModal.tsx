@@ -37,6 +37,11 @@ export const PublicarAvisoModal: React.FC<Props> = ({ onClose, isPro, trialEndsA
   /** La foto elegida, ya reducida, todavía sin subir: sube al enviar. */
   const [foto, setFoto] = useState('');
   const [preparandoFoto, setPreparandoFoto] = useState(false);
+  // Las confirmaciones van dentro de la pantalla, no en el cuadro del navegador:
+  // en los navegadores que abren WhatsApp o Instagram ese cuadro no aparece y
+  // cuenta como «no», así que el envío se cancelaba sin decir nada.
+  const [confirmando, setConfirmando] = useState(false);
+  const [quitando, setQuitando] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [mensaje, setMensaje] = useState<{ ok: boolean; texto: string } | null>(null);
 
@@ -62,11 +67,12 @@ export const PublicarAvisoModal: React.FC<Props> = ({ onClose, isPro, trialEndsA
     else setMensaje({ ok: false, texto: 'No pudimos leer esa foto. Prueba con otra.' });
   };
 
+  const aQuien = seguidores && seguidores > 0
+    ? `a ${seguidores} ${seguidores === 1 ? 'persona' : 'personas'}`
+    : 'a tus seguidores (por ahora ninguno)';
+
   const enviar = async () => {
-    const aQuien = seguidores && seguidores > 0
-      ? `a ${seguidores} ${seguidores === 1 ? 'persona' : 'personas'}`
-      : 'a tus seguidores (por ahora ninguno)';
-    if (!window.confirm(`¿Enviar este aviso ${aQuien}?\n\n${emojiDeTipo(tipo)} ${titulo.trim()}${foto ? '\n(con foto)' : ''}\n\nUna vez enviado no se puede retirar.`)) return;
+    setConfirmando(false);
     setEnviando(true);
     setMensaje(null);
     try {
@@ -94,7 +100,7 @@ export const PublicarAvisoModal: React.FC<Props> = ({ onClose, isPro, trialEndsA
   };
 
   const quitar = async (a: AvisoPublicado) => {
-    if (!window.confirm('¿Quitar este aviso de las novedades de tus seguidores?\n\nLa notificación que ya les llegó no se puede retirar.')) return;
+    setQuitando(null);
     try {
       await borrarAviso(a.id);
       setPublicados(p => p.filter(x => x.id !== a.id));
@@ -215,12 +221,43 @@ export const PublicarAvisoModal: React.FC<Props> = ({ onClose, isPro, trialEndsA
               )}
 
               <button
-                type="button" onClick={enviar} disabled={enviando || preparandoFoto || titulo.trim().length < 3}
+                type="button" onClick={() => { setMensaje(null); setConfirmando(true); }}
+                disabled={enviando || preparandoFoto || confirmando || titulo.trim().length < 3}
                 className="w-full bg-rey-600 text-white py-4 rounded-xl text-lg font-bold hover:bg-rey-700 transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 <i className="fa-solid fa-paper-plane"></i>
                 {enviando ? (foto ? 'Subiendo la foto y enviando…' : 'Enviando…') : 'Enviar a mis seguidores'}
               </button>
+              {titulo.trim().length < 3 && !enviando && (
+                <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-xl p-3 leading-snug -mt-2">
+                  Para poder enviar, escribe el <b>título</b> del aviso (mínimo 3 letras).
+                </p>
+              )}
+              {confirmando && (
+                <div className="rounded-xl border-2 border-rey-300 bg-rey-50 p-4 space-y-3" role="alertdialog" aria-label="Confirmar el envío">
+                  <p className="text-base font-bold text-slate-900 leading-snug">
+                    ¿Enviar este aviso {aQuien}?
+                  </p>
+                  <p className="text-sm text-slate-700 leading-snug">
+                    {emojiDeTipo(tipo)} {titulo.trim()}{foto ? ' (con foto)' : ''}
+                    <br />Una vez enviado no se puede retirar.
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      type="button" onClick={enviar}
+                      className="flex-1 bg-rey-600 text-white py-3 rounded-xl text-base font-bold hover:bg-rey-700 transition"
+                    >
+                      Sí, enviar ahora
+                    </button>
+                    <button
+                      type="button" onClick={() => setConfirmando(false)}
+                      className="px-5 py-3 rounded-xl text-base font-semibold bg-white border border-slate-300 text-slate-700"
+                    >
+                      Revisar
+                    </button>
+                  </div>
+                </div>
+              )}
               <p className="text-xs text-slate-500 text-center -mt-2">Puedes enviar hasta 2 avisos al día.</p>
             </div>
           </ProFeatureGuard>
@@ -238,9 +275,19 @@ export const PublicarAvisoModal: React.FC<Props> = ({ onClose, isPro, trialEndsA
                         {haceCuanto(a.creado)}{a.venceEn ? ` · ${textoDeVigencia(a.venceEn)}` : ''}
                       </p>
                     </div>
-                    <button type="button" onClick={() => quitar(a)} className="text-xs font-bold text-rose-600 underline underline-offset-2 shrink-0 py-1">
-                      Quitar
-                    </button>
+                    {quitando === a.id ? (
+                      <div className="shrink-0 text-right space-y-1.5">
+                        <p className="text-xs text-slate-700 leading-snug max-w-[9rem]">¿Quitarlo de sus novedades? La notificación ya enviada no se retira.</p>
+                        <div className="flex gap-1.5 justify-end">
+                          <button type="button" onClick={() => quitar(a)} className="text-xs font-bold bg-rose-600 text-white rounded-lg px-3 py-2">Sí, quitar</button>
+                          <button type="button" onClick={() => setQuitando(null)} className="text-xs font-semibold bg-white border border-slate-300 text-slate-700 rounded-lg px-3 py-2">No</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button type="button" onClick={() => setQuitando(a.id)} className="text-sm font-bold text-rose-600 underline underline-offset-2 shrink-0 py-2 px-1">
+                        Quitar
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
