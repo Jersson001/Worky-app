@@ -4,6 +4,7 @@ import { ChatList } from './components/ChatList';
 import { ChatWindow } from './components/ChatWindow';
 import { FinancialReport } from './components/FinancialReport';
 import { TiendasGuardadas } from './components/TiendasGuardadas';
+import { PublicarAvisoModal } from './components/PublicarAvisoModal';
 import { InicioPanel } from './components/InicioPanel';
 import { rutaInternaDe, yaSeAbrioHace, recordarEnlaceAbierto } from './utils/enlacesDeLaApp';
 import { carpetasPrincipales, carpetasEnOrden, esPrincipal, etiquetaDeCarpeta, idsDeCarpeta, subcarpetasDe, SIN_CARPETA, estaSinCarpeta, productosVisibles, carpetaParaProductoNuevo } from './utils/carpetas';
@@ -15,6 +16,7 @@ import AdminPanel from './components/AdminPanel';
 import CatalogShareModal from './components/CatalogShareModal';
 import { getSharedDocument } from './services/whatsappService';
 import { referidoPendiente, olvidarReferido } from './utils/referido';
+import { sincronizarSeguidas } from './services/avisosService';
 import { recordarVendedorDeLaUrl, vendedorPendiente, olvidarVendedorPendiente, pedidoPendiente, olvidarPedidoPendiente, llegoInvitado, olvidarLlegadaInvitada, olvidarRegistroPedido, invitacionPendiente, olvidarInvitacion, reclamarInvitacion, recordarDocumentoDeLaUrl, documentoPendiente, olvidarDocumentoPendiente, WORKY_APP_URL } from './services/catalogShareService';
 import { uploadFileForChat } from './services/storageService';
 import { describeError } from './utils/errorMessage';
@@ -268,6 +270,15 @@ const App: React.FC = () => {
   const abrirChatPorUrl = useCallback((url: string) => {
     try {
       const urlObj = new URL(url);
+      // Tocó el aviso de una tienda: se abre su catálogo, que es donde están las
+      // novedades. No hace falta sesión, el catálogo es público.
+      if (urlObj.protocol === 'worky:' && urlObj.hostname === 'tienda') {
+        const tiendaId = urlObj.searchParams.get('id');
+        if (tiendaId && /^[0-9a-f-]{36}$/i.test(tiendaId)) {
+          window.location.href = `/?catalogo=${encodeURIComponent(tiendaId)}`;
+        }
+        return;
+      }
       if (urlObj.protocol === 'worky:' && urlObj.hostname === 'chat') {
         const contactId = urlObj.searchParams.get('sender');
         if (contactId && isAuthenticated) {
@@ -626,6 +637,9 @@ const App: React.FC = () => {
         setRolCliente(user.user_metadata?.rol === 'cliente');
 
         reclamarReferidoSiHay(user.is_anonymous === true);
+        // Las tiendas que ya seguía en este teléfono pasan al servidor, para que
+        // puedan avisarle.
+        void sincronizarSeguidas();
 
         // El teléfono se engancha aquí y no al abrir la app: el token se cuelga
         // de una cuenta, y sin sesión no hay de quién. En el navegador no hace
@@ -1017,6 +1031,7 @@ const App: React.FC = () => {
   const [showStatus, setShowStatus] = useState(false);
   const [showWallet, setShowWallet] = useState(false);
   const [showTiendas, setShowTiendas] = useState(false);
+  const [showAvisos, setShowAvisos] = useState(false);
   const [showContactos, setShowContactos] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileEditor, setShowProfileEditor] = useState(false);
@@ -3060,6 +3075,7 @@ ${describeError(error)}
                   onOpenStatus={(conCamara) => { setShowStatus(true); setStartCamera(conCamara); }}
                   onOpenGroups={() => setShowGroupsManager(true)}
                   onOpenTiendas={() => setShowTiendas(true)}
+                  onOpenAvisos={() => setShowAvisos(true)}
                   onNewContact={() => {
                     setNewContactName('');
                     setNewContactPhone('');
@@ -3297,6 +3313,16 @@ ${describeError(error)}
             setNewContactRole('client');
             setShowNewContactModal(true);
           }}
+        />
+      )}
+
+      {showAvisos && (
+        <PublicarAvisoModal
+          onClose={() => setShowAvisos(false)}
+          isPro={userProfile?.isPro}
+          trialEndsAt={userProfile?.trialEndsAt}
+          subscriptionEndsAt={userProfile?.subscriptionEndsAt}
+          onCompartirQr={() => { setShowAvisos(false); setShowCatalogShare(true); }}
         />
       )}
 

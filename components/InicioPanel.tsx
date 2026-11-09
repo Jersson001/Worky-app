@@ -24,7 +24,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import Tip from './ui/Tip';
 import {
   ArrowLeftRight, BookUser, Camera, CheckCircle2, ChevronDown, ChevronRight, ChartGantt, ChartPie, CreditCard, Eye,
-  FileText, HandCoins, Heart, Images, MessageCircle, Plus, QrCode, Receipt, ShieldCheck, Store, UserPlus,
+  FileText, HandCoins, Heart, Images, Megaphone, MessageCircle, Plus, QrCode, Receipt, ShieldCheck, Store, UserPlus,
   Users, X,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -33,6 +33,7 @@ import { aMs as ms, cifraCorta, familiaDeNegocio, horaCorta, Pendiente } from '.
 import { fotoOIniciales } from '../utils/avatar';
 import { formatCurrency } from '../utils/currency';
 import { tieneCatalogo, resumenVisitas, type ResumenVisitas } from '../services/catalogShareService';
+import { cuantosMeSiguen } from '../services/avisosService';
 import { getCurrentUserId } from '../services/messagingService';
 import type { Contact, UserProfileData } from '../types';
 
@@ -60,6 +61,8 @@ interface InicioPanelProps {
   onOpenStatus: (conCamara: boolean) => void;
   onOpenGroups: () => void;
   onOpenTiendas: () => void;
+  /** Abre los avisos a quienes siguen la tienda. */
+  onOpenAvisos: () => void;
   onNewContact: () => void;
   /** Abre el directorio: todos los contactos, por orden alfabético y con buscador. */
   onOpenContactos: () => void;
@@ -285,7 +288,7 @@ const Vitrina: React.FC<{
 export const InicioPanel: React.FC<InicioPanelProps> = ({
   contacts, totalSinLeer, userProfile, productCount, folderCount,
   onOpenChats, onOpenChat, onCrearDocumento, onOpenFinancials, onOpenCatalog, onAddProduct, onShareQr, onOpenWallet,
-  onOpenGantt, onOpenStatus, onOpenGroups, onOpenTiendas, onNewContact, onOpenContactos, onOpenAdmin, contratoSlot,
+  onOpenGantt, onOpenStatus, onOpenGroups, onOpenTiendas, onOpenAvisos, onNewContact, onOpenContactos, onOpenAdmin, contratoSlot,
 }) => {
   const familia = familiaDeNegocio(userProfile?.businessType);
 
@@ -300,6 +303,14 @@ export const InicioPanel: React.FC<InicioPanelProps> = ({
     tieneCatalogo(uid).then(si => { if (vigente) setPublicado(si); }).catch(() => { if (vigente) setPublicado(null); });
     return () => { vigente = false; };
   }, [productCount > 0]);
+
+  // Cuántas personas la siguen, para la ficha «Avisos». Null mientras llega.
+  const [seguidores, setSeguidores] = useState<number | null>(null);
+  useEffect(() => {
+    let vigente = true;
+    cuantosMeSiguen().then(n => { if (vigente) setSeguidores(n); });
+    return () => { vigente = false; };
+  }, []);
 
   // Visitas al catálogo de los últimos 30 días. Null mientras llega.
   const [visitas, setVisitas] = useState<ResumenVisitas[] | null>(null);
@@ -378,6 +389,15 @@ export const InicioPanel: React.FC<InicioPanelProps> = ({
         <Herramienta key="contactos" icono={BookUser} titulo="Contactos" tip="Todos tus clientes y proveedores, con buscador"
           detalle={<span className="text-slate-500">{contacts.length} {contacts.length === 1 ? 'contacto' : 'contactos'}</span>}
           onClick={onOpenContactos} />
+      ),
+    },
+    {
+      clave: 'avisos',
+      peso: 0.7,
+      nodo: (
+        <Herramienta key="avisos" icono={Megaphone} titulo="Avisos" tip="Avisa de un descuento o un producto nuevo a quienes siguen tu tienda"
+          detalle={<span className="text-slate-500">{seguidores === null ? 'A tus seguidores' : `${seguidores} ${seguidores === 1 ? 'te sigue' : 'te siguen'}`}</span>}
+          onClick={onOpenAvisos} />
       ),
     },
     {

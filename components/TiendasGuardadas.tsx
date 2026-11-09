@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { leerTiendas, quitarTienda, TiendaGuardada } from '../utils/tiendasGuardadas';
 import { fotoOIniciales } from '../utils/avatar';
+import { dejarDeSeguirEnServidor } from '../services/avisosService';
 
 interface TiendasGuardadasProps {
   onClose: () => void;
@@ -30,6 +31,7 @@ export const TiendasGuardadas: React.FC<TiendasGuardadasProps> = ({ onClose, onA
 
   const quitar = (t: TiendaGuardada) => {
     quitarTienda(t.id);
+    void dejarDeSeguirEnServidor(t.id);
     setTiendas(leerTiendas());
   };
 

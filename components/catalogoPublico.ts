@@ -16,6 +16,7 @@
  * catálogos publicados antes de todo esto, porque lo que se lee es su estructura.
  */
 import { fetchCatalogHtml, guardarPedidoPendiente, registrarVisita } from '../services/catalogShareService';
+import { seguirEnServidor, dejarDeSeguirEnServidor } from '../services/avisosService';
 import { supabase } from '../services/supabaseConfig';
 import { guardarTienda, leerTiendas, quitarTienda } from '../utils/tiendasGuardadas';
 
@@ -817,6 +818,10 @@ export const mostrarCatalogo = async (userId: string): Promise<void> => {
       alert('Tu navegador no deja seguir tiendas en este teléfono. Prueba fuera del modo incógnito.');
       return;
     }
+    // Para que la tienda pueda avisarle, el servidor también tiene que saberlo.
+    // Sin sesión no hace nada: queda en el teléfono y sube al abrir Worky.
+    if (ya) void dejarDeSeguirEnServidor(userId);
+    else void seguirEnServidor(userId);
     pintarGuardar();
     pintarChip();
     if (!ya) invitarARegistrarse();

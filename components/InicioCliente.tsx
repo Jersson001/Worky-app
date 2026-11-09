@@ -19,6 +19,7 @@
 import React, { useMemo, useState } from 'react';
 import { ChevronRight, Heart, MessageCircle, Store } from 'lucide-react';
 import AvisoGuardarEspacio from './AvisoGuardarEspacio';
+import { NovedadesDeTiendas } from './NovedadesDeTiendas';
 import { aMs, horaCorta } from '../utils/inicio';
 import { fotoOIniciales } from '../utils/avatar';
 import { leerTiendas } from '../utils/tiendasGuardadas';
@@ -132,7 +133,14 @@ export const InicioCliente: React.FC<InicioClienteProps> = ({
         )}
       </section>
 
-      {/* 2. TIENDAS QUE SIGUES */}
+      {/* 2. NOVEDADES: lo que publicaron las tiendas que sigue */}
+      <NovedadesDeTiendas
+        sigueTiendas={tiendas.length > 0}
+        logos={Object.fromEntries(tiendas.map(t => [t.id, t.logo]))}
+        onVerTienda={verCatalogo}
+      />
+
+      {/* 3. TIENDAS QUE SIGUES */}
       <section>
         <Titulo>Tiendas que sigues</Titulo>
         {tiendas.length === 0 ? (
