@@ -36,19 +36,15 @@ export const ChatHeader: React.FC<ChatHeaderProps> = React.memo(({
 
   return (
     <div className="h-16 px-4 flex items-center justify-between flex-shrink-0 border-b border-slate-200 z-20 relative bg-white">
-      <div className="flex items-center cursor-pointer" onClick={onToggleInfo}>
-        <button
-          onClick={(e) => { e.stopPropagation(); onBack(); }}
-          aria-label="Volver"
-          className="md:hidden mr-2 text-slate-700 hover:text-slate-900 transition w-10 h-10 rounded-lg flex items-center justify-center hover:bg-slate-100"
-        >
-          <i className="fa-solid fa-arrow-left text-lg"></i>
-        </button>
-        <div className="relative">
+      <div className="flex items-center cursor-pointer min-w-0" onClick={onToggleInfo}>
+        {/* En el escritorio no hay flecha: el chat convive con la lista. En el teléfono
+            va a la derecha, junto a «Inicio» (más abajo): la esquina izquierda quedaba
+            tapada en algunos iPhone. */}
+        <div className="relative flex-shrink-0">
           <img src={contact.avatar} alt={contact.clientName} className="w-10 h-10 rounded-full object-cover mr-3" />
         </div>
-        <div className="flex flex-col">
-          <h2 className="text-slate-900 font-semibold text-[14.5px] flex items-center gap-1.5">
+        <div className="flex flex-col min-w-0">
+          <h2 className="text-slate-900 font-semibold text-[14.5px] flex items-center gap-1.5 truncate">
             {contact.alias || contact.clientName}
             {contact.alias && <span className="text-xs text-slate-400 font-normal">({contact.clientName})</span>}
           </h2>
@@ -58,7 +54,16 @@ export const ChatHeader: React.FC<ChatHeaderProps> = React.memo(({
         </div>
       </div>
 
-      <div className="flex items-center gap-1 text-slate-500">
+      <div className="flex items-center gap-1 text-slate-500 flex-shrink-0">
+        {/* Volver y Inicio, juntos y a la vista. Solo en el teléfono. */}
+        <button
+          onClick={onBack}
+          aria-label="Volver"
+          title="Volver"
+          className="md:hidden w-10 h-10 rounded-lg flex items-center justify-center bg-slate-100 text-slate-700 hover:bg-slate-200 transition"
+        >
+          <i className="fa-solid fa-arrow-left text-lg"></i>
+        </button>
         {/* Gantt button for clients */}
         {onOpenGantt && contact.role === 'client' && contact.projects.length > 0 && (
           <button
