@@ -24,6 +24,8 @@ export interface Aviso {
   /** `YYYY-MM-DD`, o null si no tiene fecha límite. */
   venceEn: string | null;
   creado: string;
+  /** Una foto que la tienda adjuntó, o null. */
+  imagenUrl: string | null;
 }
 
 export interface AvisoPublicado {
@@ -33,6 +35,7 @@ export interface AvisoPublicado {
   texto: string;
   venceEn: string | null;
   creado: string;
+  imagenUrl: string | null;
 }
 
 export interface DatosDeAviso {
@@ -41,6 +44,8 @@ export interface DatosDeAviso {
   texto: string;
   /** `YYYY-MM-DD`, o vacío. */
   venceEn: string;
+  /** La dirección de la foto ya subida, o vacío si no lleva. */
+  imagenUrl?: string;
 }
 
 const hayUsuario = async (): Promise<boolean> => {
@@ -97,6 +102,7 @@ export const misAvisos = async (limite = 30): Promise<Aviso[]> => {
       texto: String(f.texto ?? ''),
       venceEn: f.vence_en,
       creado: String(f.creado),
+      imagenUrl: f.imagen_url || null,
     }));
   } catch {
     return [];
@@ -151,6 +157,7 @@ export const publicarAviso = async (datos: DatosDeAviso): Promise<void> => {
     p_titulo: datos.titulo,
     p_texto: datos.texto,
     p_vence: datos.venceEn || null,
+    p_imagen: datos.imagenUrl || null,
   });
   if (error) throw new Error(error.message);
 };
@@ -166,6 +173,7 @@ export const avisosPublicados = async (): Promise<AvisoPublicado[]> => {
       texto: String(f.texto ?? ''),
       venceEn: f.vence_en,
       creado: String(f.creado),
+      imagenUrl: f.imagen_url || null,
     }));
   } catch {
     return [];

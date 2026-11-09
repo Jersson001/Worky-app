@@ -69,6 +69,9 @@ export const NovedadesDeTiendas: React.FC<Props> = ({ sigueTiendas, logos = {}, 
                     {a.texto && <p className="text-[13px] text-slate-600 leading-snug mt-1">{a.texto}</p>}
                   </div>
                 </div>
+                {a.imagenUrl && (
+                  <img src={a.imagenUrl} alt="" loading="lazy" className="mt-3 w-full max-h-64 object-cover rounded-xl bg-slate-100" />
+                )}
                 <button
                   type="button" onClick={() => onVerTienda(a.tiendaId)}
                   className="mt-3 w-full py-2.5 rounded-xl bg-rey-600 text-white text-[13px] font-bold flex items-center justify-center gap-1.5 hover:bg-rey-700 transition"

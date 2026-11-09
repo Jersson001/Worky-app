@@ -53,8 +53,9 @@ const como = (uid) => db.exec(`SELECT set_config('worky.uid', '${uid ?? ''}', fa
 const falla = async (f) => { try { await f(); return null; } catch (e) { return e.message; } };
 const q = async (texto, params = []) => (await db.query(texto, params)).rows;
 const seguir = async (ids) => (await q('SELECT public.seguir_tiendas($1::uuid[]) AS n', [ids]))[0].n;
-const publicar = (t = 'descuento', ti = '20% en cocinas', tx = 'Solo esta semana', v = null) =>
-  q('SELECT public.publicar_aviso($1,$2,$3,$4) AS id', [t, ti, tx, v]);
+const publicar = (t = 'descuento', ti = '20% en cocinas', tx = 'Solo esta semana', v = null, img = null) =>
+  q('SELECT public.publicar_aviso($1,$2,$3,$4,$5) AS id', [t, ti, tx, v, img]);
+const BASE = 'https://vdkjfogtumzoiprsvyub.supabase.co/storage/v1/object/public/chat_media';
 
 // ── Seguir ──
 await como(null);
@@ -90,12 +91,27 @@ ok('un segundo aviso entra', !!a2);
 ok('el tercero del día se frena', /2 avisos hoy/.test((await falla(() => publicar('aviso', 'Otro más'))) ?? ''));
 await db.exec(`UPDATE public.avisos SET creado = now() - interval '25 hours' WHERE id = '${a1}'`);
 ok('pasadas 24 horas se puede publicar de nuevo', !!(await publicar('aviso', 'Horario de fin de semana'))[0].id);
-ok('un fallo del aviso no tumba el guardado (la tabla tiene 3)', (await q('SELECT count(*)::int AS n FROM public.avisos'))[0].n === 3);
+ok('la tabla tiene los 3 avisos que entraron', (await q('SELECT count(*)::int AS n FROM public.avisos'))[0].n === 3);
+
+// ── Imagen ──
+await db.exec(`UPDATE public.avisos SET creado = now() - interval '30 hours'`);
+const propia = `${BASE}/${TIENDA}/avisos/1731000000_ab12cd.jpg`;
+const [{ id: aImg }] = await publicar('lanzamiento', 'Colección nueva con foto', '', null, propia);
+ok('un aviso puede llevar una imagen subida por la propia tienda',
+  (await q('SELECT imagen_url FROM public.avisos WHERE id = $1', [aImg]))[0].imagen_url === propia);
+ok('la imagen de OTRA tienda se rechaza', /no es válida/.test((await falla(() => publicar('aviso', 'Con imagen ajena', '', null, `${BASE}/${OTRA}/avisos/x.jpg`))) ?? ''));
+ok('una dirección de otro sitio se rechaza', /no es válida/.test((await falla(() => publicar('aviso', 'Con imagen de afuera', '', null, 'https://malo.example.com/pixel.gif'))) ?? ''));
+ok('otro bucket de nuestro Storage también', /no es válida/.test((await falla(() => publicar('aviso', 'Otro bucket', '', null, 'https://vdkjfogtumzoiprsvyub.supabase.co/storage/v1/object/public/files/' + TIENDA + '/x.jpg'))) ?? ''));
+const [{ id: aVacia }] = await publicar('aviso', 'Imagen vacia vale', '', null, '   ');
+ok('una imagen vacía equivale a sin imagen', (await q('SELECT imagen_url FROM public.avisos WHERE id = $1', [aVacia]))[0].imagen_url === null);
+await db.exec(`DELETE FROM public.avisos WHERE id = '${aVacia}'`);
+await db.exec(`UPDATE public.avisos SET creado = now() - interval '30 hours' WHERE tienda_id = '${TIENDA}'`);
 
 // ── Ver ──
 await como(ANA);
 const mios = await q('SELECT * FROM public.mis_avisos()');
-ok('la clienta ve los avisos de la tienda que sigue', mios.length === 3 && mios.every(f => f.tienda_id === TIENDA));
+ok('la clienta ve los avisos de la tienda que sigue', mios.length === 4 && mios.every(f => f.tienda_id === TIENDA), String(mios.length));
+ok('y ve la imagen del que la lleva', mios.find(f => f.id === aImg)?.imagen_url === propia);
 ok('con el nombre del negocio', mios[0].negocio === 'Hábitat Home');
 ok('los más nuevos primero', mios[0].creado >= mios[mios.length - 1].creado);
 await como(LUIS);
@@ -117,7 +133,7 @@ ok('dejar de seguir no afecta a los demás seguidores', (await q('SELECT * FROM 
 
 // ── La tienda ve y borra lo suyo ──
 await como(TIENDA);
-ok('la tienda ve sus avisos publicados', (await q('SELECT * FROM public.mis_avisos_publicados()')).length === 3);
+ok('la tienda ve sus avisos publicados, con su imagen', (await q('SELECT * FROM public.mis_avisos_publicados()')).length === 4 && (await q('SELECT * FROM public.mis_avisos_publicados()')).some(f => f.imagen_url === propia));
 await como(OTRA);
 ok('otra tienda no ve los ajenos', (await q('SELECT * FROM public.mis_avisos_publicados()')).length === 0);
 await q('SELECT public.borrar_aviso($1)', [a1]);

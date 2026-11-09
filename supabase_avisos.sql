@@ -40,12 +40,18 @@ CREATE TABLE IF NOT EXISTS public.avisos (
   titulo     text        NOT NULL CHECK (char_length(titulo) BETWEEN 3 AND 80),
   texto      text        NOT NULL DEFAULT '' CHECK (char_length(texto) <= 500),
   vence_en   date,
+  -- Una foto opcional, subida por la propia tienda a `chat_media/<su id>/avisos/`.
+  imagen_url text        CHECK (imagen_url IS NULL OR char_length(imagen_url) <= 500),
   creado     timestamptz NOT NULL DEFAULT now(),
   -- Cuándo salió la notificación. Si ya tiene fecha, no se vuelve a enviar.
   enviado_en timestamptz
 );
 
 CREATE INDEX IF NOT EXISTS avisos_tienda_idx ON public.avisos (tienda_id, creado DESC);
+
+-- Para las bases que ya tenían la tabla sin la imagen.
+ALTER TABLE public.avisos
+  ADD COLUMN IF NOT EXISTS imagen_url text CHECK (imagen_url IS NULL OR char_length(imagen_url) <= 500);
 
 ALTER TABLE public.seguidores ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.avisos ENABLE ROW LEVEL SECURITY;
@@ -114,11 +120,16 @@ GRANT EXECUTE ON FUNCTION public.cuantos_me_siguen() TO authenticated;
 -- Tope: 2 avisos cada 24 horas. Sin tope, una tienda podría llenarle el
 -- teléfono a sus seguidores, y la primera consecuencia sería que la dejen de
 -- seguir —o que desinstalen Worky—.
+-- La versión sin imagen se quita: con las dos, llamar con cuatro argumentos sería
+-- ambiguo.
+DROP FUNCTION IF EXISTS public.publicar_aviso(text, text, text, date);
+
 CREATE OR REPLACE FUNCTION public.publicar_aviso(
   p_tipo   text,
   p_titulo text,
   p_texto  text,
-  p_vence  date
+  p_vence  date,
+  p_imagen text DEFAULT NULL
 ) RETURNS uuid
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -126,6 +137,7 @@ SET search_path = public
 AS $$
 DECLARE
   v_id uuid;
+  v_imagen text := nullif(trim(coalesce(p_imagen, '')), '');
 BEGIN
   IF auth.uid() IS NULL THEN
     RAISE EXCEPTION 'Entra a tu cuenta para publicar un aviso';
@@ -144,8 +156,16 @@ BEGIN
     RAISE EXCEPTION 'La fecha límite ya pasó';
   END IF;
 
-  INSERT INTO public.avisos (tienda_id, tipo, titulo, texto, vence_en)
-  VALUES (auth.uid(), p_tipo, trim(coalesce(p_titulo, '')), trim(coalesce(p_texto, '')), p_vence)
+  -- La imagen tiene que ser un archivo que esta misma tienda subió a nuestro
+  -- almacenamiento. Sin esto, un aviso podría llevar cualquier dirección: una
+  -- imagen ajena, o una que avise a un tercero de quién la abrió.
+  IF v_imagen IS NOT NULL AND v_imagen NOT LIKE
+     'https://vdkjfogtumzoiprsvyub.supabase.co/storage/v1/object/public/chat_media/' || auth.uid()::text || '/%' THEN
+    RAISE EXCEPTION 'La imagen del aviso no es válida; súbela de nuevo';
+  END IF;
+
+  INSERT INTO public.avisos (tienda_id, tipo, titulo, texto, vence_en, imagen_url)
+  VALUES (auth.uid(), p_tipo, trim(coalesce(p_titulo, '')), trim(coalesce(p_texto, '')), p_vence, v_imagen)
   RETURNING id INTO v_id;
   RETURN v_id;
 EXCEPTION WHEN check_violation THEN
@@ -153,18 +173,20 @@ EXCEPTION WHEN check_violation THEN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.publicar_aviso(text, text, text, date) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.publicar_aviso(text, text, text, date) TO authenticated;
+REVOKE ALL ON FUNCTION public.publicar_aviso(text, text, text, date, text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.publicar_aviso(text, text, text, date, text) TO authenticated;
 
 -- Los avisos que publicó la tienda, los más nuevos primero.
+DROP FUNCTION IF EXISTS public.mis_avisos_publicados(integer);
+
 CREATE OR REPLACE FUNCTION public.mis_avisos_publicados(p_limite integer DEFAULT 20)
-RETURNS TABLE (id uuid, tipo text, titulo text, texto text, vence_en date, creado timestamptz)
+RETURNS TABLE (id uuid, tipo text, titulo text, texto text, vence_en date, creado timestamptz, imagen_url text)
 LANGUAGE sql
 STABLE
 SECURITY DEFINER
 SET search_path = public
 AS $$
-  SELECT a.id, a.tipo, a.titulo, a.texto, a.vence_en, a.creado
+  SELECT a.id, a.tipo, a.titulo, a.texto, a.vence_en, a.creado, a.imagen_url
   FROM public.avisos a
   WHERE a.tienda_id = auth.uid()
   ORDER BY a.creado DESC
@@ -192,10 +214,12 @@ GRANT EXECUTE ON FUNCTION public.borrar_aviso(uuid) TO authenticated;
 -- ------------------------------------------------------------
 -- Solo de las tiendas que sigue, de los últimos 60 días y sin las ofertas ya
 -- vencidas.
+DROP FUNCTION IF EXISTS public.mis_avisos(integer);
+
 CREATE OR REPLACE FUNCTION public.mis_avisos(p_limite integer DEFAULT 30)
 RETURNS TABLE (
   id uuid, tienda_id uuid, negocio text, tipo text, titulo text, texto text,
-  vence_en date, creado timestamptz
+  vence_en date, creado timestamptz, imagen_url text
 )
 LANGUAGE sql
 STABLE
@@ -204,7 +228,7 @@ SET search_path = public
 AS $$
   SELECT a.id, a.tienda_id,
          coalesce(nullif(u.business_name, ''), nullif(u.owner_name, ''), 'Una tienda'),
-         a.tipo, a.titulo, a.texto, a.vence_en, a.creado
+         a.tipo, a.titulo, a.texto, a.vence_en, a.creado, a.imagen_url
   FROM public.avisos a
   JOIN public.seguidores s ON s.tienda_id = a.tienda_id AND s.usuario_id = auth.uid()
   LEFT JOIN public.user_profiles u ON u.id = a.tienda_id

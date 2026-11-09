@@ -8,6 +8,8 @@
  */
 import React, { useEffect, useState } from 'react';
 import ProFeatureGuard from './ProFeatureGuard';
+import { leerImagenReducida } from '../utils/imagen';
+import { uploadPhoto } from '../services/storageService';
 import {
   avisosPublicados, borrarAviso, cuantosMeSiguen, publicarAviso,
   type AvisoPublicado,
@@ -32,6 +34,9 @@ export const PublicarAvisoModal: React.FC<Props> = ({ onClose, isPro, trialEndsA
   const [titulo, setTitulo] = useState('');
   const [texto, setTexto] = useState('');
   const [venceEn, setVenceEn] = useState('');
+  /** La foto elegida, ya reducida, todavía sin subir: sube al enviar. */
+  const [foto, setFoto] = useState('');
+  const [preparandoFoto, setPreparandoFoto] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [mensaje, setMensaje] = useState<{ ok: boolean; texto: string } | null>(null);
 
@@ -45,19 +50,41 @@ export const PublicarAvisoModal: React.FC<Props> = ({ onClose, isPro, trialEndsA
   const hoy = new Date().toISOString().slice(0, 10);
   const sinSeguidores = seguidores === 0;
 
+  const elegirFoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const archivo = e.target.files?.[0];
+    e.target.value = ''; // para poder elegir la misma otra vez
+    if (!archivo) return;
+    setPreparandoFoto(true);
+    setMensaje(null);
+    const reducida = await leerImagenReducida(archivo);
+    setPreparandoFoto(false);
+    if (reducida) setFoto(reducida);
+    else setMensaje({ ok: false, texto: 'No pudimos leer esa foto. Prueba con otra.' });
+  };
+
   const enviar = async () => {
     const aQuien = seguidores && seguidores > 0
       ? `a ${seguidores} ${seguidores === 1 ? 'persona' : 'personas'}`
       : 'a tus seguidores (por ahora ninguno)';
-    if (!window.confirm(`¿Enviar este aviso ${aQuien}?\n\n${emojiDeTipo(tipo)} ${titulo.trim()}\n\nUna vez enviado no se puede retirar.`)) return;
+    if (!window.confirm(`¿Enviar este aviso ${aQuien}?\n\n${emojiDeTipo(tipo)} ${titulo.trim()}${foto ? '\n(con foto)' : ''}\n\nUna vez enviado no se puede retirar.`)) return;
     setEnviando(true);
     setMensaje(null);
     try {
-      await publicarAviso({ tipo, titulo, texto, venceEn });
+      // La foto sube primero: si falla, no sale un aviso a medias sin ella.
+      let imagenUrl = '';
+      if (foto) {
+        try {
+          imagenUrl = await uploadPhoto(foto, 'avisos');
+        } catch {
+          throw new Error('No se pudo subir la foto. Revisa tu conexión e inténtalo de nuevo.');
+        }
+      }
+      await publicarAviso({ tipo, titulo, texto, venceEn, imagenUrl });
       setMensaje({ ok: true, texto: 'Listo, tu aviso salió. Les llega como notificación a quienes tienen Worky instalado, y a todos en sus novedades.' });
       setTitulo('');
       setTexto('');
       setVenceEn('');
+      setFoto('');
       await cargar();
     } catch (e) {
       setMensaje({ ok: false, texto: (e as Error).message });
@@ -146,9 +173,35 @@ export const PublicarAvisoModal: React.FC<Props> = ({ onClose, isPro, trialEndsA
                 <p className="text-xs text-slate-500 mt-1">Pasada esa fecha, el aviso desaparece solo de sus novedades.</p>
               </div>
 
+              <div>
+                <p className="block text-sm font-bold text-slate-700 mb-1.5">Foto (opcional)</p>
+                <input type="file" accept="image/*" onChange={elegirFoto} className="hidden" id="aviso-foto" />
+                {foto ? (
+                  <div className="relative">
+                    <img src={foto} alt="Foto del aviso" className="w-full max-h-56 object-cover rounded-xl border border-slate-200" />
+                    <button
+                      type="button" onClick={() => setFoto('')}
+                      className="absolute top-2 right-2 bg-white/95 text-rose-700 font-bold text-sm px-3 py-2 rounded-lg shadow"
+                    >
+                      Quitar foto
+                    </button>
+                  </div>
+                ) : (
+                  <label
+                    htmlFor="aviso-foto"
+                    className="flex items-center justify-center gap-2 w-full cursor-pointer rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 py-4 text-base font-semibold text-slate-700 hover:bg-slate-100"
+                  >
+                    <i className="fa-solid fa-image text-rey-600"></i>
+                    {preparandoFoto ? 'Preparando la foto…' : 'Añadir una foto'}
+                  </label>
+                )}
+                <p className="text-xs text-slate-500 mt-1">Sale en la notificación y en las novedades de tus seguidores.</p>
+              </div>
+
               {titulo.trim().length >= 3 && (
                 <div className="rounded-xl bg-slate-50 border border-slate-200 p-3">
                   <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Así lo verán</p>
+                  {foto && <img src={foto} alt="" className="w-full max-h-40 object-cover rounded-lg mb-2" />}
                   <p className="font-bold text-slate-900 text-base leading-snug">{emojiDeTipo(tipo)} {titulo.trim()}</p>
                   {venceEn && <p className="text-sm text-rey-700 font-semibold mt-0.5">{textoDeVigencia(venceEn)}</p>}
                   {texto.trim() && <p className="text-sm text-slate-600 mt-1">{texto.trim()}</p>}
@@ -162,11 +215,11 @@ export const PublicarAvisoModal: React.FC<Props> = ({ onClose, isPro, trialEndsA
               )}
 
               <button
-                type="button" onClick={enviar} disabled={enviando || titulo.trim().length < 3}
+                type="button" onClick={enviar} disabled={enviando || preparandoFoto || titulo.trim().length < 3}
                 className="w-full bg-rey-600 text-white py-4 rounded-xl text-lg font-bold hover:bg-rey-700 transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 <i className="fa-solid fa-paper-plane"></i>
-                {enviando ? 'Enviando…' : 'Enviar a mis seguidores'}
+                {enviando ? (foto ? 'Subiendo la foto y enviando…' : 'Enviando…') : 'Enviar a mis seguidores'}
               </button>
               <p className="text-xs text-slate-500 text-center -mt-2">Puedes enviar hasta 2 avisos al día.</p>
             </div>
@@ -178,6 +231,7 @@ export const PublicarAvisoModal: React.FC<Props> = ({ onClose, isPro, trialEndsA
               <div className="space-y-2">
                 {publicados.map(a => (
                   <div key={a.id} className="border border-slate-200 rounded-xl p-3 flex items-start gap-3">
+                    {a.imagenUrl && <img src={a.imagenUrl} alt="" loading="lazy" className="w-14 h-14 rounded-lg object-cover shrink-0 bg-slate-100" />}
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-bold text-slate-900 leading-snug">{emojiDeTipo(a.tipo)} {a.titulo}</p>
                       <p className="text-xs text-slate-500 mt-0.5">

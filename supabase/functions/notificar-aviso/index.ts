@@ -96,6 +96,7 @@ const avisarAlAparato = async (
   titulo: string,
   cuerpo: string,
   datos: Record<string, string>,
+  imagen?: string | null,
 ): Promise<boolean> => {
   const res = await fetch(
     `https://fcm.googleapis.com/v1/projects/${cuenta.project_id}/messages:send`,
@@ -105,7 +106,8 @@ const avisarAlAparato = async (
       body: JSON.stringify({
         message: {
           token,
-          notification: { title: titulo, body: cuerpo },
+          // `image`: Android la baja y la enseña grande dentro de la notificación.
+          notification: { title: titulo, body: cuerpo, ...(imagen ? { image: imagen } : {}) },
           data: datos,
           android: { priority: 'high', notification: { sound: 'default' } },
         },
@@ -154,7 +156,7 @@ Deno.serve(async (req) => {
       .update({ enviado_en: new Date().toISOString() })
       .eq('id', aviso_id)
       .is('enviado_en', null)
-      .select('id, tienda_id, tipo, titulo, vence_en')
+      .select('id, tienda_id, tipo, titulo, vence_en, imagen_url')
       .maybeSingle();
     if (!aviso) return responder({ ok: true, saltado: 'ya enviado o no existe' });
 
@@ -198,7 +200,7 @@ Deno.serve(async (req) => {
     for (let i = 0; i < tokens.length; i += EN_PARALELO) {
       await Promise.all(
         tokens.slice(i, i + EN_PARALELO).map(async (token) => {
-          const vivo = await avisarAlAparato(cuenta, permiso, token, negocio, cuerpo, datos);
+          const vivo = await avisarAlAparato(cuenta, permiso, token, negocio, cuerpo, datos, aviso.imagen_url);
           if (!vivo) muertos.push(token);
         }),
       );
