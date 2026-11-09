@@ -3107,7 +3107,7 @@ ${describeError(error)}
                   onOpenContactos={() => setShowContactos(true)}
                   onOpenAdmin={() => setShowAdminPanel(true)}
                   contratoSlot={
-                    <ProFeatureGuard isPro={userProfile?.isPro} trialEndsAt={userProfile?.trialEndsAt} subscriptionEndsAt={userProfile?.subscriptionEndsAt}>
+                    <ProFeatureGuard isPro={userProfile?.isPro} trialEndsAt={userProfile?.trialEndsAt} subscriptionEndsAt={userProfile?.subscriptionEndsAt} esAdmin={userProfile?.isAdmin}>
                       <ContractGenerator
                         defaultContractorName={userProfile?.ownerName || userProfile?.businessName || ''}
                         defaultContractorId={userProfile?.nit || ''}
@@ -3348,6 +3348,7 @@ ${describeError(error)}
       {showAvisos && (
         <PublicarAvisoModal
           onClose={() => setShowAvisos(false)}
+          esAdmin={userProfile?.isAdmin}
           isPro={userProfile?.isPro}
           trialEndsAt={userProfile?.trialEndsAt}
           subscriptionEndsAt={userProfile?.subscriptionEndsAt}

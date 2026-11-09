@@ -86,6 +86,7 @@ interface QuoteModalProps {
   etiquetaEnviar?: string;
   // Personalizada (carpintería) — función Pro
   isPro?: boolean;
+  esAdmin?: boolean;
   trialEndsAt?: string | null;
   subscriptionEndsAt?: string | null;
   /** El oficio del usuario. Decide qué capítulos de cotización ve. */
@@ -528,7 +529,7 @@ export const QuoteModal: React.FC<QuoteModalProps> = React.memo(({
   paymentAccounts, anticipoPorcentaje, cuentaCobroId, condiciones,
   onSetAnticipo, onSetCuentaCobro, onSetCondicion,
   onGuardarPlantilla, guardandoPlantilla, plantillaGuardada,
-  isPro, trialEndsAt, subscriptionEndsAt, businessType, mode, sections, onSetMode, onAddSection, onRemoveSection,
+  isPro, esAdmin, trialEndsAt, subscriptionEndsAt, businessType, mode, sections, onSetMode, onAddSection, onRemoveSection,
   onAddCarpentryItem, onUpdateCarpentryItem, onRemoveCarpentryItem, onUpdateGroupLabel, onUpdateSectionName,
 }) => {
   /**
@@ -1214,7 +1215,7 @@ export const QuoteModal: React.FC<QuoteModalProps> = React.memo(({
 
           </>
         ) : (
-          <ProFeatureGuard isPro={isPro} trialEndsAt={trialEndsAt} subscriptionEndsAt={subscriptionEndsAt}>
+          <ProFeatureGuard isPro={isPro} trialEndsAt={trialEndsAt} subscriptionEndsAt={subscriptionEndsAt} esAdmin={esAdmin}>
             <div className="mb-4">
               {/* Selector de capítulos, agrupado por oficio.
                   Van los dos juntos y no en pantallas separadas porque una

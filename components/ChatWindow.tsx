@@ -1334,7 +1334,7 @@ const ChatWindowContent: React.FC<ChatWindowProps & { contact: Contact }> = ({
           plantillaGuardada={plantillaGuardada}
           onSend={handleSendQuote}
           enviando={enviandoCotizacion}
-          isPro={userProfile?.isPro} trialEndsAt={userProfile?.trialEndsAt} subscriptionEndsAt={userProfile?.subscriptionEndsAt}
+          isPro={userProfile?.isPro} esAdmin={userProfile?.isAdmin} trialEndsAt={userProfile?.trialEndsAt} subscriptionEndsAt={userProfile?.subscriptionEndsAt}
           businessType={userProfile?.businessType}
           mode={forms.quote.mode} sections={forms.quote.sections}
           onSetMode={forms.setQuoteMode} onAddSection={forms.addCarpentrySection} onRemoveSection={forms.removeCarpentrySection}

@@ -19,6 +19,7 @@ import { TIPOS_DE_AVISO, emojiDeTipo, haceCuanto, textoDeVigencia, type TipoAvis
 interface Props {
   onClose: () => void;
   isPro?: boolean;
+  esAdmin?: boolean;
   trialEndsAt?: string | null;
   subscriptionEndsAt?: string | null;
   /** Abre el QR de la tienda, que es como consigue seguidores. */
@@ -27,7 +28,7 @@ interface Props {
 
 const CAMPO = 'w-full bg-white p-3 text-base rounded-xl border border-slate-300 focus:border-rey-500 focus:ring-2 focus:ring-rey-100 outline-none';
 
-export const PublicarAvisoModal: React.FC<Props> = ({ onClose, isPro, trialEndsAt, subscriptionEndsAt, onCompartirQr }) => {
+export const PublicarAvisoModal: React.FC<Props> = ({ onClose, isPro, esAdmin, trialEndsAt, subscriptionEndsAt, onCompartirQr }) => {
   const [seguidores, setSeguidores] = useState<number | null | undefined>(undefined);
   const [publicados, setPublicados] = useState<AvisoPublicado[]>([]);
   const [tipo, setTipo] = useState<TipoAviso>('descuento');
@@ -138,7 +139,7 @@ export const PublicarAvisoModal: React.FC<Props> = ({ onClose, isPro, trialEndsA
             </div>
           )}
 
-          <ProFeatureGuard isPro={isPro} trialEndsAt={trialEndsAt} subscriptionEndsAt={subscriptionEndsAt}>
+          <ProFeatureGuard isPro={isPro} trialEndsAt={trialEndsAt} subscriptionEndsAt={subscriptionEndsAt} esAdmin={esAdmin}>
             <div className="space-y-4">
               <div>
                 <p className="text-sm font-bold text-slate-700 mb-2">¿Qué quieres avisar?</p>

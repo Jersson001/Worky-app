@@ -8,6 +8,8 @@ interface ProFeatureGuardProps {
   isPro?: boolean;
   trialEndsAt?: string | null;
   subscriptionEndsAt?: string | null;
+  /** El administrador de la plataforma nunca se bloquea por fechas. */
+  esAdmin?: boolean;
   children: React.ReactNode;
 }
 
@@ -16,15 +18,20 @@ export const tieneAcceso = (
   isPro?: boolean,
   trialEndsAt?: string | null,
   subscriptionEndsAt?: string | null,
+  esAdmin?: boolean,
 ): boolean => {
+  // Quien administra la plataforma no puede quedar bloqueado por una prueba que
+  // venció: se quedó sin contratos ni cotización por capítulos el 5/11/2026,
+  // porque los reinicios de la prueba no lo contaban.
+  if (esAdmin) return true;
   const trialActive = trialEndsAt ? new Date(trialEndsAt).getTime() > Date.now() : true;
   const proActive = !!isPro && (subscriptionEndsAt ? new Date(subscriptionEndsAt).getTime() > Date.now() : true);
   return trialActive || proActive;
 };
 
-export default function ProFeatureGuard({ isPro, trialEndsAt, subscriptionEndsAt, children }: ProFeatureGuardProps) {
+export default function ProFeatureGuard({ isPro, trialEndsAt, subscriptionEndsAt, esAdmin, children }: ProFeatureGuardProps) {
   const [pidiendoKit, setPidiendoKit] = useState(false);
-  const conAcceso = tieneAcceso(isPro, trialEndsAt, subscriptionEndsAt);
+  const conAcceso = tieneAcceso(isPro, trialEndsAt, subscriptionEndsAt, esAdmin);
   // undefined mientras se pregunta; null si nunca ha pedido el kit. Solo importa
   // cuando la pantalla es la de bloqueo: la oferta del kit es de una sola vez, y
   // quien ya lo tiene —pagado de palabra o por la app— no debe verla otra vez.
