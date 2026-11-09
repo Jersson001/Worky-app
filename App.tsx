@@ -18,7 +18,7 @@ import CatalogShareModal from './components/CatalogShareModal';
 import { getSharedDocument } from './services/whatsappService';
 import { referidoPendiente, olvidarReferido } from './utils/referido';
 import { sincronizarSeguidas } from './services/avisosService';
-import { recordarVendedorDeLaUrl, vendedorPendiente, olvidarVendedorPendiente, pedidoPendiente, olvidarPedidoPendiente, llegoInvitado, olvidarLlegadaInvitada, olvidarRegistroPedido, invitacionPendiente, olvidarInvitacion, reclamarInvitacion, recordarDocumentoDeLaUrl, documentoPendiente, olvidarDocumentoPendiente, WORKY_APP_URL } from './services/catalogShareService';
+import { recordarVendedorDeLaUrl, destinoTrasEntrar, olvidarDestinoTrasEntrar, vendedorPendiente, olvidarVendedorPendiente, pedidoPendiente, olvidarPedidoPendiente, llegoInvitado, olvidarLlegadaInvitada, olvidarRegistroPedido, invitacionPendiente, olvidarInvitacion, reclamarInvitacion, recordarDocumentoDeLaUrl, documentoPendiente, olvidarDocumentoPendiente, WORKY_APP_URL } from './services/catalogShareService';
 import { uploadFileForChat } from './services/storageService';
 import { describeError } from './utils/errorMessage';
 import { leerImagenReducida } from './utils/imagen';
@@ -640,7 +640,16 @@ const App: React.FC = () => {
         reclamarReferidoSiHay(user.is_anonymous === true);
         // Las tiendas que ya seguía en este teléfono pasan al servidor, para que
         // puedan avisarle.
-        void sincronizarSeguidas();
+        void sincronizarSeguidas().finally(() => {
+          // «Ya tengo cuenta» en un catálogo: tras entrar, de vuelta a esa tienda, ya
+          // reconocido y siguiéndola. Se espera a que lo seguido suba a la cuenta
+          // antes de salir de la página.
+          const destino = destinoTrasEntrar();
+          if (destino && user.is_anonymous !== true) {
+            olvidarDestinoTrasEntrar();
+            window.location.replace(`/?catalogo=${encodeURIComponent(destino)}`);
+          }
+        });
 
         // El teléfono se engancha aquí y no al abrir la app: el token se cuelga
         // de una cuenta, y sin sesión no hay de quién. En el navegador no hace
